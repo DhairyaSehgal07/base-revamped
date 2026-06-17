@@ -11,18 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedPeopleRouteImport } from './routes/_authenticated/people'
 import { Route as AuthenticatedFinancesRouteImport } from './routes/_authenticated/finances'
 import { Route as AuthenticatedDaybookRouteImport } from './routes/_authenticated/daybook'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedTransferIndexRouteImport } from './routes/_authenticated/transfer.index'
-import { Route as AuthenticatedStorageIndexRouteImport } from './routes/_authenticated/storage.index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedIncomingIndexRouteImport } from './routes/_authenticated/incoming.index'
-import { Route as AuthenticatedGradingIndexRouteImport } from './routes/_authenticated/grading.index'
-import { Route as AuthenticatedStorageIdRouteImport } from './routes/_authenticated/storage.$id'
+import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings.profile'
+import { Route as AuthenticatedSettingsPreferencesRouteImport } from './routes/_authenticated/settings.preferences'
 import { Route as AuthenticatedIncomingIdRouteImport } from './routes/_authenticated/incoming.$id'
-import { Route as AuthenticatedGradingIdRouteImport } from './routes/_authenticated/grading.$id'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -32,11 +30,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedPeopleRoute = AuthenticatedPeopleRouteImport.update({
   id: '/people',
@@ -64,10 +57,10 @@ const AuthenticatedTransferIndexRoute =
     path: '/transfer/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedStorageIndexRoute =
-  AuthenticatedStorageIndexRouteImport.update({
-    id: '/storage/',
-    path: '/storage/',
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedIncomingIndexRoute =
@@ -76,25 +69,21 @@ const AuthenticatedIncomingIndexRoute =
     path: '/incoming/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedGradingIndexRoute =
-  AuthenticatedGradingIndexRouteImport.update({
-    id: '/grading/',
-    path: '/grading/',
+const AuthenticatedSettingsProfileRoute =
+  AuthenticatedSettingsProfileRouteImport.update({
+    id: '/settings/profile',
+    path: '/settings/profile',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedStorageIdRoute = AuthenticatedStorageIdRouteImport.update({
-  id: '/storage/$id',
-  path: '/storage/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
+const AuthenticatedSettingsPreferencesRoute =
+  AuthenticatedSettingsPreferencesRouteImport.update({
+    id: '/settings/preferences',
+    path: '/settings/preferences',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedIncomingIdRoute = AuthenticatedIncomingIdRouteImport.update({
   id: '/incoming/$id',
   path: '/incoming/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedGradingIdRoute = AuthenticatedGradingIdRouteImport.update({
-  id: '/grading/$id',
-  path: '/grading/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 
@@ -104,13 +93,11 @@ export interface FileRoutesByFullPath {
   '/daybook': typeof AuthenticatedDaybookRoute
   '/finances': typeof AuthenticatedFinancesRoute
   '/people': typeof AuthenticatedPeopleRoute
-  '/settings': typeof AuthenticatedSettingsRoute
-  '/grading/$id': typeof AuthenticatedGradingIdRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
-  '/storage/$id': typeof AuthenticatedStorageIdRoute
-  '/grading/': typeof AuthenticatedGradingIndexRoute
+  '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
+  '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/incoming/': typeof AuthenticatedIncomingIndexRoute
-  '/storage/': typeof AuthenticatedStorageIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/transfer/': typeof AuthenticatedTransferIndexRoute
 }
 export interface FileRoutesByTo {
@@ -119,13 +106,11 @@ export interface FileRoutesByTo {
   '/daybook': typeof AuthenticatedDaybookRoute
   '/finances': typeof AuthenticatedFinancesRoute
   '/people': typeof AuthenticatedPeopleRoute
-  '/settings': typeof AuthenticatedSettingsRoute
-  '/grading/$id': typeof AuthenticatedGradingIdRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
-  '/storage/$id': typeof AuthenticatedStorageIdRoute
-  '/grading': typeof AuthenticatedGradingIndexRoute
+  '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
+  '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/incoming': typeof AuthenticatedIncomingIndexRoute
-  '/storage': typeof AuthenticatedStorageIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/transfer': typeof AuthenticatedTransferIndexRoute
 }
 export interface FileRoutesById {
@@ -136,13 +121,11 @@ export interface FileRoutesById {
   '/_authenticated/daybook': typeof AuthenticatedDaybookRoute
   '/_authenticated/finances': typeof AuthenticatedFinancesRoute
   '/_authenticated/people': typeof AuthenticatedPeopleRoute
-  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
-  '/_authenticated/grading/$id': typeof AuthenticatedGradingIdRoute
   '/_authenticated/incoming/$id': typeof AuthenticatedIncomingIdRoute
-  '/_authenticated/storage/$id': typeof AuthenticatedStorageIdRoute
-  '/_authenticated/grading/': typeof AuthenticatedGradingIndexRoute
+  '/_authenticated/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
+  '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/incoming/': typeof AuthenticatedIncomingIndexRoute
-  '/_authenticated/storage/': typeof AuthenticatedStorageIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/transfer/': typeof AuthenticatedTransferIndexRoute
 }
 export interface FileRouteTypes {
@@ -153,13 +136,11 @@ export interface FileRouteTypes {
     | '/daybook'
     | '/finances'
     | '/people'
-    | '/settings'
-    | '/grading/$id'
     | '/incoming/$id'
-    | '/storage/$id'
-    | '/grading/'
+    | '/settings/preferences'
+    | '/settings/profile'
     | '/incoming/'
-    | '/storage/'
+    | '/settings/'
     | '/transfer/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -168,13 +149,11 @@ export interface FileRouteTypes {
     | '/daybook'
     | '/finances'
     | '/people'
-    | '/settings'
-    | '/grading/$id'
     | '/incoming/$id'
-    | '/storage/$id'
-    | '/grading'
+    | '/settings/preferences'
+    | '/settings/profile'
     | '/incoming'
-    | '/storage'
+    | '/settings'
     | '/transfer'
   id:
     | '__root__'
@@ -184,13 +163,11 @@ export interface FileRouteTypes {
     | '/_authenticated/daybook'
     | '/_authenticated/finances'
     | '/_authenticated/people'
-    | '/_authenticated/settings'
-    | '/_authenticated/grading/$id'
     | '/_authenticated/incoming/$id'
-    | '/_authenticated/storage/$id'
-    | '/_authenticated/grading/'
+    | '/_authenticated/settings/preferences'
+    | '/_authenticated/settings/profile'
     | '/_authenticated/incoming/'
-    | '/_authenticated/storage/'
+    | '/_authenticated/settings/'
     | '/_authenticated/transfer/'
   fileRoutesById: FileRoutesById
 }
@@ -214,13 +191,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/people': {
       id: '/_authenticated/people'
@@ -257,11 +227,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTransferIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/storage/': {
-      id: '/_authenticated/storage/'
-      path: '/storage'
-      fullPath: '/storage/'
-      preLoaderRoute: typeof AuthenticatedStorageIndexRouteImport
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/incoming/': {
@@ -271,18 +241,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIncomingIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/grading/': {
-      id: '/_authenticated/grading/'
-      path: '/grading'
-      fullPath: '/grading/'
-      preLoaderRoute: typeof AuthenticatedGradingIndexRouteImport
+    '/_authenticated/settings/profile': {
+      id: '/_authenticated/settings/profile'
+      path: '/settings/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof AuthenticatedSettingsProfileRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/storage/$id': {
-      id: '/_authenticated/storage/$id'
-      path: '/storage/$id'
-      fullPath: '/storage/$id'
-      preLoaderRoute: typeof AuthenticatedStorageIdRouteImport
+    '/_authenticated/settings/preferences': {
+      id: '/_authenticated/settings/preferences'
+      path: '/settings/preferences'
+      fullPath: '/settings/preferences'
+      preLoaderRoute: typeof AuthenticatedSettingsPreferencesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/incoming/$id': {
@@ -290,13 +260,6 @@ declare module '@tanstack/react-router' {
       path: '/incoming/$id'
       fullPath: '/incoming/$id'
       preLoaderRoute: typeof AuthenticatedIncomingIdRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/grading/$id': {
-      id: '/_authenticated/grading/$id'
-      path: '/grading/$id'
-      fullPath: '/grading/$id'
-      preLoaderRoute: typeof AuthenticatedGradingIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -307,13 +270,11 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDaybookRoute: typeof AuthenticatedDaybookRoute
   AuthenticatedFinancesRoute: typeof AuthenticatedFinancesRoute
   AuthenticatedPeopleRoute: typeof AuthenticatedPeopleRoute
-  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
-  AuthenticatedGradingIdRoute: typeof AuthenticatedGradingIdRoute
   AuthenticatedIncomingIdRoute: typeof AuthenticatedIncomingIdRoute
-  AuthenticatedStorageIdRoute: typeof AuthenticatedStorageIdRoute
-  AuthenticatedGradingIndexRoute: typeof AuthenticatedGradingIndexRoute
+  AuthenticatedSettingsPreferencesRoute: typeof AuthenticatedSettingsPreferencesRoute
+  AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedIncomingIndexRoute: typeof AuthenticatedIncomingIndexRoute
-  AuthenticatedStorageIndexRoute: typeof AuthenticatedStorageIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedTransferIndexRoute: typeof AuthenticatedTransferIndexRoute
 }
 
@@ -322,13 +283,11 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDaybookRoute: AuthenticatedDaybookRoute,
   AuthenticatedFinancesRoute: AuthenticatedFinancesRoute,
   AuthenticatedPeopleRoute: AuthenticatedPeopleRoute,
-  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
-  AuthenticatedGradingIdRoute: AuthenticatedGradingIdRoute,
   AuthenticatedIncomingIdRoute: AuthenticatedIncomingIdRoute,
-  AuthenticatedStorageIdRoute: AuthenticatedStorageIdRoute,
-  AuthenticatedGradingIndexRoute: AuthenticatedGradingIndexRoute,
+  AuthenticatedSettingsPreferencesRoute: AuthenticatedSettingsPreferencesRoute,
+  AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
   AuthenticatedIncomingIndexRoute: AuthenticatedIncomingIndexRoute,
-  AuthenticatedStorageIndexRoute: AuthenticatedStorageIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedTransferIndexRoute: AuthenticatedTransferIndexRoute,
 }
 

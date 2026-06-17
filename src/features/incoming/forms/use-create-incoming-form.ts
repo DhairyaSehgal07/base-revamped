@@ -1,43 +1,48 @@
 import { useForm } from "@tanstack/react-form"
 import { useStoreAdminStore } from "@/features/auth/store/use-store-admin-store"
 import {
-  createDefaultStorageQuantities,
-  storageFormSchema,
-  type StorageFormValues,
-} from "@/features/storage/schemas/storage-form-schema"
-import { defaultSubmitMeta, type StorageSubmitMeta } from "@/features/storage/types"
+  createDefaultIncomingQuantities,
+  incomingFormSchema,
+  type IncomingFormValues,
+} from "@/features/incoming/schemas/incoming-form-schema"
+import {
+  defaultSubmitMeta,
+  type IncomingSubmitMeta,
+} from "@/features/incoming/types"
 
-export type { StorageFormValues }
+export type { IncomingFormValues }
 
-type UseCreateStorageFormOptions = {
+type UseCreateIncomingFormOptions = {
   onOpenReview?: () => void
   onCloseReview?: () => void
 }
 
-export function useCreateStorageForm(options: UseCreateStorageFormOptions = {}) {
+export function useCreateIncomingForm(
+  options: UseCreateIncomingFormOptions = {}
+) {
   const userId = useStoreAdminStore((s) => s.storeAdmin?._id ?? "")
   const todayIso = new Date().toISOString()
 
   return useForm({
     defaultValues: {
       manualGatePassNumber: undefined as number | undefined,
-      farmerStorageLinkId: "",
+      farmerIncomingLinkId: "",
       createdBy: userId,
       variety: "",
       category: "",
       date: todayIso,
-      quantities: createDefaultStorageQuantities(),
+      quantities: createDefaultIncomingQuantities(),
       remarks: "",
     },
     validators: {
-      onChange: storageFormSchema,
-      onSubmit: storageFormSchema,
+      onChange: incomingFormSchema,
+      onSubmit: incomingFormSchema,
     },
     onSubmitMeta: defaultSubmitMeta,
     onSubmit: async ({ value, meta }) => {
-      const parsed = storageFormSchema.parse(value)
+      const parsed = incomingFormSchema.parse(value)
 
-      if ((meta as StorageSubmitMeta).submitAction === "review") {
+      if ((meta as IncomingSubmitMeta).submitAction === "review") {
         options.onOpenReview?.()
         return
       }
@@ -48,4 +53,4 @@ export function useCreateStorageForm(options: UseCreateStorageFormOptions = {}) 
   })
 }
 
-export type CreateStorageFormApi = ReturnType<typeof useCreateStorageForm>
+export type CreateIncomingFormApi = ReturnType<typeof useCreateIncomingForm>

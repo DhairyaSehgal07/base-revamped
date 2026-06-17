@@ -19,11 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import type { CreateStorageFormApi } from "@/features/storage/forms/use-create-storage-form"
+import type { CreateIncomingFormApi } from "@/features/incoming/forms/use-create-incoming-form"
 import {
-  createDefaultStorageQuantities,
-  createEmptyStorageQuantityRow,
-} from "@/features/storage/schemas/storage-quantities-schema"
+  createDefaultIncomingQuantities,
+  createEmptyIncomingQuantityRow,
+} from "@/features/incoming/schemas/incoming-quantities-schema"
 import {
   BAG_TYPES,
   DEFAULT_CHAMBER,
@@ -48,11 +48,13 @@ const numericInputProps = {
   onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur(),
 }
 
-type StorageQuantitiesSectionProps = {
-  form: CreateStorageFormApi
+type IncomingQuantitiesSectionProps = {
+  form: CreateIncomingFormApi
 }
 
-export function StorageQuantitiesSection({ form }: StorageQuantitiesSectionProps) {
+export function IncomingQuantitiesSection({
+  form,
+}: IncomingQuantitiesSectionProps) {
   return (
     <FieldSet>
       <FieldLegend className="font-heading text-base font-semibold">
@@ -344,9 +346,7 @@ export function StorageQuantitiesSection({ form }: StorageQuantitiesSectionProps
                   type="button"
                   variant="outline"
                   className="h-11"
-                  onClick={() =>
-                    field.pushValue(createEmptyStorageQuantityRow())
-                  }
+                  onClick={() => field.pushValue(createEmptyIncomingQuantityRow())}
                 >
                   <Plus className="mr-2 size-4" aria-hidden />
                   Add more
@@ -358,7 +358,7 @@ export function StorageQuantitiesSection({ form }: StorageQuantitiesSectionProps
                   onClick={() =>
                     form.setFieldValue(
                       "quantities",
-                      createDefaultStorageQuantities()
+                      createDefaultIncomingQuantities()
                     )
                   }
                 >

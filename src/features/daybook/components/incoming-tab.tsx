@@ -42,8 +42,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 
-const DaybookStorageTab = () => {
-  const navigate = useNavigate();
+const DaybookIncomingTab = () => {
+  const navigate = useNavigate()
   const gatePassCount = 0
 
   const itemsPerPage = 10
@@ -57,8 +57,8 @@ const DaybookStorageTab = () => {
   const handlePrevPage = () => {}
   const handleNextPage = () => {}
 
-    const handleAddStorage= () => {
-    navigate({ to: "/storage" })
+  const handleAddIncoming = () => {
+    navigate({ to: "/incoming" })
   }
 
   const handleTransferStock = () => {
@@ -75,7 +75,7 @@ const DaybookStorageTab = () => {
         </ItemMedia>
 
         <ItemContent>
-          <ItemTitle>{gatePassCount} storage gate passes</ItemTitle>
+          <ItemTitle>{gatePassCount} gate passes</ItemTitle>
         </ItemContent>
 
         <ItemActions>
@@ -111,21 +111,25 @@ const DaybookStorageTab = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:shrink-0">
-            <Button variant="secondary" className="min-w-0 px-2.5 sm:px-3" onClick={handleTransferStock}>
+            <Button
+              className="min-w-0 px-2.5 sm:px-3"
+              onClick={handleAddIncoming}
+            >
+              <ArrowUpFromLine className="h-4 w-4 shrink-0 sm:mr-2" />
+              <span className="truncate">Add Incoming</span>
+            </Button>
+
+            <Button
+              variant="secondary"
+              className="min-w-0 px-2.5 sm:px-3"
+              onClick={handleTransferStock}
+            >
               <ArrowRightLeft className="h-4 w-4 shrink-0 sm:mr-2" />
               <span className="truncate sm:hidden">Transfer Stock</span>
               <span className="hidden sm:inline">Transfer Stock</span>
             </Button>
 
-            <Button variant="secondary" className="min-w-0 px-2.5 sm:px-3">
-              <span className="truncate sm:hidden">Edit History</span>
-              <span className="hidden sm:inline">Storage Edit History</span>
-            </Button>
 
-            <Button className="min-w-0 px-2.5 sm:px-3" onClick={handleAddStorage}>
-              <ArrowUpFromLine className="h-4 w-4 shrink-0 sm:mr-2" />
-              <span className="truncate">Add Storage</span>
-            </Button>
           </div>
         </div>
       </div>
@@ -136,11 +140,10 @@ const DaybookStorageTab = () => {
             <FileText />
           </EmptyMedia>
 
-          <EmptyTitle>Storage list coming soon</EmptyTitle>
+          <EmptyTitle>No Gate Passes found in daybook</EmptyTitle>
 
           <EmptyDescription>
-            Gate pass cards and storage details will appear here once this tab
-            is connected to the API.
+            To create a new incoming gate pass, click on Add Incoming button.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -196,4 +199,4 @@ const DaybookStorageTab = () => {
   )
 }
 
-export default DaybookStorageTab
+export default DaybookIncomingTab

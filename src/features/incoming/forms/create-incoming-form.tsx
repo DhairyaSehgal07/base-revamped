@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
-import { useForm } from "@tanstack/react-form"
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
+  CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { IncomingQuantitiesSection } from "@/features/incoming/forms/incoming-quantities-section"
 import { IncomingSummarySheet } from "@/features/incoming/forms/incoming-summary-sheet"
+import { useCreateIncomingForm } from "@/features/incoming/forms/use-create-incoming-form"
+import { createDefaultIncomingQuantities } from "@/features/incoming/schemas/incoming-form-schema"
 import {
   Field,
   FieldDescription,
@@ -30,18 +32,13 @@ import {
   type ComboboxOption,
 } from "@/components/searchable-option-combobox"
 import { incomingFormSchema } from "@/features/incoming/schemas/incoming-form-schema"
-import { defaultSubmitMeta } from "@/features/incoming/types"
+
 const VARIETY_ITEMS = ["Himalini", "K. Pukhraj", "K. Jyoti"].map((value) => ({
   id: value,
   label: value,
 }))
 
 const CATEGORY_ITEMS = ["A", "B", "C"].map((value) => ({
-  id: value,
-  label: value,
-}))
-
-const STAGE_ITEMS = ["Incoming", "Grading", "Storage"].map((value) => ({
   id: value,
   label: value,
 }))
@@ -97,9 +94,7 @@ const MOCK_FARMER_LINKS = [
   },
 ] as const
 
-function isFieldInvalid(
-  meta: { isTouched: boolean; isValid: boolean }
-) {
+function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
 }
 
@@ -107,11 +102,6 @@ function parseOptionalPositiveNumber(value: string): number | undefined {
   if (value === "") return undefined
   const parsed = Number(value)
   return Number.isNaN(parsed) ? undefined : parsed
-}
-
-function parseNumber(value: string): number {
-  const parsed = Number(value)
-  return Number.isNaN(parsed) ? 0 : parsed
 }
 
 const numericInputProps = {
@@ -122,7 +112,6 @@ const numericInputProps = {
 
 const CreateIncomingForm = () => {
   const userId = useStoreAdminStore((s) => s.storeAdmin?._id ?? "")
-  const todayIso = new Date().toISOString()
   const farmerOptions = useMemo<ComboboxOption[]>(
     () => [...MOCK_FARMER_LINKS],
     []
@@ -133,8 +122,6 @@ const CreateIncomingForm = () => {
   const [varietyComboboxOpen, setVarietyComboboxOpen] = useState(false)
   const [categorySearch, setCategorySearch] = useState("")
   const [categoryComboboxOpen, setCategoryComboboxOpen] = useState(false)
-  const [stageSearch, setStageSearch] = useState("")
-  const [stageComboboxOpen, setStageComboboxOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
 
   const sortedFarmers = useMemo(
@@ -149,51 +136,15 @@ const CreateIncomingForm = () => {
     () => filterAndSortOptions(categorySearch, CATEGORY_ITEMS),
     [categorySearch]
   )
-  const sortedStages = useMemo(
-    () => filterAndSortOptions(stageSearch, STAGE_ITEMS),
-    [stageSearch]
-  )
 
-  const form = useForm({
-    defaultValues: {
-      manualGatePassNumber: undefined as number | undefined,
-      truckNumber: "",
-      farmerStorageLinkId: "",
-      createdBy: userId,
-      variety: "",
-      category: "",
-      stage: "",
-      date: todayIso,
-      bagsReceived: 0,
-      weightSlip: {
-        slipNumber: "",
-        grossWeightKg: 0,
-        tareWeightKg: 0,
-      },
-      status: "NOT_GRADED",
-      remarks: "",
-    },
-    validators: {
-      onChange: incomingFormSchema,
-      onSubmit: incomingFormSchema,
-    },
-    onSubmitMeta: defaultSubmitMeta,
-    onSubmit: async ({ value, meta }) => {
-      const parsed = incomingFormSchema.parse(value)
-
-      if (meta.submitAction === "review") {
-        setReviewOpen(true)
-        return
-      }
-
-      console.log(parsed)
-      setReviewOpen(false)
-    },
+  const form = useCreateIncomingForm({
+    onOpenReview: () => setReviewOpen(true),
+    onCloseReview: () => setReviewOpen(false),
   })
 
-  const getFarmerLabel = (farmerStorageLinkId: string) =>
-    farmerOptions.find((option) => option.id === farmerStorageLinkId)
-      ?.label ?? farmerStorageLinkId
+  const getFarmerLabel = (farmerIncomingLinkId: string) =>
+    farmerOptions.find((option) => option.id === farmerIncomingLinkId)?.label ??
+    farmerIncomingLinkId
 
   const handleOpenReview = () => {
     void form.handleSubmit({ submitAction: "review" })
@@ -207,20 +158,19 @@ const CreateIncomingForm = () => {
     if (userId) {
       form.setFieldValue("createdBy", userId)
     }
-  }, [userId])
+  }, [form, userId])
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-sm">
+    <Card className="mx-auto w-full max-w-4xl shadow-sm">
       <CardHeader className="border-b bg-muted/30 pb-6">
-        <CardTitle className="text-2xl">Incoming Gate Pass <span className="text-primary text-2xl">#1024</span></CardTitle>
+        <CardTitle className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
+          Incoming Gate Pass <span className="text-primary">#—</span>
+        </CardTitle>
         <CardDescription className="text-base">
-          Record transport, crop, and weighbridge details for a new incoming gate pass.
+          Record crop and account details for a new incoming gate pass.
         </CardDescription>
       </CardHeader>
 
-      {/* Wrap the content and footer inside the form so the submit
-        button in the footer triggers the submission properly.
-      */}
       <form
         id="create-incoming-form"
         noValidate
@@ -228,12 +178,12 @@ const CreateIncomingForm = () => {
       >
         <CardContent className="pt-8 pb-8">
           <FieldGroup className="@container/field-group gap-10">
-
-            {/* General Information */}
             <FieldSet>
-              <FieldLegend className="text-lg font-semibold">General Information</FieldLegend>
+              <FieldLegend className="font-heading text-base font-semibold">
+                General Information
+              </FieldLegend>
               <FieldDescription>
-                Basic details regarding the transport and timing.
+                Gate pass reference, date, and linked farmer account.
               </FieldDescription>
               <FieldGroup className="mt-5 grid grid-cols-1 gap-6 @md/field-group:grid-cols-2">
                 <form.Field name="manualGatePassNumber">
@@ -261,33 +211,6 @@ const CreateIncomingForm = () => {
                         <FieldDescription>
                           Leave blank if no manual slip number was issued.
                         </FieldDescription>
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
-                <form.Field name="truckNumber">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Truck Number
-                        </FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="e.g. PB08 AB 1234"
-                          className="uppercase"
-                          autoComplete="off"
-                        />
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -324,13 +247,16 @@ const CreateIncomingForm = () => {
                   }}
                 </form.Field>
 
-                <form.Field name="farmerStorageLinkId">
+                <form.Field name="farmerIncomingLinkId">
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
                     return (
-                      <Field data-invalid={isInvalid}>
+                      <Field
+                        data-invalid={isInvalid}
+                        className="@md/field-group:col-span-2"
+                      >
                         <FieldLabel htmlFor="create-incoming-farmer">
-                          Farmer Link
+                          Farmer
                         </FieldLabel>
                         <SearchableOptionCombobox
                           id="create-incoming-farmer"
@@ -348,9 +274,6 @@ const CreateIncomingForm = () => {
                           open={farmerComboboxOpen}
                           setOpen={setFarmerComboboxOpen}
                         />
-                        <FieldDescription>
-                          Link this pass to a storage account.
-                        </FieldDescription>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -358,17 +281,17 @@ const CreateIncomingForm = () => {
                     )
                   }}
                 </form.Field>
-
               </FieldGroup>
             </FieldSet>
 
             <FieldSeparator />
 
-            {/* Crop Information */}
             <FieldSet>
-              <FieldLegend className="text-lg font-semibold">Crop Information</FieldLegend>
+              <FieldLegend className="font-heading text-base font-semibold">
+                Crop Information
+              </FieldLegend>
               <FieldDescription>
-                Variety, grade, and quantity received at the gate.
+                Variety and grade for stock entering cold storage.
               </FieldDescription>
               <FieldGroup className="mt-5 grid grid-cols-1 gap-6 @md/field-group:grid-cols-2">
                 <form.Field name="variety">
@@ -434,200 +357,28 @@ const CreateIncomingForm = () => {
                     )
                   }}
                 </form.Field>
-
-                <form.Field name="stage">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor="create-incoming-stage">
-                          Stage
-                        </FieldLabel>
-                        <SearchableOptionCombobox
-                          id="create-incoming-stage"
-                          name={field.name}
-                          value={field.state.value}
-                          onValueChange={field.handleChange}
-                          onBlur={field.handleBlur}
-                          isInvalid={isInvalid}
-                          placeholder="Search stages..."
-                          emptyMessage="No stages found."
-                          options={STAGE_ITEMS}
-                          sortedOptions={sortedStages}
-                          search={stageSearch}
-                          setSearch={setStageSearch}
-                          open={stageComboboxOpen}
-                          setOpen={setStageComboboxOpen}
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
-                <form.Field name="bagsReceived">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Bags Received
-                        </FieldLabel>
-                        <Input
-                          {...numericInputProps}
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value || ""}
-                          onBlur={field.handleBlur}
-                          onChange={(e) =>
-                            field.handleChange(parseNumber(e.target.value))
-                          }
-                          aria-invalid={isInvalid}
-                          placeholder="Quantity count"
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
               </FieldGroup>
             </FieldSet>
 
             <FieldSeparator />
 
-            {/* Weight Slip Data */}
-            <FieldSet>
-              <FieldLegend className="text-lg font-semibold">Weight Slip Data</FieldLegend>
-              <FieldDescription>
-                Details captured from the weighbridge slip.
-              </FieldDescription>
-              <FieldGroup className="mt-5 grid grid-cols-1 gap-6 @md/field-group:grid-cols-3">
-                <form.Field name="weightSlip.slipNumber">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Slip Number
-                        </FieldLabel>
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value}
-                          onBlur={field.handleBlur}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          aria-invalid={isInvalid}
-                          placeholder="e.g. WS-001"
-                          autoComplete="off"
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
-                <form.Field name="weightSlip.grossWeightKg">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Gross Weight (kg)
-                        </FieldLabel>
-                        <Input
-                          {...numericInputProps}
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value || ""}
-                          onBlur={field.handleBlur}
-                          onChange={(e) =>
-                            field.handleChange(parseNumber(e.target.value))
-                          }
-                          aria-invalid={isInvalid}
-                          placeholder="Total weight"
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
-                <form.Field name="weightSlip.tareWeightKg">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Tare Weight (kg)
-                        </FieldLabel>
-                        <Input
-                          {...numericInputProps}
-                          id={field.name}
-                          name={field.name}
-                          value={field.state.value || ""}
-                          onBlur={field.handleBlur}
-                          onChange={(e) =>
-                            field.handleChange(parseNumber(e.target.value))
-                          }
-                          aria-invalid={isInvalid}
-                          placeholder="Vehicle empty weight"
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-              </FieldGroup>
-
-              {/* Elevated visual presentation for Calculated Data */}
-              <form.Subscribe
-                selector={(state) => state.values.weightSlip}
-                children={(weightSlip) => {
-                  const net = weightSlip.grossWeightKg - weightSlip.tareWeightKg
-                  const showNet =
-                    weightSlip.grossWeightKg > 0 &&
-                    weightSlip.tareWeightKg >= 0 &&
-                    net >= 0
-
-                  if (!showNet) return null
-
-                  return (
-                    <div className="mt-6 flex items-center justify-between rounded-md border bg-muted/50 px-4 py-3">
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Calculated Net Weight
-                      </span>
-                      <span className="text-lg font-semibold text-foreground tracking-tight">
-                        {net.toLocaleString()} kg
-                      </span>
-                    </div>
-                  )
-                }}
-              />
-            </FieldSet>
+            <IncomingQuantitiesSection form={form} />
 
             <FieldSeparator />
 
-            {/* Additional Notes */}
             <FieldSet>
-              <FieldLegend className="text-lg font-semibold">Additional Notes</FieldLegend>
+              <FieldLegend className="font-heading text-base font-semibold">
+                Additional Notes
+              </FieldLegend>
               <FieldGroup className="mt-5">
                 <form.Field name="remarks">
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name} className="sr-only">Remarks</FieldLabel>
+                        <FieldLabel htmlFor={field.name} className="sr-only">
+                          Remarks
+                        </FieldLabel>
                         <Textarea
                           id={field.name}
                           name={field.name}
@@ -635,7 +386,7 @@ const CreateIncomingForm = () => {
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
                           aria-invalid={isInvalid}
-                          placeholder="Add any additional comments or observations (Optional)"
+                          placeholder="Add any additional comments or observations (optional)"
                           className="min-h-[120px] resize-y"
                         />
                         {isInvalid && (
@@ -647,7 +398,6 @@ const CreateIncomingForm = () => {
                 </form.Field>
               </FieldGroup>
             </FieldSet>
-
           </FieldGroup>
         </CardContent>
 
@@ -657,14 +407,13 @@ const CreateIncomingForm = () => {
             type="button"
             onClick={() => {
               form.reset()
+              form.setFieldValue("quantities", createDefaultIncomingQuantities())
               setFarmerSearch("")
               setFarmerComboboxOpen(false)
               setVarietySearch("")
               setVarietyComboboxOpen(false)
               setCategorySearch("")
               setCategoryComboboxOpen(false)
-              setStageSearch("")
-              setStageComboboxOpen(false)
             }}
           >
             Reset Form
@@ -699,9 +448,7 @@ const CreateIncomingForm = () => {
               onOpenChange={setReviewOpen}
               values={parsed.success ? parsed.data : null}
               farmerLabel={
-                parsed.success
-                  ? getFarmerLabel(parsed.data.farmerStorageLinkId)
-                  : ""
+                parsed.success ? getFarmerLabel(parsed.data.farmerIncomingLinkId) : ""
               }
               onBack={() => setReviewOpen(false)}
               onSubmit={handleConfirmSubmit}
