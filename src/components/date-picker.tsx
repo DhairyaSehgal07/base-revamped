@@ -64,7 +64,7 @@ export function DatePickerInput({
 }: DatePickerInputProps) {
   const generatedId = React.useId()
   const id = idProp ?? generatedId
-  const isControlled = valueProp !== undefined
+  const isControlled = onChange !== undefined
 
   const [open, setOpen] = React.useState(false)
   const [internalDate, setInternalDate] = React.useState<Date | undefined>(
@@ -97,6 +97,11 @@ export function DatePickerInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextValue = e.target.value
     setInputValue(nextValue)
+
+    if (!nextValue.trim()) {
+      setDate(undefined)
+      return
+    }
 
     const parsed = new Date(nextValue)
     if (isValidDate(parsed)) {

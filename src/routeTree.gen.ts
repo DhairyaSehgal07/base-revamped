@@ -12,15 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPeopleRouteImport } from './routes/_authenticated/people'
-import { Route as AuthenticatedFinancesRouteImport } from './routes/_authenticated/finances'
 import { Route as AuthenticatedDaybookRouteImport } from './routes/_authenticated/daybook'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedTransferIndexRouteImport } from './routes/_authenticated/transfer.index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedIncomingIndexRouteImport } from './routes/_authenticated/incoming.index'
+import { Route as AuthenticatedFinancesIndexRouteImport } from './routes/_authenticated/finances.index'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings.profile'
 import { Route as AuthenticatedSettingsPreferencesRouteImport } from './routes/_authenticated/settings.preferences'
 import { Route as AuthenticatedIncomingIdRouteImport } from './routes/_authenticated/incoming.$id'
+import { Route as AuthenticatedFinancesLedgersIdRouteImport } from './routes/_authenticated/finances.ledgers.$id'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -34,11 +35,6 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedPeopleRoute = AuthenticatedPeopleRouteImport.update({
   id: '/people',
   path: '/people',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedFinancesRoute = AuthenticatedFinancesRouteImport.update({
-  id: '/finances',
-  path: '/finances',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDaybookRoute = AuthenticatedDaybookRouteImport.update({
@@ -69,6 +65,12 @@ const AuthenticatedIncomingIndexRoute =
     path: '/incoming/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedFinancesIndexRoute =
+  AuthenticatedFinancesIndexRouteImport.update({
+    id: '/finances/',
+    path: '/finances/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSettingsProfileRoute =
   AuthenticatedSettingsProfileRouteImport.update({
     id: '/settings/profile',
@@ -86,32 +88,40 @@ const AuthenticatedIncomingIdRoute = AuthenticatedIncomingIdRouteImport.update({
   path: '/incoming/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedFinancesLedgersIdRoute =
+  AuthenticatedFinancesLedgersIdRouteImport.update({
+    id: '/finances/ledgers/$id',
+    path: '/finances/ledgers/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/daybook': typeof AuthenticatedDaybookRoute
-  '/finances': typeof AuthenticatedFinancesRoute
   '/people': typeof AuthenticatedPeopleRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
+  '/finances/': typeof AuthenticatedFinancesIndexRoute
   '/incoming/': typeof AuthenticatedIncomingIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/transfer/': typeof AuthenticatedTransferIndexRoute
+  '/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/daybook': typeof AuthenticatedDaybookRoute
-  '/finances': typeof AuthenticatedFinancesRoute
   '/people': typeof AuthenticatedPeopleRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
+  '/finances': typeof AuthenticatedFinancesIndexRoute
   '/incoming': typeof AuthenticatedIncomingIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/transfer': typeof AuthenticatedTransferIndexRoute
+  '/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -119,14 +129,15 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/daybook': typeof AuthenticatedDaybookRoute
-  '/_authenticated/finances': typeof AuthenticatedFinancesRoute
   '/_authenticated/people': typeof AuthenticatedPeopleRoute
   '/_authenticated/incoming/$id': typeof AuthenticatedIncomingIdRoute
   '/_authenticated/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
+  '/_authenticated/finances/': typeof AuthenticatedFinancesIndexRoute
   '/_authenticated/incoming/': typeof AuthenticatedIncomingIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/transfer/': typeof AuthenticatedTransferIndexRoute
+  '/_authenticated/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -134,41 +145,44 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/daybook'
-    | '/finances'
     | '/people'
     | '/incoming/$id'
     | '/settings/preferences'
     | '/settings/profile'
+    | '/finances/'
     | '/incoming/'
     | '/settings/'
     | '/transfer/'
+    | '/finances/ledgers/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
     | '/daybook'
-    | '/finances'
     | '/people'
     | '/incoming/$id'
     | '/settings/preferences'
     | '/settings/profile'
+    | '/finances'
     | '/incoming'
     | '/settings'
     | '/transfer'
+    | '/finances/ledgers/$id'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/_authenticated/analytics'
     | '/_authenticated/daybook'
-    | '/_authenticated/finances'
     | '/_authenticated/people'
     | '/_authenticated/incoming/$id'
     | '/_authenticated/settings/preferences'
     | '/_authenticated/settings/profile'
+    | '/_authenticated/finances/'
     | '/_authenticated/incoming/'
     | '/_authenticated/settings/'
     | '/_authenticated/transfer/'
+    | '/_authenticated/finances/ledgers/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,13 +211,6 @@ declare module '@tanstack/react-router' {
       path: '/people'
       fullPath: '/people'
       preLoaderRoute: typeof AuthenticatedPeopleRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/finances': {
-      id: '/_authenticated/finances'
-      path: '/finances'
-      fullPath: '/finances'
-      preLoaderRoute: typeof AuthenticatedFinancesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/daybook': {
@@ -241,6 +248,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIncomingIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/': {
+      id: '/_authenticated/finances/'
+      path: '/finances'
+      fullPath: '/finances/'
+      preLoaderRoute: typeof AuthenticatedFinancesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/settings/profile': {
       id: '/_authenticated/settings/profile'
       path: '/settings/profile'
@@ -262,33 +276,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedIncomingIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/finances/ledgers/$id': {
+      id: '/_authenticated/finances/ledgers/$id'
+      path: '/finances/ledgers/$id'
+      fullPath: '/finances/ledgers/$id'
+      preLoaderRoute: typeof AuthenticatedFinancesLedgersIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedDaybookRoute: typeof AuthenticatedDaybookRoute
-  AuthenticatedFinancesRoute: typeof AuthenticatedFinancesRoute
   AuthenticatedPeopleRoute: typeof AuthenticatedPeopleRoute
   AuthenticatedIncomingIdRoute: typeof AuthenticatedIncomingIdRoute
   AuthenticatedSettingsPreferencesRoute: typeof AuthenticatedSettingsPreferencesRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
+  AuthenticatedFinancesIndexRoute: typeof AuthenticatedFinancesIndexRoute
   AuthenticatedIncomingIndexRoute: typeof AuthenticatedIncomingIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedTransferIndexRoute: typeof AuthenticatedTransferIndexRoute
+  AuthenticatedFinancesLedgersIdRoute: typeof AuthenticatedFinancesLedgersIdRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedDaybookRoute: AuthenticatedDaybookRoute,
-  AuthenticatedFinancesRoute: AuthenticatedFinancesRoute,
   AuthenticatedPeopleRoute: AuthenticatedPeopleRoute,
   AuthenticatedIncomingIdRoute: AuthenticatedIncomingIdRoute,
   AuthenticatedSettingsPreferencesRoute: AuthenticatedSettingsPreferencesRoute,
   AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
+  AuthenticatedFinancesIndexRoute: AuthenticatedFinancesIndexRoute,
   AuthenticatedIncomingIndexRoute: AuthenticatedIncomingIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedTransferIndexRoute: AuthenticatedTransferIndexRoute,
+  AuthenticatedFinancesLedgersIdRoute: AuthenticatedFinancesLedgersIdRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

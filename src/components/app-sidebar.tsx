@@ -20,6 +20,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { useColdStorageStore } from '@/features/auth/store/use-cold-storage-store';
+import { usePreferencesStore } from '@/features/auth/store/use-preferences-store';
 
 type NavItem = {
   name: string;
@@ -39,6 +40,12 @@ const coreNavItems: NavItem[] = [
 
 function NavMain() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const showFinances = usePreferencesStore(
+    (s) => s.preferences?.showFinances ?? true,
+  );
+  const visibleNavItems = coreNavItems.filter(
+    (item) => item.to !== '/finances' || showFinances,
+  );
 
   return (
     <SidebarGroup>
@@ -47,7 +54,7 @@ function NavMain() {
       </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {coreNavItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
 
             return (

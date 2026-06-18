@@ -11,12 +11,19 @@ export interface CommodityPreference {
   sizes: string[]
 }
 
+export interface StockFilterPreference {
+  enabled: boolean
+  options: string[]
+}
+
 export interface Preferences {
   _id: string
   commodities: CommodityPreference[]
   reportFormat: string
   showFinances: boolean
   labourCost: number
+  stockFilter?: StockFilterPreference
+  customMarka?: boolean
   customFields: Record<string, unknown>
   createdAt: string
   updatedAt: string

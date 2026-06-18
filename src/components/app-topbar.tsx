@@ -32,7 +32,21 @@ const routeTitles: Record<string, string> = {
   '/people': 'People',
   '/analytics': 'Analytics',
   '/additional': 'Additional',
+  '/finances': 'Finances',
+  '/settings': 'Settings',
+  '/settings/': 'Settings',
+  '/settings/preferences': 'Preferences',
 };
+
+function resolvePageTitle(pathname: string, coldStorageName?: string) {
+  if (routeTitles[pathname]) {
+    return routeTitles[pathname];
+  }
+  if (pathname.startsWith('/settings')) {
+    return 'Settings';
+  }
+  return coldStorageName ?? 'Dashboard';
+}
 
 function getInitials(name?: string) {
   if (!name) return '?';
@@ -125,8 +139,7 @@ export function AppTopbar() {
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const pageTitle =
-    routeTitles[pathname] ?? coldStorageName ?? 'Dashboard';
+  const pageTitle = resolvePageTitle(pathname, coldStorageName);
 
   return (
     <header

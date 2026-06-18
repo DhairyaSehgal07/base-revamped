@@ -1,8 +1,59 @@
-import React from 'react'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { usePreferences } from "./api/use-preferences"
+import { PreferencesError } from "./components/preferences-error"
+import { PreferencesSkeleton } from "./components/preferences-skeleton"
+import { PreferencesForm } from "./components/preferences-form"
 
 const PreferencesPage = () => {
+  const { preferences, isLoading, isFetching, isError, error, refetch } =
+    usePreferences()
+
+  if (isLoading && !preferences) {
+    return <PreferencesSkeleton />
+  }
+
+  if (isError) {
+    return (
+      <PreferencesError
+        error={error}
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
+    )
+  }
+
+  if (!preferences) {
+    return (
+      <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+        <header>
+          <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Preferences
+          </h1>
+        </header>
+        <Empty className="border border-dashed border-border">
+          <EmptyHeader>
+            <EmptyTitle>No preferences found</EmptyTitle>
+            <EmptyDescription>
+              Preferences for your cold storage could not be found.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </main>
+    )
+  }
+
   return (
-    <div>PreferencesPage</div>
+    <PreferencesForm
+      key={preferences.updatedAt}
+      preferences={preferences}
+      onRefresh={() => void refetch()}
+      isRefreshing={isFetching}
+    />
   )
 }
 
