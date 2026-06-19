@@ -30,6 +30,7 @@ export type SearchableOptionComboboxProps = {
   open: boolean
   setOpen: (open: boolean) => void
   portalContainer?: RefObject<HTMLElement | null>
+  disabled?: boolean
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -72,6 +73,7 @@ export function SearchableOptionCombobox({
   open,
   setOpen,
   portalContainer,
+  disabled = false,
 }: SearchableOptionComboboxProps) {
   const selected = options.find((option) => option.id === value) ?? null
   const inputDisplayValue = search || selected?.label || ""
@@ -84,6 +86,7 @@ export function SearchableOptionCombobox({
       inputValue={inputDisplayValue}
       open={open}
       onOpenChange={setOpen}
+      disabled={disabled}
       autoHighlight={"always" as unknown as boolean}
       onInputValueChange={(inputValue) => {
         setSearch(inputValue)

@@ -38,6 +38,7 @@ import {
 } from "../schemas/preferences-form-schema"
 import { PreferencesCommoditiesSection } from "./preferences-commodities-section"
 import { PreferencesCustomFieldsSection } from "./preferences-custom-fields-section"
+import { PreferencesUnsavedToast } from "./preferences-unsaved-toast"
 
 type PreferencesFormProps = {
   preferences: Preferences
@@ -105,6 +106,8 @@ export function PreferencesForm({
           Refresh
         </Button>
       </header>
+
+      <PreferencesUnsavedToast form={form} isPending={isPending} />
 
       <form
         onSubmit={(event) => {

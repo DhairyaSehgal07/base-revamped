@@ -1,24 +1,62 @@
 import * as z from "zod"
-import { incomingQuantitiesSchema } from "@/features/incoming/schemas/incoming-quantities-schema"
+import { createIncomingQuantitiesSchema } from "@/features/incoming/schemas/incoming-quantities-schema"
 
 export const objectId = z
   .string()
   .length(24, "Select a valid record from the list.")
 
-const incomingBaseSchema = z.object({
-  manualGatePassNumber: z.union([
-    z.undefined(),
-    z.number().positive("Enter a positive gate pass number."),
-  ]),
-  farmerIncomingLinkId: objectId,
-  createdBy: objectId,
-  variety: z.string().min(1, "Select a variety."),
-  category: z.string().min(1, "Select a category."),
-  date: z.string().datetime("Select a valid date."),
-  remarks: z.string(),
-})
+export type IncomingFormSchemaConfig = {
+  requireCommodity: boolean
+  requireStockFilter: boolean
+  requireCustomMarka: boolean
+  bagSizes: string[]
+}
 
-export const incomingFormSchema = incomingBaseSchema.merge(incomingQuantitiesSchema)
+function commoditySchema(requireCommodity: boolean) {
+  return requireCommodity
+    ? z.string().min(1, "Select a commodity.")
+    : z.string()
+}
+
+function stockFilterSchema(requireStockFilter: boolean) {
+  return requireStockFilter
+    ? z.string().min(1, "Select a stock filter.")
+    : z.string()
+}
+
+function customMarkaSchema(requireCustomMarka: boolean) {
+  return requireCustomMarka
+    ? z.string().min(1, "Enter a custom marka.")
+    : z.string()
+}
+
+export function createIncomingFormSchema(config: IncomingFormSchemaConfig) {
+  const incomingBaseSchema = z.object({
+    manualGatePassNumber: z.union([
+      z.undefined(),
+      z.number().positive("Enter a positive gate pass number."),
+    ]),
+    farmerIncomingLinkId: objectId,
+    createdBy: objectId,
+    commodity: commoditySchema(config.requireCommodity),
+    variety: z.string().min(1, "Select a variety."),
+    stockFilter: stockFilterSchema(config.requireStockFilter),
+    customMarka: customMarkaSchema(config.requireCustomMarka),
+    date: z.string().datetime("Select a valid date."),
+    remarks: z.string(),
+  })
+
+  return incomingBaseSchema.merge(
+    createIncomingQuantitiesSchema(config.bagSizes)
+  )
+}
+
+export const incomingFormSchema = createIncomingFormSchema({
+  requireCommodity: false,
+  requireStockFilter: false,
+  requireCustomMarka: false,
+  bagSizes: [],
+})
 
 export {
   incomingQuantitiesSchema,

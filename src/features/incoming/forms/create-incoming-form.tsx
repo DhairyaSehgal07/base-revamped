@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Card,
   CardContent,
@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button"
 import { IncomingQuantitiesSection } from "@/features/incoming/forms/incoming-quantities-section"
 import { IncomingSummarySheet } from "@/features/incoming/forms/incoming-summary-sheet"
 import { useCreateIncomingForm } from "@/features/incoming/forms/use-create-incoming-form"
-import { createDefaultIncomingQuantities } from "@/features/incoming/schemas/incoming-form-schema"
+import {
+  createDefaultIncomingQuantities,
+  createIncomingFormSchema,
+} from "@/features/incoming/schemas/incoming-form-schema"
 import {
   Field,
   FieldDescription,
@@ -25,23 +28,24 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { DatePickerInput } from "@/components/date-picker"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import { useStoreAdminStore } from "@/features/auth/store/use-store-admin-store"
 import {
   SearchableOptionCombobox,
   filterAndSortOptions,
   type ComboboxOption,
 } from "@/components/searchable-option-combobox"
-import { incomingFormSchema } from "@/features/incoming/schemas/incoming-form-schema"
-
-const VARIETY_ITEMS = ["Himalini", "K. Pukhraj", "K. Jyoti"].map((value) => ({
-  id: value,
-  label: value,
-}))
-
-const CATEGORY_ITEMS = ["A", "B", "C"].map((value) => ({
-  id: value,
-  label: value,
-}))
+import {
+  buildIncomingFormSchemaConfig,
+  createQuantitiesForSizes,
+  getBagSizesForCommodity,
+  getCommodityByName,
+  getDefaultCommodityName,
+  shouldShowCommoditySelect,
+  shouldShowCustomMarka,
+  shouldShowStockFilter,
+  toComboboxOptions,
+} from "@/features/incoming/utils/incoming-preferences"
 
 const MOCK_FARMER_LINKS = [
   {
@@ -112,35 +116,122 @@ const numericInputProps = {
 
 const CreateIncomingForm = () => {
   const userId = useStoreAdminStore((s) => s.storeAdmin?._id ?? "")
+  const preferences = usePreferencesStore((s) => s.preferences)
+  const commodities = useMemo(
+    () => preferences?.commodities ?? [],
+    [preferences?.commodities]
+  )
+
+  const defaultCommodityName = useMemo(
+    () => getDefaultCommodityName(commodities),
+    [commodities]
+  )
+  const initialBagSizes = useMemo(
+    () =>
+      getBagSizesForCommodity(
+        getCommodityByName(commodities, defaultCommodityName)
+      ),
+    [commodities, defaultCommodityName]
+  )
+
+  const [selectedCommodityName, setSelectedCommodityName] = useState("")
+
+  const resolvedCommodityName = selectedCommodityName || defaultCommodityName
+
+  const schemaConfig = useMemo(
+    () => buildIncomingFormSchemaConfig(preferences, resolvedCommodityName),
+    [preferences, resolvedCommodityName]
+  )
+
+  const showCommoditySelect = shouldShowCommoditySelect(commodities)
+  const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
+  const showCustomMarka = shouldShowCustomMarka(preferences?.customMarka)
+
+  const selectedCommodity = useMemo(
+    () => getCommodityByName(commodities, resolvedCommodityName),
+    [commodities, resolvedCommodityName]
+  )
+
+  const varietyOptions = useMemo(
+    () => toComboboxOptions(selectedCommodity?.varieties ?? []),
+    [selectedCommodity]
+  )
+  const stockFilterOptions = useMemo(
+    () => toComboboxOptions(preferences?.stockFilter?.options ?? []),
+    [preferences?.stockFilter?.options]
+  )
+  const commodityOptions = useMemo(
+    () => toComboboxOptions(commodities.map((commodity) => commodity.name)),
+    [commodities]
+  )
+  const bagSizes = useMemo(
+    () => getBagSizesForCommodity(selectedCommodity),
+    [selectedCommodity]
+  )
+
   const farmerOptions = useMemo<ComboboxOption[]>(
     () => [...MOCK_FARMER_LINKS],
     []
   )
   const [farmerSearch, setFarmerSearch] = useState("")
   const [farmerComboboxOpen, setFarmerComboboxOpen] = useState(false)
+  const [commoditySearch, setCommoditySearch] = useState("")
+  const [commodityComboboxOpen, setCommodityComboboxOpen] = useState(false)
   const [varietySearch, setVarietySearch] = useState("")
   const [varietyComboboxOpen, setVarietyComboboxOpen] = useState(false)
-  const [categorySearch, setCategorySearch] = useState("")
-  const [categoryComboboxOpen, setCategoryComboboxOpen] = useState(false)
+  const [stockFilterSearch, setStockFilterSearch] = useState("")
+  const [stockFilterComboboxOpen, setStockFilterComboboxOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
 
   const sortedFarmers = useMemo(
     () => filterAndSortOptions(farmerSearch, farmerOptions),
     [farmerSearch, farmerOptions]
   )
-  const sortedVarieties = useMemo(
-    () => filterAndSortOptions(varietySearch, VARIETY_ITEMS),
-    [varietySearch]
+  const sortedCommodities = useMemo(
+    () => filterAndSortOptions(commoditySearch, commodityOptions),
+    [commoditySearch, commodityOptions]
   )
-  const sortedCategories = useMemo(
-    () => filterAndSortOptions(categorySearch, CATEGORY_ITEMS),
-    [categorySearch]
+  const sortedVarieties = useMemo(
+    () => filterAndSortOptions(varietySearch, varietyOptions),
+    [varietySearch, varietyOptions]
+  )
+  const sortedStockFilters = useMemo(
+    () => filterAndSortOptions(stockFilterSearch, stockFilterOptions),
+    [stockFilterSearch, stockFilterOptions]
   )
 
   const form = useCreateIncomingForm({
+    schemaConfig,
+    initialCommodity: defaultCommodityName,
+    initialBagSizes,
     onOpenReview: () => setReviewOpen(true),
     onCloseReview: () => setReviewOpen(false),
   })
+
+  const resetCropComboboxState = useCallback(() => {
+    setCommoditySearch("")
+    setCommodityComboboxOpen(false)
+    setVarietySearch("")
+    setVarietyComboboxOpen(false)
+    setStockFilterSearch("")
+    setStockFilterComboboxOpen(false)
+  }, [])
+
+  const handleCommodityChange = useCallback(
+    (commodityName: string) => {
+      const commodity = getCommodityByName(commodities, commodityName)
+      setSelectedCommodityName(commodityName)
+      form.setFieldValue("variety", "")
+      form.setFieldValue("stockFilter", "")
+      form.setFieldValue("customMarka", "")
+      form.setFieldValue(
+        "quantities",
+        createQuantitiesForSizes(commodity?.sizes ?? [])
+      )
+      resetCropComboboxState()
+    },
+    [commodities, form, resetCropComboboxState]
+  )
 
   const getFarmerLabel = (farmerIncomingLinkId: string) =>
     farmerOptions.find((option) => option.id === farmerIncomingLinkId)?.label ??
@@ -154,11 +245,36 @@ const CreateIncomingForm = () => {
     void form.handleSubmit({ submitAction: "submit" })
   }
 
+  const handleResetForm = () => {
+    form.reset()
+    setSelectedCommodityName("")
+    form.setFieldValue("commodity", defaultCommodityName)
+    form.setFieldValue(
+      "quantities",
+      createDefaultIncomingQuantities(initialBagSizes)
+    )
+    setFarmerSearch("")
+    setFarmerComboboxOpen(false)
+    resetCropComboboxState()
+  }
+
   useEffect(() => {
     if (userId) {
       form.setFieldValue("createdBy", userId)
     }
   }, [form, userId])
+
+  useEffect(() => {
+    if (defaultCommodityName) {
+      form.setFieldValue("commodity", defaultCommodityName)
+      form.setFieldValue(
+        "quantities",
+        createDefaultIncomingQuantities(initialBagSizes)
+      )
+    }
+  }, [defaultCommodityName, form, initialBagSizes])
+
+  const cropFieldsDisabled = commodities.length === 0 || !selectedCommodity
 
   return (
     <Card className="mx-auto w-full max-w-4xl shadow-sm">
@@ -291,9 +407,52 @@ const CreateIncomingForm = () => {
                 Crop Information
               </FieldLegend>
               <FieldDescription>
-                Variety and grade for stock entering cold storage.
+                Commodity, variety, and stock attributes for incoming crop.
               </FieldDescription>
+              {commodities.length === 0 ? (
+                <FieldDescription className="mt-3 text-muted-foreground">
+                  No commodities configured in preferences. Add commodities in
+                  settings to record crop details.
+                </FieldDescription>
+              ) : null}
               <FieldGroup className="mt-5 grid grid-cols-1 gap-6 @md/field-group:grid-cols-2">
+                {showCommoditySelect ? (
+                  <form.Field name="commodity">
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="create-incoming-commodity">
+                            Commodity
+                          </FieldLabel>
+                          <SearchableOptionCombobox
+                            id="create-incoming-commodity"
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              handleCommodityChange(value)
+                            }}
+                            onBlur={field.handleBlur}
+                            isInvalid={isInvalid}
+                            placeholder="Search commodities..."
+                            emptyMessage="No commodities found."
+                            options={commodityOptions}
+                            sortedOptions={sortedCommodities}
+                            search={commoditySearch}
+                            setSearch={setCommoditySearch}
+                            open={commodityComboboxOpen}
+                            setOpen={setCommodityComboboxOpen}
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
+
                 <form.Field name="variety">
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
@@ -309,9 +468,10 @@ const CreateIncomingForm = () => {
                           onValueChange={field.handleChange}
                           onBlur={field.handleBlur}
                           isInvalid={isInvalid}
+                          disabled={cropFieldsDisabled}
                           placeholder="Search varieties..."
                           emptyMessage="No varieties found."
-                          options={VARIETY_ITEMS}
+                          options={varietyOptions}
                           sortedOptions={sortedVarieties}
                           search={varietySearch}
                           setSearch={setVarietySearch}
@@ -326,43 +486,75 @@ const CreateIncomingForm = () => {
                   }}
                 </form.Field>
 
-                <form.Field name="category">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor="create-incoming-category">
-                          Category
-                        </FieldLabel>
-                        <SearchableOptionCombobox
-                          id="create-incoming-category"
-                          name={field.name}
-                          value={field.state.value}
-                          onValueChange={field.handleChange}
-                          onBlur={field.handleBlur}
-                          isInvalid={isInvalid}
-                          placeholder="Search categories..."
-                          emptyMessage="No categories found."
-                          options={CATEGORY_ITEMS}
-                          sortedOptions={sortedCategories}
-                          search={categorySearch}
-                          setSearch={setCategorySearch}
-                          open={categoryComboboxOpen}
-                          setOpen={setCategoryComboboxOpen}
-                        />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
+                {showStockFilter ? (
+                  <form.Field name="stockFilter">
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="create-incoming-stock-filter">
+                            Stock filter
+                          </FieldLabel>
+                          <SearchableOptionCombobox
+                            id="create-incoming-stock-filter"
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={field.handleChange}
+                            onBlur={field.handleBlur}
+                            isInvalid={isInvalid}
+                            disabled={cropFieldsDisabled}
+                            placeholder="Search stock filters..."
+                            emptyMessage="No stock filters found."
+                            options={stockFilterOptions}
+                            sortedOptions={sortedStockFilters}
+                            search={stockFilterSearch}
+                            setSearch={setStockFilterSearch}
+                            open={stockFilterComboboxOpen}
+                            setOpen={setStockFilterComboboxOpen}
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
+
+                {showCustomMarka ? (
+                  <form.Field name="customMarka">
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="create-incoming-custom-marka">
+                            Custom marka
+                          </FieldLabel>
+                          <Input
+                            id="create-incoming-custom-marka"
+                            name={field.name}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            disabled={cropFieldsDisabled}
+                            placeholder="Enter marka identifier"
+                            className="h-11 text-base"
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
               </FieldGroup>
             </FieldSet>
 
             <FieldSeparator />
 
-            <IncomingQuantitiesSection form={form} />
+            <IncomingQuantitiesSection form={form} bagSizes={bagSizes} />
 
             <FieldSeparator />
 
@@ -405,16 +597,7 @@ const CreateIncomingForm = () => {
           <Button
             variant="outline"
             type="button"
-            onClick={() => {
-              form.reset()
-              form.setFieldValue("quantities", createDefaultIncomingQuantities())
-              setFarmerSearch("")
-              setFarmerComboboxOpen(false)
-              setVarietySearch("")
-              setVarietyComboboxOpen(false)
-              setCategorySearch("")
-              setCategoryComboboxOpen(false)
-            }}
+            onClick={handleResetForm}
           >
             Reset Form
           </Button>
@@ -440,7 +623,7 @@ const CreateIncomingForm = () => {
           isSubmitting: state.isSubmitting,
         })}
         children={({ values, canSubmit, isSubmitting }) => {
-          const parsed = incomingFormSchema.safeParse(values)
+          const parsed = createIncomingFormSchema(schemaConfig).safeParse(values)
 
           return (
             <IncomingSummarySheet
@@ -450,6 +633,7 @@ const CreateIncomingForm = () => {
               farmerLabel={
                 parsed.success ? getFarmerLabel(parsed.data.farmerIncomingLinkId) : ""
               }
+              showCommodity={showCommoditySelect}
               onBack={() => setReviewOpen(false)}
               onSubmit={handleConfirmSubmit}
               canSubmit={canSubmit}

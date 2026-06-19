@@ -1,0 +1,60 @@
+import { AlertCircle, RefreshCw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { getApiErrorMessage } from "@/lib/api-client"
+
+type ProfileErrorProps = {
+  error: unknown
+  onRetry: () => void
+  isRetrying?: boolean
+}
+
+export function ProfileError({
+  error,
+  onRetry,
+  isRetrying = false,
+}: ProfileErrorProps) {
+  return (
+    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <header>
+        <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          Profile
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your account and cold storage details
+        </p>
+      </header>
+
+      <Empty className="border border-dashed border-border">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <AlertCircle aria-hidden />
+          </EmptyMedia>
+          <EmptyTitle>Could not load profile</EmptyTitle>
+          <EmptyDescription>
+            {getApiErrorMessage(error, "Something went wrong while loading your profile.")}
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRetry}
+            disabled={isRetrying}
+            className="gap-2"
+          >
+            <RefreshCw className={`size-4 ${isRetrying ? "animate-spin" : ""}`} aria-hidden />
+            Try again
+          </Button>
+        </EmptyContent>
+      </Empty>
+    </main>
+  )
+}

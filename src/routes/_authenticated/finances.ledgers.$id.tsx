@@ -3,9 +3,10 @@ import { z } from "zod"
 
 import { LedgerStatementPage } from "@/features/finances/components/ledger-statement"
 import { financesPeriodSchema } from "@/features/finances/search"
+import { DEFAULT_FINANCES_PERIOD } from "@/features/finances/shared/constants"
 
 const ledgerDetailSearchSchema = z.object({
-  period: financesPeriodSchema,
+  period: financesPeriodSchema.catch(DEFAULT_FINANCES_PERIOD),
 })
 
 export const Route = createFileRoute("/_authenticated/finances/ledgers/$id")({

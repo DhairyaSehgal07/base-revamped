@@ -50,10 +50,12 @@ const numericInputProps = {
 
 type IncomingQuantitiesSectionProps = {
   form: CreateIncomingFormApi
+  bagSizes: string[]
 }
 
 export function IncomingQuantitiesSection({
   form,
+  bagSizes,
 }: IncomingQuantitiesSectionProps) {
   return (
     <FieldSet>
@@ -107,6 +109,7 @@ export function IncomingQuantitiesSection({
                               name={subField.name}
                               value={subField.state.value}
                               rowIndex={index}
+                              sizes={bagSizes}
                               labelClassName="lg:sr-only"
                               isInvalid={isFieldInvalid(subField.state.meta)}
                               errors={subField.state.meta.errors}
@@ -362,7 +365,7 @@ export function IncomingQuantitiesSection({
                   onClick={() =>
                     form.setFieldValue(
                       "quantities",
-                      createDefaultIncomingQuantities()
+                      createDefaultIncomingQuantities(bagSizes)
                     )
                   }
                 >

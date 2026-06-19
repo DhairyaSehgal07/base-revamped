@@ -1,4 +1,4 @@
-import { useRouterState } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { Loader2, LogOut, Moon, Sun, User } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
@@ -25,6 +25,7 @@ import {
 import { useLogout } from '@/features/auth/api/use-logout';
 import { useColdStorageStore } from '@/features/auth/store/use-cold-storage-store';
 import { useStoreAdminStore } from '@/features/auth/store/use-store-admin-store';
+import { Route as settingsProfileRoute } from '@/routes/_authenticated/settings.profile';
 import { cn } from '@/lib/utils';
 
 const routeTitles: Record<string, string> = {
@@ -36,11 +37,19 @@ const routeTitles: Record<string, string> = {
   '/settings': 'Settings',
   '/settings/': 'Settings',
   '/settings/preferences': 'Preferences',
+  '/settings/profile': 'Profile',
 };
 
-function resolvePageTitle(pathname: string, coldStorageName?: string) {
+function resolvePageTitle(
+  pathname: string,
+  coldStorageName?: string,
+  personName?: string,
+) {
   if (routeTitles[pathname]) {
     return routeTitles[pathname];
+  }
+  if (pathname.startsWith('/people/') && pathname !== '/people') {
+    return personName?.trim() || 'Farmer';
   }
   if (pathname.startsWith('/finances/ledgers/')) {
     return 'Ledger Statement';
@@ -142,7 +151,20 @@ export function AppTopbar() {
   const { mutate: logout, isPending: isLoggingOut } = useLogout();
 
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const pageTitle = resolvePageTitle(pathname, coldStorageName);
+  const personName = useRouterState({
+    select: (s) => {
+      if (
+        !s.location.pathname.startsWith('/people/') ||
+        s.location.pathname === '/people'
+      ) {
+        return undefined;
+      }
+
+      const search = s.location.search as { name?: string };
+      return search.name;
+    },
+  });
+  const pageTitle = resolvePageTitle(pathname, coldStorageName, personName);
 
   return (
     <header
@@ -200,9 +222,11 @@ export function AppTopbar() {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <User className="mr-2 h-4 w-4" />
-                Profile
+              <DropdownMenuItem asChild>
+                <Link to={settingsProfileRoute.to}>
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

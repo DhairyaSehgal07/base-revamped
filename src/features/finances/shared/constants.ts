@@ -13,6 +13,8 @@ export const PERIOD_FILTER_VALUES = [
 
 export type PeriodFilter = (typeof PERIOD_FILTER_VALUES)[number]
 
+export const DEFAULT_FINANCES_PERIOD: PeriodFilter = "this_year"
+
 export const PERIOD_LABELS: Record<PeriodFilter, string> = {
   this_month: "This month",
   last_month: "Last month",

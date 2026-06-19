@@ -10,10 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BAG_SIZES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
-export type BagSizeSelectValue = (typeof BAG_SIZES)[number] | ""
+export type BagSizeSelectValue = string
 
 type FixedBagSizeLabelProps = {
   size: string
@@ -37,6 +36,7 @@ type BagSizeSelectFieldProps = {
   name: string
   value: string
   rowIndex: number
+  sizes: string[]
   isInvalid: boolean
   errors?: Array<{ message?: string } | undefined>
   labelClassName?: string
@@ -50,6 +50,7 @@ export function BagSizeSelectField({
   name,
   value,
   rowIndex,
+  sizes,
   isInvalid,
   errors,
   labelClassName = "md:sr-only",
@@ -75,7 +76,7 @@ export function BagSizeSelectField({
           <SelectValue placeholder="Select size" />
         </SelectTrigger>
         <SelectContent>
-          {BAG_SIZES.map((size) => (
+          {sizes.map((size) => (
             <SelectItem key={size} value={size}>
               {size}
             </SelectItem>

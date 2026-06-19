@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import {
+  DEFAULT_FINANCES_PERIOD,
   PERIOD_FILTER_VALUES,
   type PeriodFilter,
 } from "@/features/finances/shared/constants"
@@ -18,7 +19,7 @@ export const financesPeriodSchema = z.enum(PERIOD_FILTER_VALUES)
 
 export const financesSearchSchema = z.object({
   tab: financesTabSchema.catch("vouchers"),
-  period: financesPeriodSchema.catch("this_month"),
+  period: financesPeriodSchema.catch(DEFAULT_FINANCES_PERIOD),
 })
 
 export type FinancesTab = z.infer<typeof financesTabSchema>

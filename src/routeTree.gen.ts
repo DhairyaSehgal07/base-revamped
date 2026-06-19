@@ -11,15 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedPeopleRouteImport } from './routes/_authenticated/people'
 import { Route as AuthenticatedDaybookRouteImport } from './routes/_authenticated/daybook'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as AuthenticatedTransferIndexRouteImport } from './routes/_authenticated/transfer.index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
+import { Route as AuthenticatedPeopleIndexRouteImport } from './routes/_authenticated/people.index'
 import { Route as AuthenticatedIncomingIndexRouteImport } from './routes/_authenticated/incoming.index'
 import { Route as AuthenticatedFinancesIndexRouteImport } from './routes/_authenticated/finances.index'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings.profile'
 import { Route as AuthenticatedSettingsPreferencesRouteImport } from './routes/_authenticated/settings.preferences'
+import { Route as AuthenticatedPeopleIdRouteImport } from './routes/_authenticated/people.$id'
 import { Route as AuthenticatedIncomingIdRouteImport } from './routes/_authenticated/incoming.$id'
 import { Route as AuthenticatedFinancesLedgersIdRouteImport } from './routes/_authenticated/finances.ledgers.$id'
 
@@ -31,11 +32,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedPeopleRoute = AuthenticatedPeopleRouteImport.update({
-  id: '/people',
-  path: '/people',
-  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedDaybookRoute = AuthenticatedDaybookRouteImport.update({
   id: '/daybook',
@@ -57,6 +53,12 @@ const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/settings/',
     path: '/settings/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPeopleIndexRoute =
+  AuthenticatedPeopleIndexRouteImport.update({
+    id: '/people/',
+    path: '/people/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedIncomingIndexRoute =
@@ -83,6 +85,11 @@ const AuthenticatedSettingsPreferencesRoute =
     path: '/settings/preferences',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedPeopleIdRoute = AuthenticatedPeopleIdRouteImport.update({
+  id: '/people/$id',
+  path: '/people/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedIncomingIdRoute = AuthenticatedIncomingIdRouteImport.update({
   id: '/incoming/$id',
   path: '/incoming/$id',
@@ -99,12 +106,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/daybook': typeof AuthenticatedDaybookRoute
-  '/people': typeof AuthenticatedPeopleRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
+  '/people/$id': typeof AuthenticatedPeopleIdRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/finances/': typeof AuthenticatedFinancesIndexRoute
   '/incoming/': typeof AuthenticatedIncomingIndexRoute
+  '/people/': typeof AuthenticatedPeopleIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/transfer/': typeof AuthenticatedTransferIndexRoute
   '/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
@@ -113,12 +121,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/daybook': typeof AuthenticatedDaybookRoute
-  '/people': typeof AuthenticatedPeopleRoute
   '/incoming/$id': typeof AuthenticatedIncomingIdRoute
+  '/people/$id': typeof AuthenticatedPeopleIdRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/finances': typeof AuthenticatedFinancesIndexRoute
   '/incoming': typeof AuthenticatedIncomingIndexRoute
+  '/people': typeof AuthenticatedPeopleIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/transfer': typeof AuthenticatedTransferIndexRoute
   '/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
@@ -129,12 +138,13 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/daybook': typeof AuthenticatedDaybookRoute
-  '/_authenticated/people': typeof AuthenticatedPeopleRoute
   '/_authenticated/incoming/$id': typeof AuthenticatedIncomingIdRoute
+  '/_authenticated/people/$id': typeof AuthenticatedPeopleIdRoute
   '/_authenticated/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/finances/': typeof AuthenticatedFinancesIndexRoute
   '/_authenticated/incoming/': typeof AuthenticatedIncomingIndexRoute
+  '/_authenticated/people/': typeof AuthenticatedPeopleIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/transfer/': typeof AuthenticatedTransferIndexRoute
   '/_authenticated/finances/ledgers/$id': typeof AuthenticatedFinancesLedgersIdRoute
@@ -145,12 +155,13 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/daybook'
-    | '/people'
     | '/incoming/$id'
+    | '/people/$id'
     | '/settings/preferences'
     | '/settings/profile'
     | '/finances/'
     | '/incoming/'
+    | '/people/'
     | '/settings/'
     | '/transfer/'
     | '/finances/ledgers/$id'
@@ -159,12 +170,13 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/daybook'
-    | '/people'
     | '/incoming/$id'
+    | '/people/$id'
     | '/settings/preferences'
     | '/settings/profile'
     | '/finances'
     | '/incoming'
+    | '/people'
     | '/settings'
     | '/transfer'
     | '/finances/ledgers/$id'
@@ -174,12 +186,13 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/_authenticated/analytics'
     | '/_authenticated/daybook'
-    | '/_authenticated/people'
     | '/_authenticated/incoming/$id'
+    | '/_authenticated/people/$id'
     | '/_authenticated/settings/preferences'
     | '/_authenticated/settings/profile'
     | '/_authenticated/finances/'
     | '/_authenticated/incoming/'
+    | '/_authenticated/people/'
     | '/_authenticated/settings/'
     | '/_authenticated/transfer/'
     | '/_authenticated/finances/ledgers/$id'
@@ -205,13 +218,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/people': {
-      id: '/_authenticated/people'
-      path: '/people'
-      fullPath: '/people'
-      preLoaderRoute: typeof AuthenticatedPeopleRouteImport
-      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/daybook': {
       id: '/_authenticated/daybook'
@@ -239,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/people/': {
+      id: '/_authenticated/people/'
+      path: '/people'
+      fullPath: '/people/'
+      preLoaderRoute: typeof AuthenticatedPeopleIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/incoming/': {
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsPreferencesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/people/$id': {
+      id: '/_authenticated/people/$id'
+      path: '/people/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof AuthenticatedPeopleIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/incoming/$id': {
       id: '/_authenticated/incoming/$id'
       path: '/incoming/$id'
@@ -289,12 +309,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedDaybookRoute: typeof AuthenticatedDaybookRoute
-  AuthenticatedPeopleRoute: typeof AuthenticatedPeopleRoute
   AuthenticatedIncomingIdRoute: typeof AuthenticatedIncomingIdRoute
+  AuthenticatedPeopleIdRoute: typeof AuthenticatedPeopleIdRoute
   AuthenticatedSettingsPreferencesRoute: typeof AuthenticatedSettingsPreferencesRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedFinancesIndexRoute: typeof AuthenticatedFinancesIndexRoute
   AuthenticatedIncomingIndexRoute: typeof AuthenticatedIncomingIndexRoute
+  AuthenticatedPeopleIndexRoute: typeof AuthenticatedPeopleIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedTransferIndexRoute: typeof AuthenticatedTransferIndexRoute
   AuthenticatedFinancesLedgersIdRoute: typeof AuthenticatedFinancesLedgersIdRoute
@@ -303,12 +324,13 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedDaybookRoute: AuthenticatedDaybookRoute,
-  AuthenticatedPeopleRoute: AuthenticatedPeopleRoute,
   AuthenticatedIncomingIdRoute: AuthenticatedIncomingIdRoute,
+  AuthenticatedPeopleIdRoute: AuthenticatedPeopleIdRoute,
   AuthenticatedSettingsPreferencesRoute: AuthenticatedSettingsPreferencesRoute,
   AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
   AuthenticatedFinancesIndexRoute: AuthenticatedFinancesIndexRoute,
   AuthenticatedIncomingIndexRoute: AuthenticatedIncomingIndexRoute,
+  AuthenticatedPeopleIndexRoute: AuthenticatedPeopleIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedTransferIndexRoute: AuthenticatedTransferIndexRoute,
   AuthenticatedFinancesLedgersIdRoute: AuthenticatedFinancesLedgersIdRoute,

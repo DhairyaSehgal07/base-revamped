@@ -6,6 +6,7 @@ import { Pencil, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { FinancesPeriod } from "@/features/finances/search"
+import { DEFAULT_FINANCES_PERIOD } from "@/features/finances/shared/constants"
 import { cn } from "@/lib/utils"
 
 import type { Ledger } from "./types"
@@ -58,7 +59,7 @@ export function createLedgerColumns(options?: {
   onEdit?: (ledger: Ledger) => void
   onDelete?: (ledger: Ledger) => void
 }): ColumnDef<Ledger>[] {
-  const period = options?.period ?? "this_month"
+  const period = options?.period ?? DEFAULT_FINANCES_PERIOD
   const onEdit = options?.onEdit
   const onDelete = options?.onDelete
 

@@ -31,6 +31,7 @@ type IncomingSummarySheetProps = {
   onOpenChange: (open: boolean) => void
   values: IncomingSummaryValues | null
   farmerLabel: string
+  showCommodity?: boolean
   onBack: () => void
   onSubmit: () => void
   canSubmit: boolean
@@ -128,9 +129,11 @@ function formatLocationCell(value: string) {
 function IncomingReviewSummary({
   values,
   farmerLabel,
+  showCommodity = false,
 }: {
   values: IncomingSummaryValues
   farmerLabel: string
+  showCommodity?: boolean
 }) {
   const rows = activeQuantityRows(values.quantities)
   const totalBags = rows.reduce((sum, row) => sum + (row.qty ?? 0), 0)
@@ -161,9 +164,11 @@ function IncomingReviewSummary({
               #{values.manualGatePassNumber}
             </Badge>
           )}
-          <Badge variant="secondary" className="h-5 px-2 text-[11px]">
-            Cat. {values.category}
-          </Badge>
+          {values.stockFilter ? (
+            <Badge variant="secondary" className="h-5 px-2 text-[11px]">
+              {values.stockFilter}
+            </Badge>
+          ) : null}
         </div>
       </div>
 
@@ -181,8 +186,16 @@ function IncomingReviewSummary({
       <div className="space-y-2">
         <SectionLabel icon={Package2}>Crop details</SectionLabel>
         <SummaryCard>
+          {showCommodity && values.commodity ? (
+            <DetailRow label="Commodity" value={values.commodity} />
+          ) : null}
           <DetailRow label="Variety" value={values.variety} />
-          <DetailRow label="Category" value={`Cat. ${values.category}`} />
+          {values.stockFilter ? (
+            <DetailRow label="Stock filter" value={values.stockFilter} />
+          ) : null}
+          {values.customMarka ? (
+            <DetailRow label="Custom marka" value={values.customMarka} />
+          ) : null}
           <DetailRow
             label="Date"
             value={formatReviewDate(values.date)}
@@ -282,6 +295,7 @@ export function IncomingSummarySheet({
   onOpenChange,
   values,
   farmerLabel,
+  showCommodity = false,
   onBack,
   onSubmit,
   canSubmit,
@@ -311,7 +325,11 @@ export function IncomingSummarySheet({
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
           {values ? (
-            <IncomingReviewSummary values={values} farmerLabel={farmerLabel} />
+            <IncomingReviewSummary
+              values={values}
+              farmerLabel={farmerLabel}
+              showCommodity={showCommodity}
+            />
           ) : (
             <div className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 bg-muted/20 px-6 text-center">
               <Package2 className="size-7 text-muted-foreground/40" />
