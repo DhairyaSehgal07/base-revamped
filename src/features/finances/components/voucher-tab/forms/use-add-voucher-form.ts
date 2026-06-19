@@ -2,16 +2,14 @@ import { useForm } from "@tanstack/react-form"
 
 import {
   addVoucherFormSchema,
-  parseVoucherAmount,
+  formValuesToCreatePayload,
 } from "../schemas/add-voucher-form-schema"
 
 type UseAddVoucherFormOptions = {
-  onSuccess?: () => void
+  onSubmit: (payload: ReturnType<typeof formValuesToCreatePayload>) => Promise<void>
 }
 
-export function useAddVoucherForm({
-  onSuccess,
-}: UseAddVoucherFormOptions = {}) {
+export function useAddVoucherForm({ onSubmit }: UseAddVoucherFormOptions) {
   const todayIso = new Date().toISOString()
 
   return useForm({
@@ -28,13 +26,7 @@ export function useAddVoucherForm({
     },
     onSubmit: async ({ value }) => {
       const parsed = addVoucherFormSchema.parse(value)
-
-      console.log({
-        ...parsed,
-        amount: parseVoucherAmount(parsed.amount),
-      })
-
-      onSuccess?.()
+      await onSubmit(formValuesToCreatePayload(parsed))
     },
   })
 }

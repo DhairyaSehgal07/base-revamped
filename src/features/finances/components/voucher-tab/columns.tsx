@@ -69,11 +69,20 @@ export const voucherFilterFns = {
   voucherSearch: voucherSearchFilterFn,
 }
 
-export const columns: ColumnDef<Voucher>[] = [
+type VoucherColumnsOptions = {
+  onEdit: (voucher: Voucher) => void
+  onDelete: (voucher: Voucher) => void
+}
+
+export function createVoucherColumns({
+  onEdit,
+  onDelete,
+}: VoucherColumnsOptions): ColumnDef<Voucher>[] {
+  return [
   {
     accessorKey: "voucherNo",
     header: "Voucher No.",
-    filterFn: "voucherSearch",
+    filterFn: voucherSearchFilterFn,
     meta: { mono: true },
     cell: ({ row }) => (
       <span title={row.getValue("voucherNo")}>{row.getValue("voucherNo")}</span>
@@ -83,7 +92,7 @@ export const columns: ColumnDef<Voucher>[] = [
     accessorKey: "date",
     header: "Date",
     meta: { numeric: true },
-    sortingFn: "voucherDate",
+    sortingFn: voucherDateSortingFn,
     cell: ({ row }) => <span>{formatDate(row.getValue("date"))}</span>,
   },
   {
@@ -106,7 +115,7 @@ export const columns: ColumnDef<Voucher>[] = [
     accessorKey: "amount",
     header: "Amount",
     meta: { align: "right", numeric: true },
-    sortingFn: "voucherNumeric",
+    sortingFn: voucherNumericSortingFn,
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"))
       return <span>{currencyFormatter.format(amount)}</span>
@@ -138,7 +147,7 @@ export const columns: ColumnDef<Voucher>[] = [
             size="icon"
             className="size-9"
             aria-label={`Edit voucher ${voucher.voucherNo}`}
-            onClick={() => {}}
+            onClick={() => onEdit(voucher)}
           >
             <Pencil className="size-4" aria-hidden />
           </Button>
@@ -148,7 +157,7 @@ export const columns: ColumnDef<Voucher>[] = [
             size="icon"
             className="size-9 text-muted-foreground hover:text-destructive"
             aria-label={`Delete voucher ${voucher.voucherNo}`}
-            onClick={() => {}}
+            onClick={() => onDelete(voucher)}
           >
             <Trash2 className="size-4" aria-hidden />
           </Button>
@@ -156,4 +165,5 @@ export const columns: ColumnDef<Voucher>[] = [
       )
     },
   },
-]
+  ]
+}

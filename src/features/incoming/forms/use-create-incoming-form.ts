@@ -3,8 +3,8 @@ import { useStoreAdminStore } from "@/features/auth/store/use-store-admin-store"
 import {
   createDefaultIncomingQuantities,
   incomingFormSchema,
-  type IncomingFormValues,
 } from "@/features/incoming/schemas/incoming-form-schema"
+import type { IncomingFormValues } from "@/features/incoming/types"
 import {
   defaultSubmitMeta,
   type IncomingSubmitMeta,

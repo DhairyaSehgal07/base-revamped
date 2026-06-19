@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
+import { toast } from "sonner"
 
 import {
   filterAndSortOptions,
@@ -21,10 +22,11 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useCreateLedger } from "@/features/finances/api/use-create-ledger"
 
 import {
+  getCategoryOptionsForTypeSubType,
   getSubTypeOptionsForType,
-  LEDGER_CATEGORY_OPTIONS,
   LEDGER_TYPE_OPTIONS,
 } from "./constants/ledger-options"
 import { useAddLedgerForm } from "./forms/use-add-ledger-form"
@@ -64,6 +66,7 @@ function resetDialogState(
 }
 
 export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
+  const portalContainerRef = useRef<HTMLFormElement>(null)
   const [typeCombobox, setTypeCombobox] = useState(emptyComboboxState)
   const [subTypeCombobox, setSubTypeCombobox] = useState(emptyComboboxState)
   const [categoryCombobox, setCategoryCombobox] = useState(emptyComboboxState)
@@ -74,21 +77,29 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
     setCategoryCombobox(emptyComboboxState())
   }
 
+  const { mutateAsync: createLedger } = useCreateLedger()
+
   const form = useAddLedgerForm({
-    onSuccess: () => {
-      resetDialogState(form, resetComboboxState)
-      onOpenChange(false)
+    onSubmit: async (payload) => {
+      try {
+        await createLedger(payload)
+        toast.success("Ledger created successfully", {
+          position: "bottom-right",
+        })
+        resetDialogState(form, resetComboboxState)
+        onOpenChange(false)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create ledger",
+          { position: "bottom-right" }
+        )
+      }
     },
   })
 
   const sortedTypes = useMemo(
     () => filterAndSortOptions(typeCombobox.search, LEDGER_TYPE_OPTIONS),
     [typeCombobox.search]
-  )
-
-  const sortedCategories = useMemo(
-    () => filterAndSortOptions(categoryCombobox.search, LEDGER_CATEGORY_OPTIONS),
-    [categoryCombobox.search]
   )
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -101,7 +112,15 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg"
+        onInteractOutside={(event) => {
+          const target = event.target as HTMLElement | null
+          if (target?.closest('[data-slot="combobox-content"]')) {
+            event.preventDefault()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold tracking-tight">
             Add Ledger
@@ -115,6 +134,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
         <form
           id="add-ledger-form"
           noValidate
+          ref={portalContainerRef}
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -163,7 +183,9 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       onValueChange={(value) => {
                         field.handleChange(value)
                         form.setFieldValue("subType", "")
+                        form.setFieldValue("category", "")
                         setSubTypeCombobox(emptyComboboxState())
+                        setCategoryCombobox(emptyComboboxState())
                       }}
                       onBlur={field.handleBlur}
                       isInvalid={isInvalid}
@@ -179,6 +201,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       setOpen={(open) =>
                         setTypeCombobox((current) => ({ ...current, open }))
                       }
+                      portalContainer={portalContainerRef}
                     />
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
@@ -210,7 +233,11 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                             id="add-ledger-sub-type"
                             name={field.name}
                             value={field.state.value}
-                            onValueChange={field.handleChange}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              form.setFieldValue("category", "")
+                              setCategoryCombobox(emptyComboboxState())
+                            }}
                             onBlur={field.handleBlur}
                             isInvalid={isInvalid}
                             placeholder={
@@ -239,6 +266,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                                 open,
                               }))
                             }
+                            portalContainer={portalContainerRef}
                           />
                           {isInvalid && (
                             <FieldError errors={field.state.meta.errors} />
@@ -251,6 +279,23 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
               }}
             </form.Subscribe>
 
+            <form.Subscribe
+              selector={(state) => ({
+                type: state.values.type,
+                subType: state.values.subType,
+              })}
+            >
+              {({ type, subType }) => {
+                const categoryOptions = getCategoryOptionsForTypeSubType(
+                  type,
+                  subType
+                )
+                const sortedCategories = filterAndSortOptions(
+                  categoryCombobox.search,
+                  categoryOptions
+                )
+
+                return (
             <form.Field name="category">
               {(field) => {
                 const isInvalid = isFieldInvalid(field.state.meta)
@@ -267,9 +312,17 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       onValueChange={field.handleChange}
                       onBlur={field.handleBlur}
                       isInvalid={isInvalid}
-                      placeholder="Search categories..."
-                      emptyMessage="No categories found."
-                      options={LEDGER_CATEGORY_OPTIONS}
+                      placeholder={
+                        type && subType
+                          ? "Search categories..."
+                          : "Select type and sub type first"
+                      }
+                      emptyMessage={
+                        type && subType
+                          ? "No categories found."
+                          : "Select type and sub type first."
+                      }
+                      options={categoryOptions}
                       sortedOptions={sortedCategories}
                       search={categoryCombobox.search}
                       setSearch={(search) =>
@@ -279,6 +332,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       setOpen={(open) =>
                         setCategoryCombobox((current) => ({ ...current, open }))
                       }
+                      portalContainer={portalContainerRef}
                     />
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
@@ -287,6 +341,9 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                 )
               }}
             </form.Field>
+                )
+              }}
+            </form.Subscribe>
 
             <form.Field name="openingBalance">
               {(field) => {

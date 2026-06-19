@@ -1,8 +1,11 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { ColumnDef, SortingFn } from "@tanstack/react-table"
+import { Link } from "@tanstack/react-router"
 import { Pencil, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import type { FinancesPeriod } from "@/features/finances/search"
 import { cn } from "@/lib/utils"
 
 import type { Ledger } from "./types"
@@ -50,15 +53,30 @@ export const ledgerSortingFns = {
   ledgerNumeric: ledgerNumericSortingFn,
 }
 
-export const columns: ColumnDef<Ledger>[] = [
+export function createLedgerColumns(options?: {
+  period?: FinancesPeriod
+  onEdit?: (ledger: Ledger) => void
+  onDelete?: (ledger: Ledger) => void
+}): ColumnDef<Ledger>[] {
+  const period = options?.period ?? "this_month"
+  const onEdit = options?.onEdit
+  const onDelete = options?.onDelete
+
+  return [
   {
     accessorKey: "name",
     header: "Name",
     meta: { wrap: true },
     cell: ({ row }) => (
-      <span className="font-medium" title={row.getValue("name")}>
+      <Link
+        to="/finances/ledgers/$id"
+        params={{ id: row.original.id }}
+        search={{ period }}
+        className="font-medium text-primary hover:underline"
+        title={row.getValue("name")}
+      >
         {row.getValue("name")}
-      </span>
+      </Link>
     ),
   },
   {
@@ -88,7 +106,7 @@ export const columns: ColumnDef<Ledger>[] = [
     accessorKey: "openingBalance",
     header: "Opening Balance",
     meta: { align: "right", numeric: true },
-    sortingFn: "ledgerNumeric",
+    sortingFn: ledgerNumericSortingFn,
     cell: ({ row }) => (
       <BalanceCell amount={parseFloat(row.getValue("openingBalance"))} />
     ),
@@ -97,7 +115,7 @@ export const columns: ColumnDef<Ledger>[] = [
     accessorKey: "balance",
     header: "Balance",
     meta: { align: "right", numeric: true },
-    sortingFn: "ledgerNumeric",
+    sortingFn: ledgerNumericSortingFn,
     cell: ({ row }) => (
       <BalanceCell amount={parseFloat(row.getValue("balance"))} />
     ),
@@ -106,7 +124,7 @@ export const columns: ColumnDef<Ledger>[] = [
     accessorKey: "closingBalance",
     header: "Closing Balance",
     meta: { align: "right", numeric: true },
-    sortingFn: "ledgerNumeric",
+    sortingFn: ledgerNumericSortingFn,
     cell: ({ row }) => (
       <ClosingBalanceCell amount={row.original.closingBalance} />
     ),
@@ -135,6 +153,7 @@ export const columns: ColumnDef<Ledger>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const ledger = row.original
+      const isSystemLedger = ledger.kind === "System"
 
       return (
         <div className="flex items-center gap-0.5">
@@ -144,7 +163,8 @@ export const columns: ColumnDef<Ledger>[] = [
             size="icon"
             className="size-9"
             aria-label={`Edit ledger ${ledger.name}`}
-            onClick={() => {}}
+            disabled={isSystemLedger}
+            onClick={() => onEdit?.(ledger)}
           >
             <Pencil className="size-4" aria-hidden />
           </Button>
@@ -154,7 +174,8 @@ export const columns: ColumnDef<Ledger>[] = [
             size="icon"
             className="size-9 text-muted-foreground hover:text-destructive"
             aria-label={`Delete ledger ${ledger.name}`}
-            onClick={() => {}}
+            disabled={isSystemLedger}
+            onClick={() => onDelete?.(ledger)}
           >
             <Trash2 className="size-4" aria-hidden />
           </Button>
@@ -163,3 +184,6 @@ export const columns: ColumnDef<Ledger>[] = [
     },
   },
 ]
+}
+
+export const columns = createLedgerColumns()

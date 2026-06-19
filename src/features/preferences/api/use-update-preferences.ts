@@ -32,6 +32,8 @@ export function useUpdatePreferences() {
   return useMutation({
     mutationFn: updatePreferencesRequest,
     onSuccess: (data) => {
+      if (!data) return
+
       setPreferences(data)
       queryClient.setQueryData(PREFERENCES_QUERY_KEY, data)
     },

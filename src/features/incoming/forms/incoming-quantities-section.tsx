@@ -175,7 +175,11 @@ export function IncomingQuantitiesSection({
                               </FieldLabel>
                               <Select
                                 value={subField.state.value}
-                                onValueChange={subField.handleChange}
+                                onValueChange={(value) =>
+                                  subField.handleChange(
+                                    value as (typeof BAG_TYPES)[number]
+                                  )
+                                }
                               >
                                 <SelectTrigger
                                   id={subField.name}

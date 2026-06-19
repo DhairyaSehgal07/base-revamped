@@ -23,8 +23,11 @@ import { mapLedgersToComboboxOptions } from "@/features/finances/utils/ledger-op
 import { cn } from "@/lib/utils"
 
 import { AddVoucherDialog } from "./add-voucher-dialog"
-import { columns } from "./columns"
+import { createVoucherColumns } from "./columns"
 import { DataTable } from "./data-table"
+import { DeleteVoucherDialog } from "./delete-voucher-dialog"
+import { EditVoucherDialog } from "./edit-voucher-dialog"
+import type { Voucher } from "./types"
 import { VouchersError } from "./vouchers-error"
 import { VouchersSkeleton } from "./vouchers-skeleton"
 
@@ -41,6 +44,10 @@ const emptyComboboxState = (): ComboboxUiState => ({
 const VoucherTab = () => {
   const [search, setSearch] = useState("")
   const [addVoucherOpen, setAddVoucherOpen] = useState(false)
+  const [editVoucherOpen, setEditVoucherOpen] = useState(false)
+  const [voucherToEdit, setVoucherToEdit] = useState<Voucher | null>(null)
+  const [deleteVoucherOpen, setDeleteVoucherOpen] = useState(false)
+  const [voucherToDelete, setVoucherToDelete] = useState<Voucher | null>(null)
   const [fromDate, setFromDate] = useState<Date | undefined>()
   const [toDate, setToDate] = useState<Date | undefined>()
   const [ledgerIdDraft, setLedgerIdDraft] = useState("")
@@ -60,6 +67,35 @@ const VoucherTab = () => {
     () => filterAndSortOptions(ledgerCombobox.search, ledgerFilterOptions),
     [ledgerCombobox.search, ledgerFilterOptions]
   )
+
+  const voucherColumns = useMemo(
+    () =>
+      createVoucherColumns({
+        onEdit: (voucher) => {
+          setVoucherToEdit(voucher)
+          setEditVoucherOpen(true)
+        },
+        onDelete: (voucher) => {
+          setVoucherToDelete(voucher)
+          setDeleteVoucherOpen(true)
+        },
+      }),
+    []
+  )
+
+  const handleEditVoucherOpenChange = (open: boolean) => {
+    setEditVoucherOpen(open)
+    if (!open) {
+      setVoucherToEdit(null)
+    }
+  }
+
+  const handleDeleteVoucherOpenChange = (open: boolean) => {
+    setDeleteVoucherOpen(open)
+    if (!open) {
+      setVoucherToDelete(null)
+    }
+  }
 
   const handleApplyFilters = () => {
     setAppliedFilters({
@@ -229,7 +265,7 @@ const VoucherTab = () => {
           isRetrying={isFetching}
         />
       ) : (
-        <DataTable columns={columns} data={vouchers} search={search} />
+        <DataTable columns={voucherColumns} data={vouchers} search={search} />
       )}
 
       <AddVoucherDialog
@@ -237,6 +273,25 @@ const VoucherTab = () => {
         onOpenChange={setAddVoucherOpen}
         ledgerOptions={ledgerFilterOptions}
       />
+
+      {voucherToEdit ? (
+        <EditVoucherDialog
+          key={voucherToEdit.id}
+          open={editVoucherOpen}
+          onOpenChange={handleEditVoucherOpenChange}
+          voucher={voucherToEdit}
+          ledgerOptions={ledgerFilterOptions}
+        />
+      ) : null}
+
+      {voucherToDelete ? (
+        <DeleteVoucherDialog
+          key={voucherToDelete.id}
+          open={deleteVoucherOpen}
+          onOpenChange={handleDeleteVoucherOpenChange}
+          voucher={voucherToDelete}
+        />
+      ) : null}
     </div>
   )
 }

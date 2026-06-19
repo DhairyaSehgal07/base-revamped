@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 
 import { DatePickerInput } from "@/components/date-picker"
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useCreateVoucher } from "@/features/finances/api/use-create-voucher"
 
 import { useAddVoucherForm } from "./forms/use-add-voucher-form"
 
@@ -33,7 +35,7 @@ function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
 const numericInputProps = {
   type: "number" as const,
   step: "0.01",
-  min: 0,
+  min: 0.01,
   inputMode: "decimal" as const,
   onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur(),
 }
@@ -75,10 +77,23 @@ export function AddVoucherDialog({
     setCreditCombobox(emptyComboboxState())
   }
 
+  const { mutateAsync: createVoucher } = useCreateVoucher()
+
   const form = useAddVoucherForm({
-    onSuccess: () => {
-      resetDialogState(form, resetComboboxState)
-      onOpenChange(false)
+    onSubmit: async (payload) => {
+      try {
+        await createVoucher(payload)
+        toast.success("Voucher created successfully", {
+          position: "bottom-right",
+        })
+        resetDialogState(form, resetComboboxState)
+        onOpenChange(false)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create voucher",
+          { position: "bottom-right" }
+        )
+      }
     },
   })
 

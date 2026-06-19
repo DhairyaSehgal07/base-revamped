@@ -1,3 +1,4 @@
+import { getRouteApi } from "@tanstack/react-router"
 import { useMemo, useState } from "react"
 import { BookOpen, Plus, RefreshCw, Search, X } from "lucide-react"
 
@@ -26,16 +27,26 @@ import { cn } from "@/lib/utils"
 
 import { AddLedgerDialog } from "./add-ledger-dialog"
 import { LEDGER_TYPES } from "./constants/ledger-options"
-import { columns } from "./columns"
+import { createLedgerColumns } from "./columns"
 import { DataTable } from "./data-table"
+import { DeleteLedgerDialog } from "./delete-ledger-dialog"
+import { EditLedgerDialog } from "./edit-ledger-dialog"
 import { LedgersError } from "./ledgers-error"
 import { LedgersSkeleton } from "./ledgers-skeleton"
+import type { Ledger } from "./types"
 
 const SEARCH_DEBOUNCE_MS = 300
 
+const financesRouteApi = getRouteApi("/_authenticated/finances/")
+
 const LedgerTab = () => {
+  const { period } = financesRouteApi.useSearch()
   const [search, setSearch] = useState("")
   const [addLedgerOpen, setAddLedgerOpen] = useState(false)
+  const [editLedgerOpen, setEditLedgerOpen] = useState(false)
+  const [ledgerToEdit, setLedgerToEdit] = useState<Ledger | null>(null)
+  const [deleteLedgerOpen, setDeleteLedgerOpen] = useState(false)
+  const [ledgerToDelete, setLedgerToDelete] = useState<Ledger | null>(null)
   const [fromDate, setFromDate] = useState<Date | undefined>()
   const [toDate, setToDate] = useState<Date | undefined>()
   const [typeDraft, setTypeDraft] = useState<LedgerType | "">("")
@@ -54,6 +65,22 @@ const LedgerTab = () => {
 
   const { ledgers, isLoading, isFetching, isError, error, refetch } =
     useLedgers(queryFilters)
+
+  const ledgerColumns = useMemo(
+    () =>
+      createLedgerColumns({
+        period,
+        onEdit: (ledger) => {
+          setLedgerToEdit(ledger)
+          setEditLedgerOpen(true)
+        },
+        onDelete: (ledger) => {
+          setLedgerToDelete(ledger)
+          setDeleteLedgerOpen(true)
+        },
+      }),
+    [period]
+  )
 
   const handleApplyFilters = () => {
     setAppliedFilters({
@@ -206,13 +233,29 @@ const LedgerTab = () => {
           isRetrying={isFetching}
         />
       ) : (
-        <DataTable columns={columns} data={ledgers} />
+        <DataTable columns={ledgerColumns} data={ledgers} />
       )}
 
       <AddLedgerDialog
         open={addLedgerOpen}
         onOpenChange={setAddLedgerOpen}
       />
+
+      {ledgerToEdit && (
+        <EditLedgerDialog
+          open={editLedgerOpen}
+          onOpenChange={setEditLedgerOpen}
+          ledger={ledgerToEdit}
+        />
+      )}
+
+      {ledgerToDelete && (
+        <DeleteLedgerDialog
+          open={deleteLedgerOpen}
+          onOpenChange={setDeleteLedgerOpen}
+          ledger={ledgerToDelete}
+        />
+      )}
     </div>
   )
 }

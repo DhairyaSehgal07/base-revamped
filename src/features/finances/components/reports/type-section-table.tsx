@@ -1,0 +1,116 @@
+import { Fragment } from "react"
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import type { CategoryGroup } from "@/features/finances/domain/types"
+import type { LedgerType } from "@/features/finances/types"
+import { TYPE_COLORS } from "@/features/finances/shared/constants"
+import { formatCurrency } from "@/features/finances/shared/format-currency"
+import { cn } from "@/lib/utils"
+
+type TypeSectionTableProps = {
+  type: LedgerType
+  groups: CategoryGroup[]
+  displayTotal: number
+  netProfitLoss?: number
+}
+
+export function TypeSectionTable({
+  type,
+  groups,
+  displayTotal,
+  netProfitLoss = 0,
+}: TypeSectionTableProps) {
+  const colors = TYPE_COLORS[type]
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div
+        className={cn(
+          "flex items-center justify-between px-4 py-3 text-sm font-medium text-primary-foreground",
+          colors.band
+        )}
+      >
+        <span>{type}</span>
+        <span className="tabular-nums">Total: {formatCurrency(displayTotal)}</span>
+      </div>
+      <Table className="w-full text-sm">
+        <TableHeader className={cn("border-b border-border", colors.header)}>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="h-10 px-3 font-medium text-muted-foreground">
+              Category
+            </TableHead>
+            <TableHead className="h-10 px-3 font-medium text-muted-foreground">
+              Sub-Type
+            </TableHead>
+            <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
+              Balance
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {groups.map((group) => (
+            <Fragment key={`${group.type}-${group.category}`}>
+              <TableRow className="border-b border-border hover:bg-muted/50">
+                <TableCell className="px-3 py-2.5 font-medium text-foreground">
+                  {group.category}
+                </TableCell>
+                <TableCell className="px-3 py-2.5 text-muted-foreground">
+                  {group.subType}
+                </TableCell>
+                <TableCell className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">
+                  {formatCurrency(group.total)}
+                </TableCell>
+              </TableRow>
+              {group.ledgers.map((ledger) => (
+                <TableRow
+                  key={ledger.id}
+                  className="border-b border-border bg-muted/20 hover:bg-muted/50"
+                >
+                  <TableCell className="px-3 py-2 pl-8 text-sm text-muted-foreground">
+                    {ledger.name}
+                  </TableCell>
+                  <TableCell className="px-3 py-2" />
+                  <TableCell className="px-3 py-2 text-right text-sm tabular-nums text-foreground">
+                    {formatCurrency(ledger.balance)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </Fragment>
+          ))}
+          {type === "Equity" && netProfitLoss !== 0 ? (
+            <TableRow
+              className={cn("border-t-2 border-border font-medium", colors.total)}
+            >
+              <TableCell className="px-3 py-2.5" colSpan={2}>
+                {netProfitLoss > 0 ? "Add: Net Profit" : "Less: Net Loss"}
+              </TableCell>
+              <TableCell
+                className={cn(
+                  "px-3 py-2.5 text-right tabular-nums",
+                  netProfitLoss < 0 && "text-destructive"
+                )}
+              >
+                {formatCurrency(Math.abs(netProfitLoss))}
+              </TableCell>
+            </TableRow>
+          ) : null}
+          <TableRow className={cn("font-medium", colors.total)}>
+            <TableCell className="px-3 py-2.5" colSpan={2}>
+              Total {type}
+            </TableCell>
+            <TableCell className="px-3 py-2.5 text-right tabular-nums">
+              {formatCurrency(displayTotal)}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  )
+}

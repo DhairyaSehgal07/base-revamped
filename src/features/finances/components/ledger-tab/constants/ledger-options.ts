@@ -1,44 +1,15 @@
 import type { ComboboxOption } from "@/components/searchable-option-combobox"
+import {
+  getCategoriesForTypeSubType,
+  getSubTypesForType,
+  LEDGER_OPTIONS,
+  LEDGER_TYPES,
+} from "@/features/finances/shared/chart-of-accounts"
+import type { LedgerType } from "@/features/finances/types"
 
-export const LEDGER_TYPES = [
-  "Asset",
-  "Expense",
-  "Liability",
-  "Income",
-  "Equity",
-] as const
+export { LEDGER_TYPES, type LedgerType }
 
-export type LedgerType = (typeof LEDGER_TYPES)[number]
-
-export const TYPE_SUB_TYPE_MAP: Record<LedgerType, readonly string[]> = {
-  Asset: ["Current Asset", "Sundry Debtor"],
-  Expense: ["Indirect Expense", "Direct Expense"],
-  Liability: ["Sundry Creditor", "Capital"],
-  Income: ["Direct Income"],
-  Equity: [],
-}
-
-const CATEGORY_LABELS = [
-  "Cash & Bank",
-  "Parties",
-  "Operating",
-  "Operations",
-  "Equity",
-] as const
-
-export const LEDGER_CATEGORY_OPTIONS: ComboboxOption[] = CATEGORY_LABELS.map(
-  (label) => ({
-    id: label,
-    label,
-  })
-)
-
-export const LEDGER_TYPE_OPTIONS: ComboboxOption[] = LEDGER_TYPES.map(
-  (type) => ({
-    id: type,
-    label: type,
-  })
-)
+export const TYPE_SUB_TYPE_MAP = LEDGER_OPTIONS
 
 export function toComboboxOptions(values: readonly string[]): ComboboxOption[] {
   return values.map((value) => ({
@@ -47,14 +18,41 @@ export function toComboboxOptions(values: readonly string[]): ComboboxOption[] {
   }))
 }
 
-export function getSubTypeOptionsForType(type: string): ComboboxOption[] {
-  return toComboboxOptions(getSubTypesForType(type))
-}
+export const LEDGER_TYPE_OPTIONS: ComboboxOption[] = LEDGER_TYPES.map(
+  (type) => ({
+    id: type,
+    label: type,
+  })
+)
 
-export function getSubTypesForType(type: string): string[] {
-  if (!type || !(type in TYPE_SUB_TYPE_MAP)) {
+export function getSubTypeOptionsForType(type: string): ComboboxOption[] {
+  if (!type) {
     return []
   }
 
-  return [...TYPE_SUB_TYPE_MAP[type as LedgerType]]
+  return toComboboxOptions(getSubTypesForType(type as LedgerType))
 }
+
+export function getCategoryOptionsForTypeSubType(
+  type: string,
+  subType: string
+): ComboboxOption[] {
+  if (!type || !subType) {
+    return []
+  }
+
+  return toComboboxOptions(
+    getCategoriesForTypeSubType(type as LedgerType, subType)
+  )
+}
+
+export function getSubTypesForTypeFromOptions(type: string): string[] {
+  if (!type) {
+    return []
+  }
+
+  return getSubTypesForType(type as LedgerType)
+}
+
+// Backward-compatible alias used by form schema
+export { getSubTypesForTypeFromOptions as getSubTypesForType }

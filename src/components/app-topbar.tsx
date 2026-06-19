@@ -42,6 +42,9 @@ function resolvePageTitle(pathname: string, coldStorageName?: string) {
   if (routeTitles[pathname]) {
     return routeTitles[pathname];
   }
+  if (pathname.startsWith('/finances/ledgers/')) {
+    return 'Ledger Statement';
+  }
   if (pathname.startsWith('/settings')) {
     return 'Settings';
   }

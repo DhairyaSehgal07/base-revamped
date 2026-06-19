@@ -2,14 +2,14 @@ import { useForm } from "@tanstack/react-form"
 
 import {
   addLedgerFormSchema,
-  parseOpeningBalance,
+  formValuesToCreatePayload,
 } from "../schemas/add-ledger-form-schema"
 
 type UseAddLedgerFormOptions = {
-  onSuccess?: () => void
+  onSubmit: (payload: ReturnType<typeof formValuesToCreatePayload>) => Promise<void>
 }
 
-export function useAddLedgerForm({ onSuccess }: UseAddLedgerFormOptions = {}) {
+export function useAddLedgerForm({ onSubmit }: UseAddLedgerFormOptions) {
   return useForm({
     defaultValues: {
       name: "",
@@ -24,13 +24,7 @@ export function useAddLedgerForm({ onSuccess }: UseAddLedgerFormOptions = {}) {
     },
     onSubmit: async ({ value }) => {
       const parsed = addLedgerFormSchema.parse(value)
-
-      console.log({
-        ...parsed,
-        openingBalance: parseOpeningBalance(parsed.openingBalance),
-      })
-
-      onSuccess?.()
+      await onSubmit(formValuesToCreatePayload(parsed))
     },
   })
 }

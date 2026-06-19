@@ -1,3 +1,5 @@
+import type { RefObject } from "react"
+
 import {
   Combobox,
   ComboboxContent,
@@ -27,6 +29,7 @@ export type SearchableOptionComboboxProps = {
   setSearch: (value: string) => void
   open: boolean
   setOpen: (open: boolean) => void
+  portalContainer?: RefObject<HTMLElement | null>
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -68,30 +71,30 @@ export function SearchableOptionCombobox({
   setSearch,
   open,
   setOpen,
+  portalContainer,
 }: SearchableOptionComboboxProps) {
   const selected = options.find((option) => option.id === value) ?? null
+  const inputDisplayValue = search || selected?.label || ""
 
   return (
     <Combobox
       items={sortedOptions}
       itemToStringValue={(option) => option.label}
       value={selected}
-      inputValue={search}
+      inputValue={inputDisplayValue}
       open={open}
       onOpenChange={setOpen}
       autoHighlight={"always" as unknown as boolean}
       onInputValueChange={(inputValue) => {
         setSearch(inputValue)
-        const matches = filterAndSortOptions(inputValue, options)
         if (!inputValue.trim()) {
           onValueChange("")
-          return
         }
-        onValueChange(matches[0]?.id ?? "")
       }}
       onValueChange={(val) => {
         onValueChange(val ? val.id : "")
         setSearch(val ? val.label : "")
+        setOpen(false)
       }}
     >
       <ComboboxInput
@@ -103,7 +106,7 @@ export function SearchableOptionCombobox({
         onBlur={onBlur}
         className="w-full"
       />
-      <ComboboxContent>
+      <ComboboxContent container={portalContainer}>
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         <ComboboxList>
           {(option) => (
