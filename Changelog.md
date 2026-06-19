@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.0] - 2026-06-19
+
+Daybook wired to live gate-pass data with search and filters, plus people registration and profile improvements.
+
+### Added
+- Daybook list and search API hooks with URL-driven pagination, type filter (all/incoming/outgoing), sort order, and search-by field (gate pass, manual parchi, marka, remarks).
+- Incoming and outgoing gate pass cards with expandable detail, ERP-style numeric formatting, and loading skeletons.
+- Daybook search domain layer (`search.ts`, `types.ts`, `format.ts`) and debounced receipt-number input hook.
+- Farmer profile page at `/people/:id` with cost-per-bag display and contact details from route search params.
+- Shared `SettingsBackButton` on Profile and Preferences pages for navigation back to Settings.
+
+### Changed
+- Daybook page rebuilt from placeholder tab to live paginated list with refresh, error, and empty states.
+- Post-login, sidebar, and finances-disabled redirects now use shared `DEFAULT_DAYBOOK_SEARCH` params.
+- Quick-register farmer API aligned to `/farmer-storage-link/quick-register-farmer` response shape.
+- Add farmer form: optional account number (auto-assign when blank), name/address length validation, and finance fields hidden when `showFinances` preference is off.
+- People list toolbar simplified; farmer cards pass `costPerBag` to the profile route.
+- Farmer and storage-link types extended for quick-register payload and response.
+
+### Removed
+- Placeholder `incoming-tab` daybook component and generic `person-detail-page` in favor of the new daybook and farmer profile implementations.
+
 ## [0.2.0] - 2026-06-19
 
 Finances module expansion with full ledger and voucher management, client-side financial reporting, and supporting UI improvements.

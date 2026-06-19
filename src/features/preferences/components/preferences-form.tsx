@@ -36,6 +36,7 @@ import {
   preferencesToFormValues,
   REPORT_FORMAT_OPTIONS,
 } from "../schemas/preferences-form-schema"
+import { SettingsBackButton } from "@/features/settings/components/settings-back-button"
 import { PreferencesCommoditiesSection } from "./preferences-commodities-section"
 import { PreferencesCustomFieldsSection } from "./preferences-custom-fields-section"
 import { PreferencesUnsavedToast } from "./preferences-unsaved-toast"
@@ -82,6 +83,8 @@ export function PreferencesForm({
 
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <SettingsBackButton />
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">

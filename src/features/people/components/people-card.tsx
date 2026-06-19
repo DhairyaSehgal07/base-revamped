@@ -38,6 +38,7 @@ export function PeopleCard({ link }: PeopleCardProps) {
         mobileNumber,
         accountNumber: link.accountNumber,
         address,
+        costPerBag: link.costPerBag,
         tab: "incoming",
       }}
       className="block min-w-0 rounded-4xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"

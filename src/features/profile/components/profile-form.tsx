@@ -36,6 +36,7 @@ import type { ProfileData } from "../types"
 import {
   hasUpdatePayloadChanges,
 } from "../schemas/profile-form-schema"
+import { SettingsBackButton } from "@/features/settings/components/settings-back-button"
 import { ProfileUnsavedToast } from "./profile-unsaved-toast"
 
 type ProfileFormProps = {
@@ -79,6 +80,8 @@ export function ProfileForm({
 
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <SettingsBackButton />
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">

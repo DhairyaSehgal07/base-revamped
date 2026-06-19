@@ -14,6 +14,7 @@ export type AddFarmerFormInput = {
 type AddFarmerFormSchemaOptions = {
   getUsedAccountNumbers: () => number[]
   getUsedMobileNumbers: () => string[]
+  showFinances?: boolean
 }
 
 function parseOptionalNonNegativeNumber(
@@ -43,32 +44,43 @@ function parseAccountNumber(value: string): number | undefined {
 export function createAddFarmerFormSchema({
   getUsedAccountNumbers,
   getUsedMobileNumbers,
+  showFinances = true,
 }: AddFarmerFormSchemaOptions) {
   return z
     .object({
-      accountNumber: z.string().trim().min(1, "Account number is required"),
+      accountNumber: z.string(),
       mobileNumber: z
         .string()
         .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
-      name: z.string().trim().min(1, "Name is required"),
-      address: z.string().trim().min(1, "Address is required"),
+      name: z
+        .string()
+        .trim()
+        .min(2, "Name must be at least 2 characters")
+        .max(100, "Name must be at most 100 characters"),
+      address: z
+        .string()
+        .trim()
+        .min(1, "Address is required")
+        .max(500, "Address must be at most 500 characters"),
       costPerBag: z.string(),
       openingBalance: z.string(),
     })
     .superRefine((values, ctx) => {
-      const accountNumber = parseAccountNumber(values.accountNumber)
-      if (accountNumber === undefined) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Enter a positive whole number",
-          path: ["accountNumber"],
-        })
-      } else if (getUsedAccountNumbers().includes(accountNumber)) {
-        ctx.addIssue({
-          code: "custom",
-          message: "This account number is already in use",
-          path: ["accountNumber"],
-        })
+      if (values.accountNumber.trim() !== "") {
+        const accountNumber = parseAccountNumber(values.accountNumber)
+        if (accountNumber === undefined) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Enter a positive whole number",
+            path: ["accountNumber"],
+          })
+        } else if (getUsedAccountNumbers().includes(accountNumber)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "This account number is already in use",
+            path: ["accountNumber"],
+          })
+        }
       }
 
       const usedMobileNumbers = getUsedMobileNumbers()
@@ -80,41 +92,41 @@ export function createAddFarmerFormSchema({
         })
       }
 
-      if (values.costPerBag.trim() === "") {
-        ctx.addIssue({
-          code: "custom",
-          message: "Cost per bag is required",
-          path: ["costPerBag"],
-        })
-      } else {
-        const parsed = parseOptionalNonNegativeNumber(values.costPerBag)
-        if (parsed === undefined || parsed < 0) {
+      if (showFinances) {
+        if (values.costPerBag.trim() === "") {
           ctx.addIssue({
             code: "custom",
-            message: "Enter a valid amount of 0 or greater",
+            message: "Cost per bag is required",
             path: ["costPerBag"],
           })
+        } else {
+          const parsed = parseOptionalNonNegativeNumber(values.costPerBag)
+          if (parsed === undefined || parsed < 0) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Enter a valid amount of 0 or greater",
+              path: ["costPerBag"],
+            })
+          }
         }
-      }
 
-      if (values.openingBalance.trim() !== "") {
-        const parsed = parseOptionalNonNegativeNumber(values.openingBalance)
-        if (parsed === undefined) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Enter a valid amount",
-            path: ["openingBalance"],
-          })
+        if (values.openingBalance.trim() !== "") {
+          const parsed = parseOptionalNonNegativeNumber(values.openingBalance)
+          if (parsed === undefined) {
+            ctx.addIssue({
+              code: "custom",
+              message: "Enter a valid amount",
+              path: ["openingBalance"],
+            })
+          }
         }
       }
     })
 }
 
-export function createDefaultAddFarmerValues(
-  nextAccountNumber: number,
-): AddFarmerFormInput {
+export function createDefaultAddFarmerValues(): AddFarmerFormInput {
   return {
-    accountNumber: nextAccountNumber.toString(),
+    accountNumber: "",
     mobileNumber: "",
     name: "",
     address: "",
@@ -123,27 +135,28 @@ export function createDefaultAddFarmerValues(
   }
 }
 
+type BuildAddFarmerPayloadOptions = {
+  showFinances?: boolean
+}
+
 export function buildAddFarmerPayload(
   values: AddFarmerFormInput,
+  { showFinances = true }: BuildAddFarmerPayloadOptions = {},
 ): QuickRegisterFarmerPayload {
   const accountNumber = parseAccountNumber(values.accountNumber)
-  if (accountNumber === undefined) {
-    throw new Error("Account number is invalid")
-  }
-
-  const costPerBag = parseOptionalNonNegativeNumber(values.costPerBag)
-  const openingBalance = parseOptionalNonNegativeNumber(values.openingBalance)
-
-  if (costPerBag === undefined) {
-    throw new Error("Cost per bag is invalid")
-  }
+  const costPerBag = showFinances
+    ? parseOptionalNonNegativeNumber(values.costPerBag)
+    : undefined
+  const openingBalance = showFinances
+    ? parseOptionalNonNegativeNumber(values.openingBalance)
+    : undefined
 
   return {
-    accountNumber,
-    mobileNumber: values.mobileNumber,
     name: values.name.trim(),
     address: values.address.trim(),
-    costPerBag,
+    mobileNumber: values.mobileNumber,
+    ...(accountNumber !== undefined ? { accountNumber } : {}),
+    ...(costPerBag !== undefined ? { costPerBag } : {}),
     ...(openingBalance !== undefined ? { openingBalance } : {}),
   }
 }

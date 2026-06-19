@@ -25,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import { useQuickRegisterFarmer } from "@/features/people/api/use-quick-register-farmer"
 import { useAddFarmerForm } from "@/features/people/forms/use-add-farmer-form"
 import type { FarmerStorageLink } from "@/features/people/types"
@@ -131,10 +132,14 @@ function AddFarmerDialogContent({
     [usedAccountNumbers],
   )
 
+  const showFinances = usePreferencesStore(
+    (s) => s.preferences?.showFinances ?? true,
+  )
   const { mutateAsync: quickRegisterFarmer, isPending } = useQuickRegisterFarmer()
 
   const form = useAddFarmerForm({
     links,
+    showFinances,
     onSubmit: async (payload) => {
       try {
         const { message, data } = await quickRegisterFarmer(payload)
@@ -185,9 +190,9 @@ function AddFarmerDialogContent({
                 return (
                   <Field data-invalid={isInvalid}>
                     <div className="flex items-center justify-between gap-2">
-                      <RequiredFieldLabel htmlFor={field.name}>
+                      <OptionalFieldLabel htmlFor={field.name}>
                         Account number
-                      </RequiredFieldLabel>
+                      </OptionalFieldLabel>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -254,8 +259,8 @@ function AddFarmerDialogContent({
                         </Button>
                       </div>
                       <FieldDescription>
-                        Enter any positive number. Duplicate values are not
-                        allowed.
+                        Leave blank to auto-assign the next number, or enter a
+                        positive value. Duplicates are not allowed.
                       </FieldDescription>
                     </div>
 
@@ -362,80 +367,84 @@ function AddFarmerDialogContent({
               }}
             </form.Field>
 
-            <form.Field name="costPerBag">
-              {(field) => {
-                const isInvalid = isFieldInvalid(field.state.meta)
+            {showFinances ? (
+              <>
+                <form.Field name="costPerBag">
+                  {(field) => {
+                    const isInvalid = isFieldInvalid(field.state.meta)
 
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <RequiredFieldLabel htmlFor={field.name}>
-                      Cost per bag
-                    </RequiredFieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      aria-invalid={isInvalid}
-                      placeholder="110"
-                      className={cn(
-                        "h-11 text-base tabular-nums",
-                        businessNumberSpinnerClassName,
-                      )}
-                      {...numericInputProps}
-                      onKeyDown={preventArrowUpDownOnNumericInput}
-                    />
-                    <FieldDescription>
-                      Storage rate in INR per bag.
-                    </FieldDescription>
-                    {isInvalid ? (
-                      <FieldError errors={field.state.meta.errors} />
-                    ) : null}
-                  </Field>
-                )
-              }}
-            </form.Field>
+                    return (
+                      <Field data-invalid={isInvalid}>
+                        <RequiredFieldLabel htmlFor={field.name}>
+                          Cost per bag
+                        </RequiredFieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          aria-invalid={isInvalid}
+                          placeholder="110"
+                          className={cn(
+                            "h-11 text-base tabular-nums",
+                            businessNumberSpinnerClassName,
+                          )}
+                          {...numericInputProps}
+                          onKeyDown={preventArrowUpDownOnNumericInput}
+                        />
+                        <FieldDescription>
+                          Storage rate in INR per bag.
+                        </FieldDescription>
+                        {isInvalid ? (
+                          <FieldError errors={field.state.meta.errors} />
+                        ) : null}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
 
-            <form.Field name="openingBalance">
-              {(field) => {
-                const isInvalid = isFieldInvalid(field.state.meta)
+                <form.Field name="openingBalance">
+                  {(field) => {
+                    const isInvalid = isFieldInvalid(field.state.meta)
 
-                return (
-                  <Field data-invalid={isInvalid}>
-                    <OptionalFieldLabel htmlFor={field.name}>
-                      Opening balance
-                    </OptionalFieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
-                      aria-invalid={isInvalid}
-                      placeholder="0.00"
-                      className={cn(
-                        "h-11 text-base tabular-nums",
-                        businessNumberSpinnerClassName,
-                      )}
-                      {...numericInputProps}
-                      onKeyDown={preventArrowUpDownOnNumericInput}
-                    />
-                    <FieldDescription>
-                      Optional ledger opening balance in INR. Leave blank for
-                      zero.
-                    </FieldDescription>
-                    {isInvalid ? (
-                      <FieldError errors={field.state.meta.errors} />
-                    ) : null}
-                  </Field>
-                )
-              }}
-            </form.Field>
+                    return (
+                      <Field data-invalid={isInvalid}>
+                        <OptionalFieldLabel htmlFor={field.name}>
+                          Opening balance
+                        </OptionalFieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(event) =>
+                            field.handleChange(event.target.value)
+                          }
+                          aria-invalid={isInvalid}
+                          placeholder="0.00"
+                          className={cn(
+                            "h-11 text-base tabular-nums",
+                            businessNumberSpinnerClassName,
+                          )}
+                          {...numericInputProps}
+                          onKeyDown={preventArrowUpDownOnNumericInput}
+                        />
+                        <FieldDescription>
+                          Optional ledger opening balance in INR. Leave blank for
+                          zero.
+                        </FieldDescription>
+                        {isInvalid ? (
+                          <FieldError errors={field.state.meta.errors} />
+                        ) : null}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
+              </>
+            ) : null}
           </FieldGroup>
         </div>
 

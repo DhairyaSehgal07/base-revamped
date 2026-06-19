@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { SettingsBackButton } from "@/features/settings/components/settings-back-button"
 import { getApiErrorMessage } from "@/lib/api-client"
 
 type PreferencesErrorProps = {
@@ -23,6 +24,8 @@ export function PreferencesError({
 }: PreferencesErrorProps) {
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <SettingsBackButton />
+
       <header>
         <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           Preferences

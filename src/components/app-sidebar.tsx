@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { useColdStorageStore } from '@/features/auth/store/use-cold-storage-store';
 import { usePreferencesStore } from '@/features/auth/store/use-preferences-store';
+import { DEFAULT_DAYBOOK_SEARCH } from '@/features/daybook/search';
 
 type NavItem = {
   name: string;
@@ -65,7 +66,12 @@ function NavMain() {
                     isActive={pathname === item.to}
                     tooltip={item.name}
                   >
-                    <Link to={item.to}>
+                    <Link
+                      to={item.to}
+                      {...(item.to === "/daybook"
+                        ? { search: DEFAULT_DAYBOOK_SEARCH }
+                        : {})}
+                    >
                       <Icon />
                       <span>{item.name}</span>
                     </Link>
@@ -96,7 +102,7 @@ export function AppSidebar() {
         <SidebarMenu>
             <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link to="/daybook" search={{ tab: "incoming" }}>
+              <Link to="/daybook" search={DEFAULT_DAYBOOK_SEARCH}>
                 <img
                   src="/favicon.svg"
                   alt="Coldop"

@@ -147,14 +147,9 @@ const PeoplePage = () => {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:shrink-0">
-            <Button variant="secondary" className="min-w-0 px-2.5 sm:px-3">
-              <span className="truncate sm:hidden">Edit History</span>
-              <span className="hidden sm:inline">People Edit History</span>
-            </Button>
-
+          <div className="sm:shrink-0">
             <Button
-              className="min-w-0 px-2.5 sm:px-3"
+              className="w-full min-w-0 px-2.5 sm:w-auto sm:px-3"
               onClick={() => setAddFarmerOpen(true)}
             >
               <Plus className="h-4 w-4 shrink-0 sm:mr-2" />

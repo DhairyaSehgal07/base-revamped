@@ -9,14 +9,15 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { formatInr } from "@/features/finances/shared/format-currency"
 import type { PersonDetailSearch } from "@/features/people/search"
 
-type PersonDetailPageProps = {
+type FarmerProfilePageProps = {
   linkId: string
   search: PersonDetailSearch
 }
 
-export function PersonDetailPage({ linkId, search }: PersonDetailPageProps) {
+export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
   const displayName = search.name?.trim() || "Farmer"
   const accountLabel =
     typeof search.accountNumber === "number"
@@ -47,6 +48,15 @@ export function PersonDetailPage({ linkId, search }: PersonDetailPageProps) {
             <p className="mt-1 text-sm text-muted-foreground tabular-nums">
               {accountLabel}
             </p>
+
+            {typeof search.costPerBag === "number" ? (
+              <p className="mt-1 text-sm tabular-nums text-foreground">
+                <span className="font-medium">
+                  {formatInr(search.costPerBag)}
+                </span>
+                <span className="text-muted-foreground"> / bag</span>
+              </p>
+            ) : null}
 
             {search.mobileNumber ? (
               <p className="mt-3 flex items-center gap-2 text-sm text-foreground">

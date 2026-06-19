@@ -15,7 +15,7 @@ async function quickRegisterFarmerRequest(
 ): Promise<{ message?: string; data: FarmerStorageLink | null }> {
   try {
     const { data } = await apiClient.post<QuickRegisterFarmerResponse>(
-      "/farmer-storage-link/quick-register",
+      "/farmer-storage-link/quick-register-farmer",
       payload,
     )
 
@@ -25,7 +25,7 @@ async function quickRegisterFarmerRequest(
 
     return {
       message: data.message,
-      data: data.data,
+      data: data.data?.farmerStorageLink ?? null,
     }
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Failed to add farmer"), {

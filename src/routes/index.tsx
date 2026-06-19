@@ -2,6 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { LoginForm } from '@/features/auth/components/login-form';
 import { useAuthStore } from '@/features/auth/store/use-auth-store';
+import { DEFAULT_DAYBOOK_SEARCH } from '@/features/daybook/search';
 
 const loginSearchSchema = z.object({
   redirect: z.string().optional(),
@@ -20,7 +21,7 @@ export const Route = createFileRoute('/')({
       throw redirect({ href: search.redirect });
     }
 
-    throw redirect({ to: '/daybook' });
+    throw redirect({ to: '/daybook', search: DEFAULT_DAYBOOK_SEARCH });
   },
   component: LoginForm,
 });

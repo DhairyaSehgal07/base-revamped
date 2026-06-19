@@ -1,11 +1,26 @@
+export type Farmer = {
+  _id: string
+  name: string
+  address: string
+  mobileNumber: string
+  imageUrl?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type FarmerStorageLink = {
   _id: string
+  farmerId?: string
+  coldStorageId?: string
+  linkedById?: string
   accountNumber: number
   name: string
   address: string
   mobileNumber: string
   isActive: boolean
   costPerBag: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export type FarmerStorageLinksResponse = {
@@ -14,16 +29,22 @@ export type FarmerStorageLinksResponse = {
 }
 
 export type QuickRegisterFarmerPayload = {
-  accountNumber: number
   name: string
   address: string
   mobileNumber: string
-  costPerBag: number
+  imageUrl?: string
+  accountNumber?: number
   openingBalance?: number
+  costPerBag?: number
+}
+
+export type QuickRegisterFarmerData = {
+  farmer: Farmer
+  farmerStorageLink: FarmerStorageLink
 }
 
 export type QuickRegisterFarmerResponse = {
   success: boolean
   message?: string
-  data: FarmerStorageLink | null
+  data: QuickRegisterFarmerData | null
 }

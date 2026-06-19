@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import apiClient, { getApiErrorMessage } from "@/lib/api-client"
+import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
 import { setLoginSession } from "../store/set-login-session"
 import type { AuthResponse, LoginCredentials } from "../types"
 
@@ -42,7 +43,7 @@ export function useLogin() {
         return
       }
 
-      router.navigate({ to: "/daybook" })
+      router.navigate({ to: "/daybook", search: DEFAULT_DAYBOOK_SEARCH })
     },
   })
 }

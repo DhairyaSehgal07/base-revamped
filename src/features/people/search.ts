@@ -12,6 +12,7 @@ export const personDetailSearchSchema = z.object({
   mobileNumber: z.string().optional().catch(undefined),
   accountNumber: z.coerce.number().optional().catch(undefined),
   address: z.string().optional().catch(undefined),
+  costPerBag: z.coerce.number().optional().catch(undefined),
   tab: personDetailTabSchema.catch("incoming"),
 })
 
