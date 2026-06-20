@@ -28,11 +28,13 @@ export type DaybookSearch = {
   searchBy: DaybookSearchBy
 }
 
+export const DAYBOOK_PAGE_SIZE_OPTIONS = [10, 50, 100] as const
+
 export const DEFAULT_DAYBOOK_SEARCH: DaybookSearch = {
   type: "all",
   sortBy: "latest",
   page: 1,
-  limit: 10,
+  limit: DAYBOOK_PAGE_SIZE_OPTIONS[0],
   searchBy: "gatePassNumber",
 }
 
@@ -62,6 +64,21 @@ function parseReceiptNumber(value: unknown): string | undefined {
 
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
+}
+
+function parseDaybookPageSize(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value)
+
+  if (
+    Number.isFinite(parsed) &&
+    DAYBOOK_PAGE_SIZE_OPTIONS.includes(
+      parsed as (typeof DAYBOOK_PAGE_SIZE_OPTIONS)[number]
+    )
+  ) {
+    return parsed
+  }
+
+  return DEFAULT_DAYBOOK_SEARCH.limit
 }
 
 function parsePositiveInt(
@@ -124,11 +141,7 @@ export function parseDaybookSearch(
       ? sortByResult.data
       : DEFAULT_DAYBOOK_SEARCH.sortBy,
     page: parsePositiveInt(search.page, DEFAULT_DAYBOOK_SEARCH.page),
-    limit: parsePositiveInt(
-      search.limit,
-      DEFAULT_DAYBOOK_SEARCH.limit,
-      100
-    ),
+    limit: parseDaybookPageSize(search.limit),
     receiptNumber: parseReceiptNumber(search.receiptNumber),
     searchBy: searchByResult.success
       ? searchByResult.data

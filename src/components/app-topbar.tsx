@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 
 const routeTitles: Record<string, string> = {
   '/daybook': 'Daybook',
+  '/incoming': 'Incoming Gate Pass',
   '/people': 'People',
   '/analytics': 'Analytics',
   '/additional': 'Additional',
@@ -50,6 +51,9 @@ function resolvePageTitle(
   }
   if (pathname.startsWith('/people/') && pathname !== '/people') {
     return personName?.trim() || 'Farmer';
+  }
+  if (pathname.startsWith('/incoming/') && pathname !== '/incoming') {
+    return 'Edit Incoming Gate Pass';
   }
   if (pathname.startsWith('/finances/ledgers/')) {
     return 'Ledger Statement';

@@ -32,6 +32,10 @@ function customMarkaSchema(requireCustomMarka: boolean) {
 
 export function createIncomingFormSchema(config: IncomingFormSchemaConfig) {
   const incomingBaseSchema = z.object({
+    gatePassNo: z
+      .number()
+      .int()
+      .positive("Gate pass number is required."),
     manualGatePassNumber: z.union([
       z.undefined(),
       z.number().positive("Enter a positive gate pass number."),

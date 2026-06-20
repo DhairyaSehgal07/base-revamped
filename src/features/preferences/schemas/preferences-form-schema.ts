@@ -3,6 +3,7 @@ import type { Preferences } from "@/features/auth/types"
 import type { UpdatePreferencesPayload } from "../types"
 
 export const REPORT_FORMAT_OPTIONS = ["default", "pdf", "excel"] as const
+export const MARKA_TYPE_OPTIONS = ["GatePass", "AccountNumber"] as const
 
 const commodityFormSchema = z.object({
   name: z.string().trim().min(1, "Commodity name is required"),
@@ -34,6 +35,9 @@ export const preferencesFormSchema = z.object({
     .min(0, "Labour cost must be 0 or greater"),
   stockFilter: stockFilterFormSchema,
   customMarka: z.boolean(),
+  markaType: z.enum(MARKA_TYPE_OPTIONS, {
+    message: "Select a marka type",
+  }),
   commodities: z.array(commodityFormSchema),
   customFields: z.array(customFieldFormSchema),
 })
@@ -82,6 +86,11 @@ export function preferencesToFormValues(
     labourCost: preferences.labourCost ?? 0,
     stockFilter: normalizeStockFilter(preferences.stockFilter),
     customMarka: preferences.customMarka ?? false,
+    markaType: MARKA_TYPE_OPTIONS.includes(
+      preferences.markaType as (typeof MARKA_TYPE_OPTIONS)[number],
+    )
+      ? (preferences.markaType as PreferencesFormValues["markaType"])
+      : "GatePass",
     commodities: preferences.commodities.map((commodity) => ({
       name: commodity.name,
       varieties:
@@ -110,6 +119,7 @@ export function formValuesToUpdatePayload(
       options: normalizeStringList(values.stockFilter.options),
     },
     customMarka: values.customMarka,
+    markaType: values.customMarka ? undefined : values.markaType,
     commodities: values.commodities.map((commodity) => ({
       name: commodity.name.trim(),
       varieties: normalizeStringList(commodity.varieties),

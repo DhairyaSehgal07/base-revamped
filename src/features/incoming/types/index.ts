@@ -11,3 +11,10 @@ export const defaultSubmitMeta: IncomingSubmitMeta = {
 }
 
 export type IncomingFormValues = z.infer<typeof incomingFormSchema>
+
+export type {
+  CreateIncomingGatePassBagSize,
+  CreateIncomingGatePassPayload,
+  CreateIncomingGatePassResponse,
+  IncomingGatePassRecord,
+} from "@/features/incoming/types/api"

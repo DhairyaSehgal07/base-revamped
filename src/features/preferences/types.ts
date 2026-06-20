@@ -11,6 +11,7 @@ export type UpdatePreferencesPayload = {
   labourCost?: number
   stockFilter?: StockFilterPreference
   customMarka?: boolean
+  markaType?: string
   customFields?: Record<string, unknown>
 }
 

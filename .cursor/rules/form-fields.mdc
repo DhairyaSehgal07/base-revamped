@@ -1,0 +1,136 @@
+---
+description: Form field UI — sizing, layout, and validation (canonical create-incoming-form)
+alwaysApply: true
+---
+
+# Form Fields
+
+**Canonical reference:** `src/features/incoming/forms/create-incoming-form.tsx`
+
+All forms, dialogs, and sheets must match this field UI — subtle default sizing, shared Field primitives, consistent spacing.
+
+---
+
+## Components
+
+Use shadcn Field primitives — not raw `<label>` + unstyled inputs:
+
+| Primitive | Use for |
+|-----------|---------|
+| `FieldSet` + `FieldLegend` + `FieldDescription` | Form sections |
+| `FieldGroup` | Vertical spacing / grids |
+| `Field` + `FieldLabel` + `FieldError` | Each control |
+| `FieldSeparator` | Between major sections |
+
+Import from `@/components/ui/field`.
+
+---
+
+## Input sizing — use defaults, do not override
+
+Use `Input`, `Textarea`, `DatePickerInput`, and `SearchableOptionCombobox` **without** height or font-size class overrides.
+
+```tsx
+// ✅ GOOD — default Input (h-9, text-base on mobile, md:text-sm)
+<Input id={field.name} placeholder="e.g. 1024 (optional)" aria-invalid={isInvalid} />
+
+// ✅ GOOD — numeric: only tabular-nums, no text-base
+<Input {...numericInputProps} className="tabular-nums" />
+
+// ✅ GOOD — textarea: min-height only
+<Textarea className="min-h-[120px] resize-y" />
+
+// ❌ BAD — oversized, inconsistent
+<Input className="h-11 text-base" />
+<Textarea className="min-h-[96px] resize-y text-base" />
+```
+
+`Input` / `Textarea` already use `text-base` on mobile and `md:text-sm` on desktop (iOS zoom-safe). Never add `h-11`, `size-11`, or redundant `text-base` on fields.
+
+---
+
+## Layout
+
+**Full-page / card forms:**
+
+```tsx
+<FieldGroup className="@container/field-group gap-6">
+  <FieldSet>
+    <FieldLegend className="font-heading text-base font-semibold">Section title</FieldLegend>
+    <FieldDescription>Section hint.</FieldDescription>
+    <FieldGroup className="mt-4 grid grid-cols-1 gap-4 @md/field-group:grid-cols-2">
+      <Field>…</Field>
+    </FieldGroup>
+  </FieldSet>
+  <FieldSeparator />
+</FieldGroup>
+```
+
+**Dialogs / compact forms:** `FieldGroup className="gap-4"` (single column unless a grid is needed).
+
+Span full width in 2-col grids: `className="@md/field-group:col-span-2"` on `Field`.
+
+---
+
+## Validation
+
+```tsx
+function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
+  return meta.isTouched && !meta.isValid
+}
+
+<Field data-invalid={isInvalid}>
+  <FieldLabel htmlFor={id}>Label</FieldLabel>
+  <Input … aria-invalid={isInvalid} />
+  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+</Field>
+```
+
+---
+
+## Numeric fields
+
+Import from `@/lib/form-utils` — do not duplicate locally:
+
+- `numericInputProps` — spread on number inputs
+- `parseOptionalNumber` — optional number onChange parsing
+- Add `className="tabular-nums"` only (never `text-base`)
+
+Use `inputMode="numeric"` / `type="tel"` for mobile numbers where appropriate.
+
+---
+
+## Combobox + inline action row
+
+```tsx
+<div className="flex gap-2">
+  <div className="min-w-0 flex-1">
+    <SearchableOptionCombobox … />
+  </div>
+  <Button
+    type="button"
+    variant="secondary"
+    className="h-auto min-h-9 shrink-0 gap-1.5 px-3"
+    aria-label="Add farmer"
+  >
+    <UserPlus className="size-4 shrink-0" />
+    <span className="hidden sm:inline">Add Farmer</span>
+  </Button>
+</div>
+```
+
+---
+
+## Footer / dialog actions
+
+Use default `Button` sizes (`default` / `sm`). Do not force `h-11` on Cancel, Save, or submit buttons.
+
+---
+
+## Checklist
+
+- [ ] No `h-11` / `text-base` overrides on `Input` or `Textarea`
+- [ ] `FieldLabel` + `FieldError` + `data-invalid` / `aria-invalid` wired
+- [ ] Section legends use `font-heading text-base font-semibold`
+- [ ] Field grid uses `gap-4`; dialog forms use `FieldGroup gap-4`
+- [ ] Numeric helpers from `@/lib/form-utils`

@@ -23,6 +23,15 @@ export function getCommodityByName(
   return commodities.find((commodity) => commodity.name === name)
 }
 
+export function findCommodityByVariety(
+  commodities: CommodityPreference[],
+  variety: string
+): CommodityPreference | undefined {
+  return commodities.find((commodity) =>
+    commodity.varieties.includes(variety)
+  )
+}
+
 export function shouldShowCommoditySelect(
   commodities: CommodityPreference[]
 ): boolean {
@@ -43,6 +52,37 @@ export function getBagSizesForCommodity(
   commodity: CommodityPreference | undefined
 ): string[] {
   return commodity?.sizes ?? []
+}
+
+export function sortByPreferenceOrder<T extends { name: string }>(
+  items: T[],
+  sizeOrder: string[]
+): T[] {
+  if (sizeOrder.length === 0) return items
+
+  const orderIndex = new Map(sizeOrder.map((size, index) => [size, index]))
+
+  return [...items].sort((a, b) => {
+    const aIndex = orderIndex.get(a.name)
+    const bIndex = orderIndex.get(b.name)
+
+    if (aIndex === undefined && bIndex === undefined) return 0
+    if (aIndex === undefined) return 1
+    if (bIndex === undefined) return -1
+    return aIndex - bIndex
+  })
+}
+
+export function getBagSizeOrderForVariety(
+  commodities: CommodityPreference[],
+  variety: string
+): string[] {
+  const commodity = findCommodityByVariety(commodities, variety)
+  if (commodity) return commodity.sizes
+
+  if (commodities.length === 1) return commodities[0].sizes
+
+  return []
 }
 
 export function createQuantitiesForSizes(sizes: string[]) {

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react"
 import {
   Loader2,
-  Plus,
   RefreshCw,
   Search,
+  UserPlus,
   Users,
 } from "lucide-react"
 
@@ -124,7 +124,8 @@ const PeoplePage = () => {
 
           <Input
             placeholder="Search by name"
-            className="h-11 w-full pl-10 text-base"
+            className="w-full pl-10"
+            inputMode="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -149,11 +150,14 @@ const PeoplePage = () => {
 
           <div className="sm:shrink-0">
             <Button
-              className="w-full min-w-0 px-2.5 sm:w-auto sm:px-3"
+              type="button"
+              variant="secondary"
+              className="h-auto min-h-9 w-full shrink-0 gap-1.5 px-3 sm:w-auto"
               onClick={() => setAddFarmerOpen(true)}
+              aria-label="Add farmer"
             >
-              <Plus className="h-4 w-4 shrink-0 sm:mr-2" />
-              <span className="truncate">Add Farmer</span>
+              <UserPlus className="size-4 shrink-0" />
+              <span className="hidden sm:inline">Add Farmer</span>
             </Button>
           </div>
         </div>

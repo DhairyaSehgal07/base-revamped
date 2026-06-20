@@ -7,12 +7,12 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react"
-import type { MouseEvent } from "react"
 import { useMemo } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { Route } from "@/routes/_authenticated/daybook"
 
 import { Button } from "@/components/ui/button"
+import { ListPaginationFooter } from "@/components/list-pagination-footer"
 import {
   Item,
   ItemActions,
@@ -32,14 +32,6 @@ import {
 } from "@/components/ui/select"
 
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -54,6 +46,7 @@ import { DaybookPageSkeleton } from "./components/daybook-page-skeleton"
 import { useDaybookSearchInput } from "./hooks/use-daybook-search-input"
 import {
   buildSearchEntries,
+  DAYBOOK_PAGE_SIZE_OPTIONS,
   DAYBOOK_SEARCH_BY_OPTIONS,
   getSearchPlaceholder,
   type DaybookSearchBy,
@@ -118,8 +111,7 @@ const DaybookPage = () => {
     })
   }
 
-  const handlePrevPage = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
+  const handlePrevPage = () => {
     if (isOnFirstPage || isFetching) return
 
     updateSearch({
@@ -127,8 +119,7 @@ const DaybookPage = () => {
     })
   }
 
-  const handleNextPage = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
+  const handleNextPage = () => {
     if (isOnLastPage || isFetching) return
 
     updateSearch({
@@ -136,12 +127,30 @@ const DaybookPage = () => {
     })
   }
 
+  const handleGoToPage = (page: number) => {
+    if (isFetching || page === currentPage) return
+    updateSearch({ page })
+  }
+
+  const rangeStart =
+    pagination.totalItems === 0
+      ? 0
+      : Math.min((currentPage - 1) * search.limit + 1, pagination.totalItems)
+  const rangeEnd =
+    pagination.totalItems === 0
+      ? 0
+      : Math.min(currentPage * search.limit, pagination.totalItems)
+
   const handleTypeChange = (type: DaybookType) => {
     updateSearch({ type, page: 1 })
   }
 
   const handleSortChange = (sortBy: DaybookSortBy) => {
     updateSearch({ sortBy, page: 1 })
+  }
+
+  const handlePageSizeChange = (limit: number) => {
+    updateSearch({ limit, page: 1 })
   }
 
   const handleSearchByChange = (searchBy: DaybookSearchBy) => {
@@ -381,53 +390,24 @@ const DaybookPage = () => {
         )}
 
       {!isSearchActive ? (
-        <Item
-          variant="outline"
-          size="sm"
-          className="rounded-xl px-4 py-3 sm:px-5 sm:py-4"
-        >
-          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-              {pagination.itemsPerPage} items per page
-            </div>
-
-            <Pagination className="mx-0 w-full sm:w-auto sm:justify-end">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={handlePrevPage}
-                    aria-disabled={isOnFirstPage || isFetching}
-                    className={
-                      isOnFirstPage || isFetching
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-
-                <PaginationItem>
-                  <span className="text-sm font-medium">
-                    {currentPage} / {totalPages}
-                  </span>
-                </PaginationItem>
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={handleNextPage}
-                    aria-disabled={isOnLastPage || isFetching}
-                    className={
-                      isOnLastPage || isFetching
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        </Item>
+        <ListPaginationFooter
+          attached={false}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          totalItems={pagination.totalItems}
+          itemLabel="gate passes"
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={search.limit}
+          pageSizeOptions={DAYBOOK_PAGE_SIZE_OPTIONS}
+          onPageSizeChange={handlePageSizeChange}
+          onPreviousPage={handlePrevPage}
+          onNextPage={handleNextPage}
+          onGoToPage={handleGoToPage}
+          isPreviousDisabled={isOnFirstPage || isFetching}
+          isNextDisabled={isOnLastPage || isFetching}
+          isPageSizeDisabled={isFetching}
+        />
       ) : null}
     </main>
   )

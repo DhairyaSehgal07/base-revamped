@@ -11,52 +11,136 @@ import {
   BagSizeSelectField,
   FixedBagSizeLabel,
 } from "@/components/bag-quantity-size-field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import type { CreateIncomingFormApi } from "@/features/incoming/forms/use-create-incoming-form"
+import type { IncomingFormApi } from "@/features/incoming/forms/use-incoming-form"
+import { useCompleteLocationOrder } from "@/features/incoming/forms/use-complete-location-order"
 import {
+  applyIncomingQuantityLocationToAll,
   createDefaultIncomingQuantities,
   createEmptyIncomingQuantityRow,
+  incomingQuantityRowSchema,
+  type IncomingQuantityRow,
 } from "@/features/incoming/schemas/incoming-quantities-schema"
-import {
-  BAG_TYPES,
-  DEFAULT_CHAMBER,
-  DEFAULT_FLOOR,
-  DEFAULT_STORAGE_ROW,
-} from "@/lib/constants"
-import { Plus, Trash2 } from "lucide-react"
+import type { FarmerStorageLink } from "@/features/people/types"
+import { formatInr } from "@/features/finances/shared/format-currency"
+import { numericInputProps, parseOptionalNumber } from "@/lib/form-utils"
+import { Copy, Plus, Trash2 } from "lucide-react"
+import * as z from "zod"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
 }
 
-function parseOptionalNonNegativeNumber(value: string): number | undefined {
-  if (value === "") return undefined
-  const parsed = Number(value)
-  return Number.isNaN(parsed) ? undefined : parsed
+function normalizeUppercase(value: string): string {
+  return value.toUpperCase()
 }
 
-const numericInputProps = {
-  type: "number" as const,
-  min: 0,
-  onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur(),
-}
+const compactInputClass =
+  "h-8 px-1.5 text-xs placeholder:text-xs sm:h-9 sm:px-3 sm:text-sm sm:placeholder:text-sm"
+
+const locationInputClass = `${compactInputClass} text-center uppercase`
 
 type IncomingQuantitiesSectionProps = {
-  form: CreateIncomingFormApi
+  form: IncomingFormApi
   bagSizes: string[]
+  farmerStorageLinks: FarmerStorageLink[]
+}
+
+type QuantitiesBulkActionsProps = {
+  form: IncomingFormApi
+  quantities: IncomingQuantityRow[]
+  bagSizes: string[]
+  onAddRow: () => void
+}
+
+function QuantitiesBulkActionsContent({
+  form,
+  quantities,
+  bagSizes,
+  onAddRow,
+}: QuantitiesBulkActionsProps) {
+  const { sourceRow, canApplyToAll, resetCompletionOrder } =
+    useCompleteLocationOrder(quantities)
+
+  return (
+    <div className="flex flex-wrap gap-3 border-t border-border px-2 py-3 sm:px-3">
+      <Button type="button" variant="outline" onClick={onAddRow}>
+        <Plus className="mr-2 size-4" aria-hidden />
+        Add more
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={!canApplyToAll}
+        title={
+          canApplyToAll
+            ? undefined
+            : "Enter chamber, floor, and row in one line to enable"
+        }
+        onClick={() => {
+          if (!sourceRow) return
+          form.setFieldValue(
+            "quantities",
+            applyIncomingQuantityLocationToAll(quantities, {
+              chamber: sourceRow.chamber,
+              floor: sourceRow.floor,
+              row: sourceRow.row,
+            })
+          )
+        }}
+      >
+        <Copy className="mr-2 size-4" aria-hidden />
+        Apply to all
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          resetCompletionOrder()
+          form.setFieldValue(
+            "quantities",
+            createDefaultIncomingQuantities(bagSizes)
+          )
+        }}
+      >
+        Clear quantities
+      </Button>
+    </div>
+  )
+}
+
+function QuantitiesBulkActions({
+  form,
+  bagSizes,
+  onAddRow,
+}: Omit<QuantitiesBulkActionsProps, "quantities">) {
+  return (
+    <form.Subscribe selector={(state) => state.values.quantities}>
+      {(quantities) => (
+        <QuantitiesBulkActionsContent
+          form={form}
+          quantities={quantities}
+          bagSizes={bagSizes}
+          onAddRow={onAddRow}
+        />
+      )}
+    </form.Subscribe>
+  )
 }
 
 export function IncomingQuantitiesSection({
   form,
   bagSizes,
+  farmerStorageLinks,
 }: IncomingQuantitiesSectionProps) {
+  const allowedSizeSchema = z
+    .string()
+    .refine((value) => value !== "", "Select a bag size.")
+    .refine(
+      (value) => bagSizes.length === 0 || bagSizes.includes(value),
+      "Select a valid bag size."
+    )
+
   return (
     <FieldSet>
       <FieldLegend className="font-heading text-base font-semibold">
@@ -64,31 +148,31 @@ export function IncomingQuantitiesSection({
       </FieldLegend>
       <FieldDescription>
         Enter bag counts by size and assign chamber, floor, and row for each
-        line. Use Add more for another row with the same size but different bag
-        type or location. Rows with zero or empty quantity are ignored on submit.
+        line. Use Add more for another row with the same size but a different
+        location. Use Apply to all to copy the first completed location to
+        every row. Rows with zero or empty quantity are ignored on submit.
       </FieldDescription>
 
-      <div className="mt-5 rounded-lg border border-border">
-        <div className="hidden border-b border-border bg-muted/50 px-3 py-2.5 lg:grid lg:grid-cols-12 lg:gap-2">
-          <div className="col-span-2 text-sm font-medium text-muted-foreground">
+      <div className="mt-5 overflow-x-auto rounded-lg border border-border">
+        <div className="grid grid-cols-12 gap-1 border-b border-border bg-muted/50 px-2 py-2 sm:gap-2 sm:px-3 sm:py-2.5">
+          <div className="col-span-3 text-xs font-medium text-muted-foreground sm:text-sm">
             Size
           </div>
-          <div className="col-span-1 text-sm font-medium text-muted-foreground">
+          <div className="col-span-3 text-xs font-medium text-muted-foreground sm:text-sm">
             Qty
           </div>
-          <div className="col-span-2 text-sm font-medium text-muted-foreground">
-            Bag type
+          <div className="col-span-2 text-center text-xs font-medium text-muted-foreground sm:text-left sm:text-sm">
+            <span className="sm:hidden">Ch</span>
+            <span className="hidden sm:inline">Chamber</span>
           </div>
-          <div className="col-span-2 text-sm font-medium text-muted-foreground">
-            Chamber
+          <div className="col-span-2 text-center text-xs font-medium text-muted-foreground sm:text-left sm:text-sm">
+            <span className="sm:hidden">Fl</span>
+            <span className="hidden sm:inline">Floor</span>
           </div>
-          <div className="col-span-2 text-sm font-medium text-muted-foreground">
-            Floor
+          <div className="col-span-2 text-center text-xs font-medium text-muted-foreground sm:text-left sm:text-sm">
+            <span className="sm:hidden">R</span>
+            <span className="hidden sm:inline">Row</span>
           </div>
-          <div className="col-span-2 text-sm font-medium text-muted-foreground">
-            Row
-          </div>
-          <div className="col-span-1" aria-hidden />
         </div>
 
         <form.Field name="quantities" mode="array">
@@ -97,12 +181,15 @@ export function IncomingQuantitiesSection({
               <div className="divide-y divide-border">
                 {field.state.value.map((row, index) => (
                   <div
-                    key={index}
-                    className="grid grid-cols-1 gap-3 px-3 py-3 lg:grid-cols-12 lg:items-start lg:gap-2 lg:py-2.5"
+                    key={row.id}
+                    className="grid grid-cols-12 items-start gap-1 px-2 py-2 sm:gap-2 sm:px-3 sm:py-2.5"
                   >
-                    <div className="lg:col-span-2">
+                    <div className="col-span-3 min-w-0">
                       {row.isExtra ? (
-                        <form.Field name={`quantities[${index}].size`}>
+                        <form.Field
+                          name={`quantities[${index}].size`}
+                          validators={{ onChange: allowedSizeSchema }}
+                        >
                           {(subField) => (
                             <BagSizeSelectField
                               id={subField.name}
@@ -110,7 +197,8 @@ export function IncomingQuantitiesSection({
                               value={subField.state.value}
                               rowIndex={index}
                               sizes={bagSizes}
-                              labelClassName="lg:sr-only"
+                              labelClassName="sr-only"
+                              triggerClassName="h-8 px-1.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                               isInvalid={isFieldInvalid(subField.state.meta)}
                               errors={subField.state.meta.errors}
                               onBlur={subField.handleBlur}
@@ -123,8 +211,13 @@ export function IncomingQuantitiesSection({
                       )}
                     </div>
 
-                    <div className="lg:col-span-1">
-                      <form.Field name={`quantities[${index}].qty`}>
+                    <div className="col-span-3">
+                      <form.Field
+                        name={`quantities[${index}].qty`}
+                        validators={{
+                          onChange: incomingQuantityRowSchema.shape.qty,
+                        }}
+                      >
                         {(subField) => {
                           const isInvalid = isFieldInvalid(subField.state.meta)
                           const sizeLabel = row.size || `row ${index + 1}`
@@ -132,7 +225,7 @@ export function IncomingQuantitiesSection({
                             <Field data-invalid={isInvalid}>
                               <FieldLabel
                                 htmlFor={subField.name}
-                                className="lg:sr-only"
+                                className="sr-only"
                               >
                                 Qty ({sizeLabel})
                               </FieldLabel>
@@ -146,13 +239,11 @@ export function IncomingQuantitiesSection({
                                 onBlur={subField.handleBlur}
                                 onChange={(e) =>
                                   subField.handleChange(
-                                    parseOptionalNonNegativeNumber(
-                                      e.target.value
-                                    )
+                                    parseOptionalNumber(e.target.value)
                                   )
                                 }
                                 aria-invalid={isInvalid}
-                                className="tabular-nums"
+                                className={`${compactInputClass} tabular-nums`}
                               />
                               {isInvalid && (
                                 <FieldError errors={subField.state.meta.errors} />
@@ -163,54 +254,13 @@ export function IncomingQuantitiesSection({
                       </form.Field>
                     </div>
 
-                    <div className="lg:col-span-2">
-                      <form.Field name={`quantities[${index}].bagType`}>
-                        {(subField) => {
-                          const isInvalid = isFieldInvalid(subField.state.meta)
-                          const sizeLabel = row.size || `row ${index + 1}`
-                          return (
-                            <Field data-invalid={isInvalid}>
-                              <FieldLabel
-                                htmlFor={subField.name}
-                                className="lg:sr-only"
-                              >
-                                Bag type ({sizeLabel})
-                              </FieldLabel>
-                              <Select
-                                value={subField.state.value}
-                                onValueChange={(value) =>
-                                  subField.handleChange(
-                                    value as (typeof BAG_TYPES)[number]
-                                  )
-                                }
-                              >
-                                <SelectTrigger
-                                  id={subField.name}
-                                  className="w-full"
-                                  onBlur={subField.handleBlur}
-                                  aria-invalid={isInvalid}
-                                >
-                                  <SelectValue placeholder="Bag type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {BAG_TYPES.map((bagType) => (
-                                    <SelectItem key={bagType} value={bagType}>
-                                      {bagType}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              {isInvalid && (
-                                <FieldError errors={subField.state.meta.errors} />
-                              )}
-                            </Field>
-                          )
+                    <div className="col-span-2">
+                      <form.Field
+                        name={`quantities[${index}].chamber`}
+                        validators={{
+                          onChange: incomingQuantityRowSchema.shape.chamber,
                         }}
-                      </form.Field>
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <form.Field name={`quantities[${index}].chamber`}>
+                      >
                         {(subField) => {
                           const isInvalid = isFieldInvalid(subField.state.meta)
                           const sizeLabel = row.size || `row ${index + 1}`
@@ -218,7 +268,7 @@ export function IncomingQuantitiesSection({
                             <Field data-invalid={isInvalid}>
                               <FieldLabel
                                 htmlFor={subField.name}
-                                className="lg:sr-only"
+                                className="sr-only"
                               >
                                 Chamber ({sizeLabel})
                               </FieldLabel>
@@ -228,11 +278,14 @@ export function IncomingQuantitiesSection({
                                 value={subField.state.value}
                                 onBlur={subField.handleBlur}
                                 onChange={(e) =>
-                                  subField.handleChange(e.target.value)
+                                  subField.handleChange(
+                                    normalizeUppercase(e.target.value)
+                                  )
                                 }
                                 aria-invalid={isInvalid}
-                                placeholder={`e.g. ${DEFAULT_CHAMBER}`}
+                                placeholder="Ch"
                                 autoComplete="off"
+                                className={locationInputClass}
                               />
                               {isInvalid && (
                                 <FieldError errors={subField.state.meta.errors} />
@@ -243,8 +296,13 @@ export function IncomingQuantitiesSection({
                       </form.Field>
                     </div>
 
-                    <div className="lg:col-span-2">
-                      <form.Field name={`quantities[${index}].floor`}>
+                    <div className="col-span-2">
+                      <form.Field
+                        name={`quantities[${index}].floor`}
+                        validators={{
+                          onChange: incomingQuantityRowSchema.shape.floor,
+                        }}
+                      >
                         {(subField) => {
                           const isInvalid = isFieldInvalid(subField.state.meta)
                           const sizeLabel = row.size || `row ${index + 1}`
@@ -252,7 +310,7 @@ export function IncomingQuantitiesSection({
                             <Field data-invalid={isInvalid}>
                               <FieldLabel
                                 htmlFor={subField.name}
-                                className="lg:sr-only"
+                                className="sr-only"
                               >
                                 Floor ({sizeLabel})
                               </FieldLabel>
@@ -262,11 +320,14 @@ export function IncomingQuantitiesSection({
                                 value={subField.state.value}
                                 onBlur={subField.handleBlur}
                                 onChange={(e) =>
-                                  subField.handleChange(e.target.value)
+                                  subField.handleChange(
+                                    normalizeUppercase(e.target.value)
+                                  )
                                 }
                                 aria-invalid={isInvalid}
-                                placeholder={`e.g. ${DEFAULT_FLOOR}`}
+                                placeholder="Fl"
                                 autoComplete="off"
+                                className={locationInputClass}
                               />
                               {isInvalid && (
                                 <FieldError errors={subField.state.meta.errors} />
@@ -277,122 +338,134 @@ export function IncomingQuantitiesSection({
                       </form.Field>
                     </div>
 
-                    <div className="flex gap-2 lg:col-span-2 lg:gap-0">
-                      <div className="min-w-0 flex-1">
-                        <form.Field name={`quantities[${index}].row`}>
-                          {(subField) => {
-                            const isInvalid = isFieldInvalid(
-                              subField.state.meta
-                            )
-                            const sizeLabel = row.size || `row ${index + 1}`
-                            return (
-                              <Field data-invalid={isInvalid}>
-                                <FieldLabel
-                                  htmlFor={subField.name}
-                                  className="lg:sr-only"
-                                >
-                                  Row ({sizeLabel})
-                                </FieldLabel>
+                    <div className="col-span-2">
+                      <form.Field
+                        name={`quantities[${index}].row`}
+                        validators={{
+                          onChange: incomingQuantityRowSchema.shape.row,
+                        }}
+                      >
+                        {(subField) => {
+                          const isInvalid = isFieldInvalid(subField.state.meta)
+                          const sizeLabel = row.size || `row ${index + 1}`
+                          return (
+                            <Field data-invalid={isInvalid}>
+                              <FieldLabel
+                                htmlFor={subField.name}
+                                className="sr-only"
+                              >
+                                Row ({sizeLabel})
+                              </FieldLabel>
+                              <div
+                                className={
+                                  row.isExtra ? "flex items-start gap-1" : undefined
+                                }
+                              >
                                 <Input
                                   id={subField.name}
                                   name={subField.name}
                                   value={subField.state.value}
                                   onBlur={subField.handleBlur}
                                   onChange={(e) =>
-                                    subField.handleChange(e.target.value)
+                                    subField.handleChange(
+                                      normalizeUppercase(e.target.value)
+                                    )
                                   }
                                   aria-invalid={isInvalid}
-                                  placeholder={`e.g. ${DEFAULT_STORAGE_ROW}`}
+                                  placeholder="R"
                                   autoComplete="off"
+                                  className={
+                                    row.isExtra
+                                      ? `${locationInputClass} min-w-0 flex-1`
+                                      : locationInputClass
+                                  }
                                 />
-                                {isInvalid && (
-                                  <FieldError
-                                    errors={subField.state.meta.errors}
-                                  />
-                                )}
-                              </Field>
-                            )
-                          }}
-                        </form.Field>
-                      </div>
-
-                      {row.isExtra && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-11 shrink-0 lg:hidden"
-                          aria-label={`Remove row ${index + 1}`}
-                          onClick={() => field.removeValue(index)}
-                        >
-                          <Trash2 className="size-4" aria-hidden />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="hidden justify-end lg:col-span-1 lg:flex">
-                      {row.isExtra ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="size-10"
-                          aria-label={`Remove row ${index + 1}`}
-                          onClick={() => field.removeValue(index)}
-                        >
-                          <Trash2 className="size-4" aria-hidden />
-                        </Button>
-                      ) : null}
+                                {row.isExtra ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="size-8 shrink-0 sm:size-9"
+                                    aria-label={`Remove row ${index + 1}`}
+                                    onClick={() => field.removeValue(index)}
+                                  >
+                                    <Trash2
+                                      className="size-3.5 sm:size-4"
+                                      aria-hidden
+                                    />
+                                  </Button>
+                                ) : null}
+                              </div>
+                              {isInvalid && (
+                                <FieldError
+                                  errors={subField.state.meta.errors}
+                                />
+                              )}
+                            </Field>
+                          )
+                        }}
+                      </form.Field>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="flex flex-wrap gap-3 border-t border-border px-3 py-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11"
-                  onClick={() => field.pushValue(createEmptyIncomingQuantityRow())}
-                >
-                  <Plus className="mr-2 size-4" aria-hidden />
-                  Add more
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11"
-                  onClick={() =>
-                    form.setFieldValue(
-                      "quantities",
-                      createDefaultIncomingQuantities(bagSizes)
-                    )
-                  }
-                >
-                  Clear quantities
-                </Button>
-              </div>
+              <QuantitiesBulkActions
+                form={form}
+                bagSizes={bagSizes}
+                onAddRow={() =>
+                  field.pushValue(createEmptyIncomingQuantityRow())
+                }
+              />
             </>
           )}
         </form.Field>
       </div>
 
       <form.Subscribe
-        selector={(state) => state.values.quantities}
-        children={(quantities) => {
+        selector={(state) => ({
+          quantities: state.values.quantities,
+          farmerIncomingLinkId: state.values.farmerIncomingLinkId,
+        })}
+        children={({ quantities, farmerIncomingLinkId }) => {
           const totalBags = quantities.reduce(
             (sum, row) => sum + (row.qty ?? 0),
             0
           )
+          const selectedFarmer = farmerStorageLinks.find(
+            (link) => link._id === farmerIncomingLinkId
+          )
+          const costPerBag = selectedFarmer?.costPerBag
+          const showTotalRent =
+            Boolean(farmerIncomingLinkId) && typeof costPerBag === "number"
+          const totalRent = showTotalRent ? totalBags * costPerBag : 0
 
           return (
-            <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 sm:px-6 sm:py-4">
-              <span className="text-sm font-semibold text-foreground">
-                Total bags
-              </span>
-              <span className="font-heading text-xl font-semibold tabular-nums text-foreground">
-                {totalBags.toLocaleString("en-IN")}
-              </span>
+            <div className="mt-4 divide-y divide-border rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+                <span className="text-sm font-semibold text-foreground">
+                  Total bags
+                </span>
+                <span className="font-heading text-xl font-semibold tabular-nums text-foreground">
+                  {totalBags.toLocaleString("en-IN")}
+                </span>
+              </div>
+              {showTotalRent ? (
+                <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6 sm:py-4">
+                  <span className="text-sm font-semibold text-foreground">
+                    Total rent
+                  </span>
+                  <div className="shrink-0 text-right">
+                    <span className="block font-heading text-xl font-semibold tabular-nums text-foreground">
+                      {formatInr(totalRent)}
+                    </span>
+                    <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
+                      ({totalBags.toLocaleString("en-IN")} ×{" "}
+                      {formatInr(costPerBag)})
+                    </span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )
         }}

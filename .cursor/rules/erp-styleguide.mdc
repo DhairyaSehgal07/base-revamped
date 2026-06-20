@@ -103,13 +103,14 @@ Authenticated shell: `SidebarProvider` → `AppSidebar` + `SidebarInset` → `Ap
 
 ## 5. Forms & data entry
 
-Follow patterns from `login-form.tsx`:
+**Canonical reference:** `src/features/incoming/forms/create-incoming-form.tsx` and `.cursor/rules/form-fields.mdc`.
 
-- Inputs: **`h-11 text-base`** on mobile-critical forms; default shadcn `Input` on dense desktop tables.
-- Touch targets: minimum **44×44px** — use `h-11`, `size-10`/`size-11` icon buttons, adequate `gap` between fields.
+- **Inputs:** use default `Input` / `Textarea` sizing — **do not** add `h-11` or `text-base` class overrides. Components already handle mobile font size (`text-base` → `md:text-sm`).
+- **Field layout:** `FieldSet` → `FieldLegend` (`font-heading text-base font-semibold`) → `FieldGroup` with `gap-4` grid inside sections; `gap-6` between sections on full-page forms, `gap-4` in dialogs.
+- **Validation:** `Field` + `FieldLabel` + `FieldError`; `data-invalid` on `Field`, `aria-invalid` on control; `isFieldInvalid = isTouched && !isValid`.
+- **Numeric fields:** `numericInputProps` and `parseOptionalNumber` from `@/lib/form-utils`; add `tabular-nums` only.
+- **Combobox rows:** `flex gap-2`, combobox in `min-w-0 flex-1`, secondary action button `h-auto min-h-9 gap-1.5 px-3`.
 - `inputMode` / `type`: `tel` + `inputMode="numeric"` for mobile numbers; `decimal` for weights/rates.
-- Labels: `FieldLabel` + `FieldDescription` + `FieldError`; errors must be readable (`text-destructive text-sm`).
-- Primary submit: full width on mobile (`w-full h-11`), inline on desktop when appropriate.
 - **Keyboard:** logical tab order; Enter submits single-purpose forms; don’t trap focus in modals without escape.
 
 ---
@@ -175,7 +176,7 @@ Breakpoint: **`md` (768px)** — matches `useIsMobile()` / sidebar behavior.
 - Icons: `lucide-react`, default `size-4`; `size-3.5` only in compact table rows.
 - One **primary** button per view; destructive actions require confirmation.
 - Icon-only controls: `aria-label` required (see `ThemeToggle` in `app-topbar.tsx`).
-- Button sizes: `default` / `sm` in toolbars; `h-11` for main mobile CTAs.
+- Button sizes: `default` / `sm` in toolbars and form footers; icon-only controls need `aria-label`.
 
 ---
 
@@ -200,7 +201,8 @@ Breakpoint: **`md` (768px)** — matches `useIsMobile()` / sidebar behavior.
 ## 11. Checklist before shipping UI
 
 - [ ] All amounts use `tabular-nums` and correct alignment
-- [ ] No critical text below 14px; inputs ≥ 16px on mobile forms
+- [ ] Form fields use default Input/Textarea sizing (no `h-11` / `text-base` overrides)
+- [ ] No critical text below 14px; inputs use component defaults for mobile zoom
 - [ ] Semantic colors + text/icon for status
 - [ ] Table/list works at 375px with scroll or card fallback
 - [ ] Touch targets ≥ 44px where tapped frequently

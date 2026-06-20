@@ -135,7 +135,7 @@ export function AddVoucherDialog({
             void form.handleSubmit()
           }}
         >
-          <FieldGroup className="gap-6">
+          <FieldGroup className="gap-4">
             <form.Field name="date">
               {(field) => {
                 const isInvalid = isFieldInvalid(field.state.meta)
@@ -256,7 +256,7 @@ export function AddVoucherDialog({
                       }
                       aria-invalid={isInvalid}
                       placeholder="0.00"
-                      className="text-base tabular-nums"
+                      className="tabular-nums"
                       {...numericInputProps}
                     />
                     {isInvalid && (
@@ -286,7 +286,7 @@ export function AddVoucherDialog({
                       }
                       aria-invalid={isInvalid}
                       placeholder="Describe the transaction"
-                      className="min-h-[96px] resize-y text-base"
+                      className="min-h-[96px] resize-y"
                     />
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />

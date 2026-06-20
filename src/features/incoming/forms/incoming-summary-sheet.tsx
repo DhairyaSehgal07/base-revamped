@@ -22,6 +22,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import type { IncomingFormValues } from "@/features/incoming/types"
+import { formatInr } from "@/features/finances/shared/format-currency"
 import { cn } from "@/lib/utils"
 
 export type IncomingSummaryValues = IncomingFormValues
@@ -31,11 +32,13 @@ type IncomingSummarySheetProps = {
   onOpenChange: (open: boolean) => void
   values: IncomingSummaryValues | null
   farmerLabel: string
+  costPerBag?: number
   showCommodity?: boolean
   onBack: () => void
   onSubmit: () => void
   canSubmit: boolean
   isSubmitting: boolean
+  submitLabel?: string
 }
 
 function formatReviewDate(iso: string) {
@@ -129,45 +132,84 @@ function formatLocationCell(value: string) {
 function IncomingReviewSummary({
   values,
   farmerLabel,
+  costPerBag,
   showCommodity = false,
 }: {
   values: IncomingSummaryValues
   farmerLabel: string
+  costPerBag?: number
   showCommodity?: boolean
 }) {
   const rows = activeQuantityRows(values.quantities)
   const totalBags = rows.reduce((sum, row) => sum + (row.qty ?? 0), 0)
+  const showTotalRent = typeof costPerBag === "number"
+  const totalRent = showTotalRent ? totalBags * costPerBag : 0
+
+  const hasPassMeta =
+    values.gatePassNo > 0 ||
+    values.manualGatePassNumber != null ||
+    Boolean(values.stockFilter)
 
   return (
     <div className="space-y-7">
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/30 px-4 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
-            <Package2 className="size-4" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight">
-              {values.variety}
-            </p>
-            <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-              <Calendar className="size-3 shrink-0" />
-              {formatReviewDate(values.date)}
-            </p>
+      <div className="overflow-hidden rounded-xl border border-border/50 bg-linear-to-br from-primary/[0.07] via-card to-muted/25 shadow-sm">
+        <div className="flex flex-col gap-3.5 p-4">
+          <div className="flex items-start gap-3.5">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15 ring-inset">
+              <Package2 className="size-5" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1 space-y-1">
+              <h3
+                className="font-heading truncate text-base font-semibold tracking-tight text-foreground"
+                title={values.variety}
+              >
+                {values.variety}
+              </h3>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="size-3.5 shrink-0 opacity-70" aria-hidden />
+                <span>{formatReviewDate(values.date)}</span>
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {values.manualGatePassNumber != null && (
-            <Badge
-              variant="outline"
-              className="h-5 px-1.5 font-mono text-[10px]"
-            >
-              #{values.manualGatePassNumber}
-            </Badge>
-          )}
-          {values.stockFilter ? (
-            <Badge variant="secondary" className="h-5 px-2 text-[11px]">
-              {values.stockFilter}
-            </Badge>
+
+          {hasPassMeta ? (
+            <div className="flex flex-wrap items-center gap-2 border-t border-border/35 pt-3.5">
+              {values.gatePassNo > 0 ? (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 border-primary/30 bg-primary/5 px-2.5 font-normal"
+                >
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-primary"
+                    aria-hidden
+                  />
+                  <span className="text-foreground/80">IGP</span>
+                  <span className="font-mono font-semibold tabular-nums text-primary">
+                    #{values.gatePassNo.toLocaleString("en-IN")}
+                  </span>
+                </Badge>
+              ) : null}
+              {values.manualGatePassNumber != null && (
+                <Badge
+                  variant="outline"
+                  className="gap-1 bg-background/80 px-2.5 font-normal"
+                >
+                  <span className="text-muted-foreground">Manual</span>
+                  <span className="font-mono tabular-nums text-foreground">
+                    #{values.manualGatePassNumber.toLocaleString("en-IN")}
+                  </span>
+                </Badge>
+              )}
+              {values.stockFilter ? (
+                <Badge
+                  variant="secondary"
+                  className="max-w-full truncate bg-background/60 px-2.5 font-normal"
+                  title={values.stockFilter}
+                >
+                  {values.stockFilter}
+                </Badge>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
@@ -218,9 +260,6 @@ function IncomingReviewSummary({
                     Qty
                   </th>
                   <th className="h-10 px-3 font-medium text-muted-foreground">
-                    Bag type
-                  </th>
-                  <th className="h-10 px-3 font-medium text-muted-foreground">
                     Chamber
                   </th>
                   <th className="h-10 px-3 font-medium text-muted-foreground">
@@ -240,9 +279,6 @@ function IncomingReviewSummary({
                     <td className="px-3 py-2.5 font-medium">{row.size}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {(row.qty ?? 0).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">
-                      {row.bagType}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
                       {formatLocationCell(row.chamber)}
@@ -273,6 +309,22 @@ function IncomingReviewSummary({
             icon={Warehouse}
             valueClassName="font-semibold tabular-nums"
           />
+          {showTotalRent ? (
+            <DetailRow
+              label="Total rent"
+              value={
+                <>
+                  <span className="block font-semibold tabular-nums">
+                    {formatInr(totalRent)}
+                  </span>
+                  <span className="mt-0.5 block text-xs font-normal tabular-nums text-muted-foreground">
+                    ({totalBags.toLocaleString("en-IN")} × {formatInr(costPerBag)})
+                  </span>
+                </>
+              }
+              icon={Scale}
+            />
+          ) : null}
         </SummaryCard>
       </div>
 
@@ -295,11 +347,13 @@ export function IncomingSummarySheet({
   onOpenChange,
   values,
   farmerLabel,
+  costPerBag,
   showCommodity = false,
   onBack,
   onSubmit,
   canSubmit,
   isSubmitting,
+  submitLabel = "Confirm & submit",
 }: IncomingSummarySheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -328,6 +382,7 @@ export function IncomingSummarySheet({
             <IncomingReviewSummary
               values={values}
               farmerLabel={farmerLabel}
+              costPerBag={costPerBag}
               showCommodity={showCommodity}
             />
           ) : (
@@ -364,7 +419,7 @@ export function IncomingSummarySheet({
             ) : (
               <>
                 <CheckCircle2 className="size-3.5" />
-                Confirm &amp; submit
+                {submitLabel}
               </>
             )}
           </Button>

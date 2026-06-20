@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
 import {
   Card,
   CardContent,
@@ -25,14 +26,20 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import type { IncomingDaybookEntry } from "@/features/daybook/types"
 import {
   formatDaybookDateTime,
+  formatIncomingLotNo,
   formatLocation,
   formatManualParchi,
   formatQuantity,
   sumBagQuantities,
 } from "@/features/daybook/utils/format"
+import {
+  getBagSizeOrderForVariety,
+  sortByPreferenceOrder,
+} from "@/features/incoming/utils/incoming-preferences"
 
 interface InfoBlockProps {
   label: string
@@ -63,14 +70,21 @@ interface IncomingGatePassCardProps {
 }
 
 export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
+  const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(false)
+  const preferences = usePreferencesStore((state) => state.preferences)
 
-  const farmer = entry.farmerStorageLinkId.farmerId
-  const accountNumber = entry.farmerStorageLinkId.accountNumber
-  const bagSizes = entry.bagSizes ?? []
+  const farmerLink = entry.farmerStorageLinkId
+  const bagSizes = useMemo(() => {
+    const sizes = entry.bagSizes ?? []
+    const commodities = preferences?.commodities ?? []
+    const sizeOrder = getBagSizeOrderForVariety(commodities, entry.variety)
+    return sortByPreferenceOrder(sizes, sizeOrder)
+  }, [entry.bagSizes, entry.variety, preferences?.commodities])
   const totalBags = sumBagQuantities(bagSizes, "initialQuantity")
+  const lotNo = formatIncomingLotNo(entry, preferences, totalBags)
   const manualParchi = formatManualParchi(entry.manualParchiNumber)
-  const remarks = entry.remarks.trim() || "—"
+  const remarks = entry.remarks?.trim() || "—"
 
   return (
     <Card className="card-hover overflow-hidden border-border/60">
@@ -133,11 +147,11 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
 
       <CardContent className="pt-5">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          <InfoBlock label="Farmer" value={farmer.name} icon={User} />
+          <InfoBlock label="Farmer" value={farmerLink.name} icon={User} />
           <InfoBlock
-            label="Account"
-            value={accountNumber}
-            valueClassName="tabular-nums"
+            label="Lot no."
+            value={lotNo}
+            valueClassName="font-mono tabular-nums"
           />
           <InfoBlock label="Variety" value={entry.variety} icon={Sprout} />
           <InfoBlock
@@ -159,10 +173,10 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
                     Farmer information
                   </h4>
                   <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-                    <InfoBlock label="Name" value={farmer.name} />
-                    <InfoBlock label="Mobile" value={farmer.mobileNumber} />
+                    <InfoBlock label="Name" value={farmerLink.name} />
+                    <InfoBlock label="Mobile" value={farmerLink.mobileNumber} />
                     <div className="col-span-2">
-                      <InfoBlock label="Address" value={farmer.address} />
+                      <InfoBlock label="Address" value={farmerLink.address} />
                     </div>
                   </div>
                 </div>
@@ -262,7 +276,17 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
         </Button>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 bg-background">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 bg-background"
+            onClick={() =>
+              navigate({
+                to: "/incoming/$id",
+                params: { id: entry._id },
+              })
+            }
+          >
             <Pencil className="mr-2 h-3.5 w-3.5" />
             Edit
           </Button>

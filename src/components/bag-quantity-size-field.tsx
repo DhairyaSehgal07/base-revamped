@@ -23,10 +23,15 @@ type FixedBagSizeLabelProps = {
 export function FixedBagSizeLabel({ size, rowIndex }: FixedBagSizeLabelProps) {
   return (
     <div
-      className="flex min-h-11 items-center md:min-h-10"
+      className="flex min-h-8 min-w-0 items-center sm:min-h-9"
       aria-label={`Size (row ${rowIndex + 1}): ${size}`}
     >
-      <span className="text-sm font-medium text-foreground">{size}</span>
+      <span
+        className="truncate text-xs font-medium text-foreground sm:text-sm"
+        title={size}
+      >
+        {size}
+      </span>
     </div>
   )
 }
@@ -40,6 +45,7 @@ type BagSizeSelectFieldProps = {
   isInvalid: boolean
   errors?: Array<{ message?: string } | undefined>
   labelClassName?: string
+  triggerClassName?: string
   onBlur: () => void
   onValueChange: (value: BagSizeSelectValue) => void
 }
@@ -54,6 +60,7 @@ export function BagSizeSelectField({
   isInvalid,
   errors,
   labelClassName = "md:sr-only",
+  triggerClassName,
   onBlur,
   onValueChange,
 }: BagSizeSelectFieldProps) {
@@ -69,7 +76,7 @@ export function BagSizeSelectField({
         <SelectTrigger
           id={id}
           name={name}
-          className="w-full"
+          className={cn("w-full", triggerClassName)}
           onBlur={onBlur}
           aria-invalid={isInvalid}
         >

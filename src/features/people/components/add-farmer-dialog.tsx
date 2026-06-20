@@ -236,7 +236,7 @@ function AddFarmerDialogContent({
                           inputMode="numeric"
                           min={1}
                           className={cn(
-                            "h-11 flex-1 text-base tabular-nums",
+                            "flex-1 tabular-nums",
                             businessNumberSpinnerClassName,
                           )}
                           onWheel={blurTargetOnNumberWheel}
@@ -245,7 +245,7 @@ function AddFarmerDialogContent({
                         <Button
                           type="button"
                           variant="outline"
-                          className="h-11 shrink-0 sm:h-11"
+                          className="shrink-0"
                           onClick={() =>
                             form.setFieldValue(
                               "accountNumber",
@@ -297,7 +297,7 @@ function AddFarmerDialogContent({
                       maxLength={10}
                       inputMode="numeric"
                       autoComplete="tel"
-                      className="h-11 text-base tabular-nums"
+                      className="tabular-nums"
                     />
                     {isInvalid ? (
                       <FieldError errors={field.state.meta.errors} />
@@ -327,7 +327,6 @@ function AddFarmerDialogContent({
                       aria-invalid={isInvalid}
                       placeholder="Enter farmer name"
                       autoComplete="name"
-                      className="h-11 text-base"
                     />
                     {isInvalid ? (
                       <FieldError errors={field.state.meta.errors} />
@@ -357,7 +356,6 @@ function AddFarmerDialogContent({
                       aria-invalid={isInvalid}
                       placeholder="Enter address"
                       autoComplete="street-address"
-                      className="h-11 text-base"
                     />
                     {isInvalid ? (
                       <FieldError errors={field.state.meta.errors} />
@@ -389,7 +387,7 @@ function AddFarmerDialogContent({
                           aria-invalid={isInvalid}
                           placeholder="110"
                           className={cn(
-                            "h-11 text-base tabular-nums",
+                            "tabular-nums",
                             businessNumberSpinnerClassName,
                           )}
                           {...numericInputProps}
@@ -426,7 +424,7 @@ function AddFarmerDialogContent({
                           aria-invalid={isInvalid}
                           placeholder="0.00"
                           className={cn(
-                            "h-11 text-base tabular-nums",
+                            "tabular-nums",
                             businessNumberSpinnerClassName,
                           )}
                           {...numericInputProps}
@@ -452,7 +450,6 @@ function AddFarmerDialogContent({
           <Button
             type="button"
             variant="outline"
-            className="h-11 sm:h-10"
             disabled={isPending}
             onClick={() => onOpenChange(false)}
           >
@@ -464,7 +461,6 @@ function AddFarmerDialogContent({
                 type="submit"
                 form="add-farmer-form"
                 disabled={isSubmitting || isPending}
-                className="h-11 sm:h-10"
               >
                 {isSubmitting || isPending ? (
                   <>

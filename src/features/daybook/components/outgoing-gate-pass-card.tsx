@@ -220,8 +220,7 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [remarks, setRemarks] = useState("")
 
-  const farmer = entry.farmerStorageLinkId.farmerId
-  const accountNumber = entry.farmerStorageLinkId.accountNumber
+  const farmerLink = entry.farmerStorageLinkId
   const manualParchi = formatManualParchi(entry.manualParchiNumber)
   const orderDetails = entry.orderDetails ?? []
   const snapshots = entry.incomingGatePassSnapshots ?? []
@@ -233,7 +232,7 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const fromLocation = entry.from?.trim()
   const toLocation = entry.to?.trim()
   const hasRouteDetails = Boolean(fromLocation || toLocation || truckNumber)
-  const entryRemarks = entry.remarks.trim() || "—"
+  const entryRemarks = entry.remarks?.trim() || "—"
   const breakdownRows = useMemo(() => buildBreakdownRows(entry), [entry])
 
   return (
@@ -290,10 +289,10 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
 
       <CardContent className="pt-5">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoBlock label="Farmer" value={farmer.name} icon={User} />
+          <InfoBlock label="Farmer" value={farmerLink.name} icon={User} />
           <InfoBlock
             label="Account"
-            value={accountNumber}
+            value={farmerLink.accountNumber}
             valueClassName="tabular-nums"
           />
           {fromLocation && (
@@ -322,10 +321,10 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
                     Farmer information
                   </h4>
                   <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/50 bg-muted/20 p-4">
-                    <InfoBlock label="Name" value={farmer.name} />
-                    <InfoBlock label="Mobile" value={farmer.mobileNumber} />
+                    <InfoBlock label="Name" value={farmerLink.name} />
+                    <InfoBlock label="Mobile" value={farmerLink.mobileNumber} />
                     <div className="col-span-2">
-                      <InfoBlock label="Address" value={farmer.address} />
+                      <InfoBlock label="Address" value={farmerLink.address} />
                     </div>
                   </div>
                 </div>

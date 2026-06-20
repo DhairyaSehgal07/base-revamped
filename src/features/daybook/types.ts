@@ -4,20 +4,12 @@ export type DaybookLocation = {
   row: string
 }
 
-export type DaybookFarmer = {
-  _id: string
+export type DaybookFarmerStorageLink = {
+  _id?: string
   name: string
+  accountNumber: number
   address: string
   mobileNumber: string
-}
-
-export type DaybookFarmerStorageLink = {
-  _id: string
-  farmerId: DaybookFarmer
-  accountNumber: number
-  name?: string
-  address?: string
-  mobileNumber?: string
 }
 
 export type DaybookCreatedBy = {
@@ -41,12 +33,12 @@ export type IncomingDaybookEntry = {
   date: string
   createdAt: string
   updatedAt?: string
-  type: "RECEIPT"
+  type: "RECEIPT" | "Incoming-transfer" | string
   variety: string
   truckNumber?: string
   bagSizes?: IncomingBagSize[]
   status: string
-  remarks: string
+  remarks?: string
   farmerStorageLinkId: DaybookFarmerStorageLink
   createdBy?: DaybookCreatedBy | null
 }
@@ -88,7 +80,7 @@ export type OutgoingDaybookEntry = {
   variety?: string
   orderDetails?: OutgoingOrderDetail[]
   incomingGatePassSnapshots?: IncomingGatePassSnapshot[]
-  remarks: string
+  remarks?: string
   farmerStorageLinkId: DaybookFarmerStorageLink
   createdBy?: DaybookCreatedBy | null
 }
@@ -106,18 +98,14 @@ export type DaybookPagination = {
   previousPage: number | null
 }
 
-export function isIncomingDaybookEntry(
-  entry: DaybookEntry
-): entry is IncomingDaybookEntry {
-  return entry.type === "RECEIPT"
-}
-
 export function isOutgoingDaybookEntry(
   entry: DaybookEntry
 ): entry is OutgoingDaybookEntry {
-  return (
-    entry.type !== "RECEIPT" &&
-    "orderDetails" in entry &&
-    Array.isArray(entry.orderDetails)
-  )
+  return "orderDetails" in entry && Array.isArray(entry.orderDetails)
+}
+
+export function isIncomingDaybookEntry(
+  entry: DaybookEntry
+): entry is IncomingDaybookEntry {
+  return "bagSizes" in entry && Array.isArray(entry.bagSizes)
 }

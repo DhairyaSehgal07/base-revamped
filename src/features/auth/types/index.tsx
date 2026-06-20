@@ -24,6 +24,7 @@ export interface Preferences {
   labourCost: number
   stockFilter?: StockFilterPreference
   customMarka?: boolean
+  markaType?: string
   customFields: Record<string, unknown>
   createdAt: string
   updatedAt: string

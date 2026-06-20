@@ -34,6 +34,7 @@ import {
 } from "../forms/use-preferences-form"
 import {
   preferencesToFormValues,
+  MARKA_TYPE_OPTIONS,
   REPORT_FORMAT_OPTIONS,
 } from "../schemas/preferences-form-schema"
 import { SettingsBackButton } from "@/features/settings/components/settings-back-button"
@@ -378,6 +379,57 @@ export function PreferencesForm({
                   </Field>
                 )}
               </form.Field>
+
+              <form.Subscribe selector={(state) => state.values.customMarka}>
+                {(customMarkaEnabled) =>
+                  !customMarkaEnabled ? (
+                    <form.Field name="markaType">
+                      {(field) => {
+                        const isInvalid =
+                          field.state.meta.isTouched && !field.state.meta.isValid
+
+                        return (
+                          <Field data-invalid={isInvalid}>
+                            <FieldLabel htmlFor={field.name}>
+                              Marka type
+                            </FieldLabel>
+                            <FieldDescription>
+                              Choose which identifier to use as marka when custom
+                              marka is disabled
+                            </FieldDescription>
+                            <Select
+                              value={field.state.value}
+                              onValueChange={(value) =>
+                                field.handleChange(
+                                  value as (typeof MARKA_TYPE_OPTIONS)[number],
+                                )
+                              }
+                            >
+                              <SelectTrigger
+                                id={field.name}
+                                className="w-full text-base"
+                                aria-invalid={isInvalid}
+                              >
+                                <SelectValue placeholder="Select marka type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MARKA_TYPE_OPTIONS.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {humanizeLabel(option)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {isInvalid && (
+                              <FieldError errors={field.state.meta.errors} />
+                            )}
+                          </Field>
+                        )
+                      }}
+                    </form.Field>
+                  ) : null
+                }
+              </form.Subscribe>
             </FieldGroup>
           </CardContent>
         </Card>

@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.4.0] - 2026-06-20
+
+Incoming gate pass create and edit flows, shared form infrastructure, and list pagination improvements across daybook and finances.
+
+### Added
+- Shared `IncomingForm` for create and edit modes with review sheet, farmer combobox, and preference-driven commodity, marka, and stock-filter fields.
+- Incoming gate pass creation wired to `/incoming-gate-pass/` API with payload mapping and daybook query invalidation.
+- Edit incoming gate pass page at `/incoming/:id` that hydrates form values from the daybook cache via `find-incoming-daybook-entry`.
+- Next gate pass number hook and API helper for auto-assigning incoming receipt numbers on create.
+- `ListPaginationFooter` and `PageSizeSelect` shared components with page-size control and compact pagination UI.
+- Daybook page-size URL param (`limit`: 10, 50, 100) and row range summary in the list footer.
+- Preferences form fields for labour cost, stock filter (enable + options), and marka type.
+- Shared `form-utils` (`numericInputProps`, `parseOptionalNumber`) and `gate-pass-number` utilities.
+- Incoming quantities location completion tracking with apply-to-all from the first complete row.
+- Cursor rule `form-fields.mdc` documenting canonical form field patterns.
+
+### Changed
+- Create incoming form refactored onto shared `IncomingForm`; quantities section rebuilt with preference-ordered bag sizes and improved validation.
+- Daybook incoming cards link to the edit route; topbar resolves titles for incoming detail paths.
+- Ledger and voucher table pagination consolidated onto `ListPaginationFooter`.
+- Finance and people dialogs aligned with default input sizing and shared numeric helpers.
+- ERP style guide updated for form field defaults and numeric field conventions.
+- Dependency: `@tanstack/zod-form-adapter`.
+
+### Notes
+- Edit incoming submit is UI-complete; update API integration is deferred (review logs payload for now).
+
 ## [0.3.0] - 2026-06-19
 
 Daybook wired to live gate-pass data with search and filters, plus people registration and profile improvements.

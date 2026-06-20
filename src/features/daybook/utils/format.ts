@@ -1,4 +1,5 @@
-import type { DaybookLocation } from "@/features/daybook/types"
+import type { Preferences } from "@/features/auth/types"
+import type { DaybookLocation, IncomingDaybookEntry } from "@/features/daybook/types"
 
 export function formatDaybookDateTime(iso: string): string {
   const date = new Date(iso)
@@ -38,4 +39,22 @@ export function locationKey(location: DaybookLocation): string {
 
 export function formatQuantity(value: number): string {
   return value.toLocaleString("en-IN")
+}
+
+export function formatIncomingLotNo(
+  entry: IncomingDaybookEntry,
+  preferences: Pick<Preferences, "customMarka" | "markaType"> | null | undefined,
+  totalBags: number
+): string {
+  if (preferences?.customMarka) {
+    const custom = entry.customMarka?.trim()
+    return custom || "—"
+  }
+
+  const identifier =
+    preferences?.markaType === "AccountNumber"
+      ? entry.farmerStorageLinkId.accountNumber
+      : entry.gatePassNo
+
+  return `${identifier}/${totalBags}`
 }

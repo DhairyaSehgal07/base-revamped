@@ -140,7 +140,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
             void form.handleSubmit()
           }}
         >
-          <FieldGroup className="gap-6">
+          <FieldGroup className="gap-4">
             <form.Field name="name">
               {(field) => {
                 const isInvalid = isFieldInvalid(field.state.meta)
@@ -159,7 +159,6 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       aria-invalid={isInvalid}
                       placeholder="e.g. Cash A/c"
                       autoComplete="off"
-                      className="text-base"
                     />
                     {isInvalid && (
                       <FieldError errors={field.state.meta.errors} />
@@ -367,7 +366,7 @@ export function AddLedgerDialog({ open, onOpenChange }: AddLedgerDialogProps) {
                       }
                       aria-invalid={isInvalid}
                       placeholder="0.00"
-                      className="text-base tabular-nums"
+                      className="tabular-nums"
                       {...numericInputProps}
                     />
                     {isInvalid && (
