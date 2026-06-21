@@ -263,6 +263,56 @@ export function formatLocationShort(slot: StorageGatePassBagSlot): string {
   return `Ch: ${slot.chamber} · F: ${slot.floor} · R: ${slot.row}`
 }
 
+/** Remaining stock vs initial quantity for matrix slot color coding. */
+export type SlotStockLevel = "full" | "depleted" | "critical"
+
+const SLOT_STOCK_CRITICAL_MAX_PERCENT = 10
+const SLOT_STOCK_DEPLETED_MAX_PERCENT = 100
+
+export function getSlotStockLevel(
+  currentQuantity: number,
+  initialQuantity: number
+): SlotStockLevel {
+  if (initialQuantity <= 0 || currentQuantity >= initialQuantity) {
+    return "full"
+  }
+
+  const percentRemaining = (currentQuantity / initialQuantity) * 100
+
+  if (percentRemaining < SLOT_STOCK_CRITICAL_MAX_PERCENT) {
+    return "critical"
+  }
+
+  if (percentRemaining < SLOT_STOCK_DEPLETED_MAX_PERCENT) {
+    return "depleted"
+  }
+
+  return "full"
+}
+
+export function slotStockLevelButtonClasses(
+  level: SlotStockLevel,
+  isSelected: boolean
+): string | undefined {
+  if (isSelected || level === "full") {
+    return undefined
+  }
+
+  if (level === "critical") {
+    return "border-destructive/45 bg-destructive/[0.04] hover:bg-destructive/[0.06]"
+  }
+
+  return "border-chart-3/50 bg-chart-3/[0.05] hover:bg-chart-3/[0.08]"
+}
+
+export function isSlotUnavailable(currentQuantity: number): boolean {
+  return currentQuantity <= 0
+}
+
+export function slotUnavailableButtonClasses(): string {
+  return "border-dashed border-border/70 bg-muted/25 text-muted-foreground shadow-none hover:bg-muted/25 disabled:opacity-100"
+}
+
 export function totalAllocatedBags(
   allocations: Record<string, number>
 ): number {

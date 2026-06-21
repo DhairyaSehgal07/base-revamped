@@ -31,6 +31,10 @@ import {
   allocationKey,
   formatLocationShort,
   getBagSlotsForSize,
+  getSlotStockLevel,
+  isSlotUnavailable,
+  slotStockLevelButtonClasses,
+  slotUnavailableButtonClasses,
   type BagSlotDetail,
 } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
 import { cn } from "@/lib/utils"
@@ -108,27 +112,59 @@ function SlotButton({
   onClick: () => void
 }) {
   const isSelected = selectedQty > 0
-  const available = slot.currentQuantity
+  const currentQty = slot.currentQuantity
+  const initialQty = slot.initialQuantity
+  const isUnavailable = isSlotUnavailable(currentQty)
+  const stockLevel = getSlotStockLevel(currentQty, initialQty)
 
   return (
     <Button
       type="button"
       variant="outline"
+      disabled={isUnavailable}
       onClick={onClick}
       className={cn(
         "relative h-auto min-h-11 min-w-[7.5rem] flex-col items-stretch justify-start gap-0.5 rounded-md px-2 py-1.5 text-left font-normal",
+        isUnavailable
+          ? slotUnavailableButtonClasses()
+          : slotStockLevelButtonClasses(stockLevel, isSelected),
         isSelected &&
+          !isUnavailable &&
           "border-primary bg-primary/5 ring-2 ring-primary/30 hover:bg-primary/5"
       )}
-      aria-label={`${pass.variety}, ${sizeName}, ${formatLocationShort(slot)}, ${isSelected ? `${selectedQty} of ${available} selected` : `${available} available`}`}
+      aria-label={
+        isUnavailable
+          ? `${pass.variety}, ${sizeName}, ${formatLocationShort(slot)}, no stock remaining`
+          : `${pass.variety}, ${sizeName}, ${formatLocationShort(slot)}, ${isSelected ? `${selectedQty} of ${currentQty} selected` : `${currentQty} of ${initialQty} bags`}`
+      }
     >
-      {isSelected ? <SelectedQuantityBadge quantity={selectedQty} /> : null}
-      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+      {isSelected && !isUnavailable ? (
+        <SelectedQuantityBadge quantity={selectedQty} />
+      ) : null}
+      <span
+        className={cn(
+          "flex items-center gap-0.5 text-xs",
+          isUnavailable ? "text-muted-foreground/75" : "text-muted-foreground"
+        )}
+      >
         <MapPin className="size-3 shrink-0" aria-hidden />
         <span className="truncate">{formatLocationShort(slot)}</span>
       </span>
-      <span className="w-full text-right text-sm font-medium tabular-nums text-foreground">
-        {available.toLocaleString("en-IN")}
+      <span
+        className={cn(
+          "w-full text-right text-sm font-medium tabular-nums",
+          isUnavailable ? "text-muted-foreground/80" : "text-foreground"
+        )}
+      >
+        {currentQty.toLocaleString("en-IN")}
+        <span
+          className={
+            isUnavailable ? "text-muted-foreground/60" : "text-muted-foreground"
+          }
+        >
+          {" / "}
+          {initialQty.toLocaleString("en-IN")}
+        </span>
       </span>
     </Button>
   )
@@ -207,6 +243,8 @@ export function TransferGatePassMatrix({
 
   const handleSlotClick = useCallback(
     (pass: StorageGatePass, sizeName: string, slot: BagSlotDetail) => {
+      if (isSlotUnavailable(slot.currentQuantity)) return
+
       const key = allocationKey(pass._id, sizeName, slot.bagIndex)
       setSheetTarget({
         pass,

@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import {
-  ArrowLeft,
   Globe,
   History,
   Loader2,
@@ -43,7 +42,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { DEFAULT_DAYBOOK_SEARCH, DAYBOOK_PAGE_SIZE_OPTIONS } from "@/features/daybook/search"
+import { DAYBOOK_PAGE_SIZE_OPTIONS } from "@/features/daybook/search"
+import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
 import { useIncomingGatePassEdits } from "@/features/incoming-edit-history/api/use-incoming-gate-pass-edits"
 import type { IncomingBagSize } from "@/features/daybook/types"
 import type {
@@ -151,6 +151,8 @@ function AuditFieldValue({
 function IncomingEditHistorySkeleton() {
   return (
     <div className="flex w-full flex-col gap-4">
+      <DaybookBackButton />
+
       <Item variant="outline" size="sm">
         <ItemMedia variant="icon">
           <Skeleton className="h-10 w-10 rounded-lg" />
@@ -363,28 +365,17 @@ const IncomingEditHistoryPage = () => {
   }
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="-ml-2 mb-1 h-9 px-2 text-muted-foreground"
-          >
-            <Link to="/daybook" search={DEFAULT_DAYBOOK_SEARCH}>
-              <ArrowLeft className="mr-1.5 h-5 w-5 text-primary" />
-              Back to daybook
-            </Link>
-          </Button>
-          <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Incoming edit history
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Audit trail of incoming gate pass changes in your cold storage.
-          </p>
-        </div>
-      </div>
+    <div className="flex w-full flex-col gap-4 sm:gap-6">
+      <DaybookBackButton />
+
+      <header className="min-w-0">
+        <h1 className="font-heading text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          Incoming edit history
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Audit trail of incoming gate pass changes in your cold storage.
+        </p>
+      </header>
 
       <Item variant="outline" size="sm">
         <ItemMedia variant="icon">

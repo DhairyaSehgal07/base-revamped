@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
 import { TransferGatePassesSection } from "@/features/transfer-stock/forms/transfer-gate-passes-section"
 import { TransferStockSummarySheet } from "@/features/transfer-stock/forms/transfer-stock-summary-sheet"
 import { useCreateTransferStockForm } from "@/features/transfer-stock/forms/use-create-transfer-stock-form"
@@ -199,7 +200,9 @@ const CreateTransferStock = () => {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-7xl shadow-sm">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <DaybookBackButton />
+      <Card className="w-full shadow-sm">
       <CardHeader className="border-b bg-muted/30 pb-6">
         <CardTitle className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
           Transfer Stock
@@ -381,7 +384,7 @@ const CreateTransferStock = () => {
               children={(fromFarmerStorageLinkId) => (
                 <FieldSet>
                   <FieldLegend className="font-heading text-base font-semibold">
-                    Storage gate passes
+                    Incoming gate pass
                   </FieldLegend>
                   <FieldDescription>
                     Select vouchers and quantities to transfer from the source
@@ -490,6 +493,7 @@ const CreateTransferStock = () => {
         }}
       />
     </Card>
+    </div>
   )
 }
 

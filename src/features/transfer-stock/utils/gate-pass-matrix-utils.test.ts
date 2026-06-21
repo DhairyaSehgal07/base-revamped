@@ -4,8 +4,10 @@ import {
   allocationKey,
   buildTransferItems,
   filterStorageGatePasses,
+  getSlotStockLevel,
   getUniqueSizes,
   groupPassesByDate,
+  isSlotUnavailable,
   parseAllocationKey,
 } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
 
@@ -39,6 +41,43 @@ const samplePass: StorageGatePass = {
   ],
   remarks: "",
 }
+
+describe("getSlotStockLevel", () => {
+  it("returns full when current matches initial", () => {
+    expect(getSlotStockLevel(100, 100)).toBe("full")
+  })
+
+  it("returns full when current exceeds initial", () => {
+    expect(getSlotStockLevel(120, 100)).toBe("full")
+  })
+
+  it("returns full when initial is zero", () => {
+    expect(getSlotStockLevel(0, 0)).toBe("full")
+  })
+
+  it("returns depleted between 10% and 99.99% remaining", () => {
+    expect(getSlotStockLevel(50, 100)).toBe("depleted")
+    expect(getSlotStockLevel(10, 100)).toBe("depleted")
+    expect(getSlotStockLevel(99, 100)).toBe("depleted")
+  })
+
+  it("returns critical below 10% remaining", () => {
+    expect(getSlotStockLevel(9, 100)).toBe("critical")
+    expect(getSlotStockLevel(1, 100)).toBe("critical")
+    expect(getSlotStockLevel(0, 100)).toBe("critical")
+  })
+})
+
+describe("isSlotUnavailable", () => {
+  it("returns true when current quantity is zero or negative", () => {
+    expect(isSlotUnavailable(0)).toBe(true)
+    expect(isSlotUnavailable(-1)).toBe(true)
+  })
+
+  it("returns false when current quantity is positive", () => {
+    expect(isSlotUnavailable(1)).toBe(false)
+  })
+})
 
 describe("allocationKey / parseAllocationKey", () => {
   it("round-trips pass id, size, and bag index", () => {

@@ -39,6 +39,30 @@ const coreNavItems: NavItem[] = [
   { name: 'Settings', icon: Settings, to: '/settings' },
 ];
 
+const DAYBOOK_ACTIVE_ROUTE_PREFIXES = [
+  '/daybook',
+  '/incoming',
+  '/outgoing',
+  '/transfer',
+] as const;
+
+function isDaybookNavActive(pathname: string) {
+  return DAYBOOK_ACTIVE_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function isSettingsNavActive(pathname: string) {
+  return pathname === '/settings' || pathname.startsWith('/settings/');
+}
+
+function isNavItemActive(item: NavItem, pathname: string) {
+  if (!item.to) return false;
+  if (item.to === '/daybook') return isDaybookNavActive(pathname);
+  if (item.to === '/settings') return isSettingsNavActive(pathname);
+  return pathname === item.to;
+}
+
 function NavMain() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const showFinances = usePreferencesStore(
@@ -63,7 +87,7 @@ function NavMain() {
                 {item.to && !item.disabled ? (
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.to}
+                    isActive={isNavItemActive(item, pathname)}
                     tooltip={item.name}
                   >
                     <Link

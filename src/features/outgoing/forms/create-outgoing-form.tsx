@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
 import { OutgoingSummarySheet } from "@/features/outgoing/forms/outgoing-summary-sheet"
 import { useCreateOutgoingForm } from "@/features/outgoing/forms/use-create-outgoing-form"
 import {
@@ -193,7 +194,9 @@ const CreateOutgoingForm = () => {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-7xl shadow-sm">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <DaybookBackButton />
+      <Card className="w-full shadow-sm">
       <CardHeader className="border-b bg-muted/30 pb-6">
         <CardTitle className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
           Outgoing{" "}
@@ -441,7 +444,7 @@ const CreateOutgoingForm = () => {
               children={(farmerStorageLinkId) => (
                 <FieldSet>
                   <FieldLegend className="font-heading text-base font-semibold">
-                    Storage gate passes
+                    Incoming gate pass
                   </FieldLegend>
                   <FieldDescription>
                     Select vouchers and quantities to mark as outgoing.
@@ -556,6 +559,7 @@ const CreateOutgoingForm = () => {
         }}
       />
     </Card>
+    </div>
   )
 }
 

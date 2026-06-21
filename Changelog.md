@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.1] - 2026-06-21
+
+Shared daybook navigation, sidebar active-state fixes, and transfer matrix stock-level indicators.
+
+### Added
+- Shared `DaybookBackButton` on incoming create/edit, outgoing create, transfer stock create, and incoming edit history pages.
+- Transfer gate pass matrix slot stock levels (`full`, `depleted`, `critical`) with color-coded buttons and disabled empty slots.
+- Matrix slot display shows current vs initial bag counts (`current / initial`).
+
+### Changed
+- Sidebar Daybook nav stays active on `/incoming`, `/outgoing`, and `/transfer` routes.
+- Incoming edit history page header layout aligned with other daybook sub-pages.
+- Transfer and outgoing forms: section label renamed from "Storage gate passes" to "Incoming gate pass".
+
 ## [0.5.0] - 2026-06-21
 
 Outgoing and transfer-stock gate pass flows, incoming edit API integration, edit-history auditing, and Vitest test infrastructure.

@@ -21,6 +21,27 @@ const mockIncomingForm = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
+  Link: ({
+    children,
+    to,
+    search,
+    ...props
+  }: {
+    children: React.ReactNode
+    to: string
+    search?: unknown
+  }) => (
+    <a
+      href={to}
+      onClick={(event) => {
+        event.preventDefault()
+        mockNavigate({ to, search })
+      }}
+      {...props}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock('@/features/incoming/api/use-incoming-daybook-entry', () => ({
@@ -83,7 +104,7 @@ describe('EditIncomingForm', () => {
 
     expect(screen.getByText('Gate pass not found')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /back to daybook/i }));
+    await user.click(screen.getByRole('link', { name: /back to daybook/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/daybook',
@@ -111,7 +132,7 @@ describe('EditIncomingForm', () => {
     expect(screen.getByText('Cannot edit closed gate pass')).toBeInTheDocument();
     expect(screen.getByText(/this pass is closed/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /back to daybook/i }));
+    await user.click(screen.getByRole('link', { name: /back to daybook/i }));
 
     expect(mockNavigate).toHaveBeenCalledWith({
       to: '/daybook',

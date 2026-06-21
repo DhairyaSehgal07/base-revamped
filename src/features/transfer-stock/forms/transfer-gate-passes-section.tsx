@@ -69,7 +69,7 @@ export function TransferGatePassesSection({
           <>
             Choose a{" "}
             <span className="font-medium text-foreground">{farmerPromptLabel}</span>{" "}
-            farmer to view storage gate passes.
+            farmer to view incoming gate passes.
           </>
         }
       />
@@ -102,7 +102,7 @@ export function TransferGatePassesSection({
     return (
       <GatePassesSectionMessage
         title="No gate passes"
-        description="No storage gate passes for this farmer."
+        description="No incoming gate passes for this farmer."
       />
     )
   }
