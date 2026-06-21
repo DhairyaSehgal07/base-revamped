@@ -4,6 +4,7 @@ import {
   allocationKey,
   buildTransferItems,
   filterStorageGatePasses,
+  getUniqueSizes,
   groupPassesByDate,
   parseAllocationKey,
 } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
@@ -84,6 +85,18 @@ describe("groupPassesByDate", () => {
     expect(groups[0]?.dateKey).toBe("2026-03-04")
     expect(groups[0]?.passes).toHaveLength(1)
     expect(groups[0]?.dateLabel).toMatch(/2026/)
+  })
+})
+
+describe("getUniqueSizes", () => {
+  it("orders sizes by preference instead of alphabetically", () => {
+    const sizes = getUniqueSizes([samplePass], ["Large|Special", "Ration"])
+    expect(sizes).toEqual(["Large|Special", "Ration"])
+  })
+
+  it("sorts unknown sizes after configured preference order", () => {
+    const sizes = getUniqueSizes([samplePass], ["Large|Special", "Ration"])
+    expect(sizes).toEqual(["Large|Special", "Ration"])
   })
 })
 

@@ -168,6 +168,9 @@ function TransferReviewSummary({
             value={formatReviewDate(values.date)}
             icon={Calendar}
           />
+          {values.customMarka ? (
+            <DetailRow label="Custom marka" value={values.customMarka} />
+          ) : null}
         </SummaryCard>
       </div>
 

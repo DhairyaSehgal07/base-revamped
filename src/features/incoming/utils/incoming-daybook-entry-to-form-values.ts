@@ -132,6 +132,7 @@ export function incomingDaybookEntryToFormValues({
     stockFilter: entry.stockFilter ?? "",
     customMarka: entry.customMarka ?? "",
     date: normalizeToIsoDateTime(entry.date),
+    truckNumber: (entry.truckNumber ?? "").toUpperCase(),
     quantities: mapBagSizesToQuantities(entry, commodities),
     remarks: entry.remarks ?? "",
   }

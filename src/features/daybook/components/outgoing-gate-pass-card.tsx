@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import {
   Ban,
   ChevronDown,
@@ -33,6 +34,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldLabel } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
 import type {
   IncomingGatePassSnapshot,
@@ -47,6 +49,12 @@ import {
   locationKey,
   sumBagQuantities,
 } from "@/features/daybook/utils/format"
+import {
+  isOutgoingTransferType,
+  TransferGatePassBadge,
+} from "@/features/daybook/components/transfer-gate-pass-badge"
+import { EditOutgoingGatePassSheet } from "@/features/outgoing/forms/edit-outgoing-gate-pass-sheet"
+import { useNullOutgoingGatePass } from "@/features/outgoing/api/use-null-outgoing-gate-pass"
 
 interface InfoBlockProps {
   label: string
@@ -217,8 +225,40 @@ interface OutgoingGatePassCardProps {
 
 export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [remarks, setRemarks] = useState("")
+  const { mutateAsync: nullOutgoingGatePass, isPending: isNulling } =
+    useNullOutgoingGatePass()
+
+  const handleCancelOpenChange = (open: boolean) => {
+    if (!open) {
+      setRemarks("")
+    }
+    setCancelOpen(open)
+  }
+
+  const handleNullConfirm = async () => {
+    const trimmed = remarks.trim()
+    const payload = trimmed ? { remarks: trimmed } : {}
+
+    try {
+      await nullOutgoingGatePass({ id: entry._id, payload })
+      toast.success(
+        `OGP #${entry.gatePassNo.toLocaleString("en-IN")} marked as null`,
+        { position: "bottom-right" }
+      )
+      setRemarks("")
+      setCancelOpen(false)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to null outgoing gate pass",
+        { position: "bottom-right" }
+      )
+    }
+  }
 
   const farmerLink = entry.farmerStorageLinkId
   const manualParchi = formatManualParchi(entry.manualParchiNumber)
@@ -227,30 +267,77 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const totalIssued = sumBagQuantities(orderDetails, "quantityIssued")
   const primaryVariety =
     entry.variety ?? snapshots[0]?.variety ?? "—"
-  const isTransfer = entry.type === "Outgoing-transfer"
+  const isTransfer = isOutgoingTransferType(entry.type)
   const truckNumber = entry.truckNumber?.trim()
   const fromLocation = entry.from?.trim()
   const toLocation = entry.to?.trim()
   const hasRouteDetails = Boolean(fromLocation || toLocation || truckNumber)
+  const isNull = entry.isNull === true
   const entryRemarks = entry.remarks?.trim() || "—"
+  const hasRemarks = entryRemarks !== "—"
   const breakdownRows = useMemo(() => buildBreakdownRows(entry), [entry])
 
   return (
-    <Card className="card-hover overflow-hidden border-border/60">
-      <CardHeader className="flex flex-col gap-4 border-b border-border/40 bg-muted/10 pb-4 sm:flex-row sm:items-start sm:justify-between">
+    <Card
+      className={cn(
+        "overflow-hidden border-border/60",
+        isNull
+          ? "border-dashed bg-muted/20 opacity-80"
+          : "card-hover"
+      )}
+    >
+      <CardHeader
+        className={cn(
+          "flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-start sm:justify-between",
+          isNull
+            ? "border-border/30 bg-muted/30"
+            : "border-border/40 bg-muted/10"
+        )}
+      >
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <span className="h-2 w-2 rounded-full bg-rose-700 dark:bg-rose-500" />
+            <CardTitle
+              className={cn(
+                "flex items-center gap-2 text-lg",
+                isNull && "text-muted-foreground"
+              )}
+            >
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full",
+                  isNull
+                    ? "bg-muted-foreground/50"
+                    : "bg-rose-700 dark:bg-rose-500"
+                )}
+              />
               OGP{" "}
-              <span className="font-mono tabular-nums text-rose-700 dark:text-rose-400">
+              <span
+                className={cn(
+                  "font-mono tabular-nums",
+                  isNull
+                    ? "text-muted-foreground line-through decoration-muted-foreground/60"
+                    : "text-rose-700 dark:text-rose-400"
+                )}
+              >
                 #{entry.gatePassNo}
               </span>
             </CardTitle>
+            {isNull && (
+              <Badge
+                variant="secondary"
+                className="gap-1 bg-muted text-muted-foreground"
+              >
+                <Ban className="size-3 shrink-0" aria-hidden />
+                Null
+              </Badge>
+            )}
             {manualParchi !== "—" && (
               <Badge
                 variant="outline"
-                className="bg-background font-mono text-xs tabular-nums uppercase"
+                className={cn(
+                  "font-mono text-xs tabular-nums uppercase",
+                  isNull ? "border-border/40 bg-muted/40 text-muted-foreground" : "bg-background"
+                )}
               >
                 Manual: {manualParchi}
               </Badge>
@@ -258,60 +345,105 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
           </div>
           <CardDescription className="text-xs">
             {formatDaybookDateTime(entry.createdAt)}
+            {isNull && entry.nulledAt && (
+              <>
+                {" · "}
+                Nulled {formatDaybookDateTime(entry.nulledAt)}
+              </>
+            )}
           </CardDescription>
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Badge
             variant="outline"
-            className="bg-background text-xs"
+            className={cn(
+              "text-xs",
+              isNull
+                ? "border-border/40 bg-muted/40 text-muted-foreground"
+                : "bg-background"
+            )}
             title={primaryVariety}
           >
             {primaryVariety}
           </Badge>
-          {isTransfer && (
+          {isTransfer ? (
+            <TransferGatePassBadge
+              bagCount={totalIssued}
+              typeLabel={entry.type ?? "Outgoing-transfer"}
+              tone="outgoing"
+            />
+          ) : (
             <Badge
               variant="outline"
-              className="bg-background text-xs"
-              title="Transfer"
+              className={cn(
+                "text-xs tabular-nums",
+                isNull
+                  ? "border-border/40 bg-muted/40 text-muted-foreground"
+                  : "bg-background"
+              )}
             >
-              Transfer
+              {formatQuantity(totalIssued)} Bags issued
             </Badge>
           )}
-          <Badge
-            variant="outline"
-            className="bg-background text-xs tabular-nums"
-          >
-            {formatQuantity(totalIssued)} Bags issued
-          </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-5">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <InfoBlock label="Farmer" value={farmerLink.name} icon={User} />
-          <InfoBlock
-            label="Account"
-            value={farmerLink.accountNumber}
-            valueClassName="tabular-nums"
-          />
-          {fromLocation && (
-            <InfoBlock label="From" value={fromLocation} icon={Truck} />
-          )}
-          {toLocation && <InfoBlock label="To" value={toLocation} />}
-          {truckNumber && (
-            <InfoBlock
-              label="Truck"
-              value={truckNumber}
-              valueClassName="font-mono uppercase"
-            />
-          )}
-        </div>
+      <CardContent
+        className={cn(
+          isNull && !isExpanded && !hasRemarks ? "hidden" : "pt-5"
+        )}
+      >
+        {isNull && !isExpanded ? (
+          hasRemarks ? (
+            <div className="flex w-full items-start gap-2.5 rounded-lg border border-dashed border-border/40 bg-muted/25 px-3 py-2.5">
+              <FileText
+                className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Null remarks
+                </p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground italic">
+                  {entryRemarks}
+                </p>
+              </div>
+            </div>
+          ) : null
+        ) : (
+          <>
+            {!isNull && (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <InfoBlock label="Farmer" value={farmerLink.name} icon={User} />
+                <InfoBlock
+                  label="Account"
+                  value={farmerLink.accountNumber}
+                  valueClassName="tabular-nums"
+                />
+                {fromLocation && (
+                  <InfoBlock label="From" value={fromLocation} icon={Truck} />
+                )}
+                {toLocation && <InfoBlock label="To" value={toLocation} />}
+                {truckNumber && (
+                  <InfoBlock
+                    label="Truck"
+                    value={truckNumber}
+                    valueClassName="font-mono uppercase"
+                  />
+                )}
+              </div>
+            )}
 
-        {isExpanded && (
-          <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
-            <Separator className="mb-6" />
-            <div className="space-y-6">
+            {isExpanded && (
+              <div
+                className={cn(
+                  "animate-in fade-in slide-in-from-top-4 duration-300",
+                  !isNull && "mt-6"
+                )}
+              >
+                {!isNull && <Separator className="mb-6" />}
+                <div className="space-y-6">
               <OutgoingDetailedBreakdown rows={breakdownRows} />
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -358,7 +490,7 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
                   Remarks
                 </h4>
                 <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                  <p className="text-sm text-muted-foreground">{entryRemarks}</p>
+                  <p className="text-sm italic text-muted-foreground">{entryRemarks}</p>
                 </div>
               </div>
 
@@ -367,12 +499,27 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
                   <InfoBlock label="Created by" value={entry.createdBy.name} />
                 </div>
               )}
+
+              {isNull && entry.nulledBy && (
+                <div className="rounded-xl border border-dashed border-border/40 bg-muted/20 p-4">
+                  <InfoBlock label="Nulled by" value={entry.nulledBy.name} />
+                </div>
+              )}
             </div>
           </div>
+            )}
+          </>
         )}
       </CardContent>
 
-      <CardFooter className="flex items-center justify-between border-t border-border/40 bg-muted/10 px-4 py-3">
+      <CardFooter
+        className={cn(
+          "flex items-center justify-between border-t px-4 py-3",
+          isNull
+            ? "border-border/30 bg-muted/30"
+            : "border-border/40 bg-muted/10"
+        )}
+      >
         <Button
           variant="ghost"
           size="sm"
@@ -393,24 +540,29 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
         </Button>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            className="h-8 w-8"
-            aria-label={`Edit outgoing gate pass ${entry.gatePassNo}`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 text-muted-foreground hover:text-destructive"
-            aria-label={`Mark outgoing gate pass ${entry.gatePassNo} as null`}
-            onClick={() => setCancelOpen(true)}
-          >
-            <Ban className="mr-2 h-3.5 w-3.5" />
-            Mark as null
-          </Button>
+          {!isNull && (
+            <>
+              <Button
+                variant="secondary"
+                size="icon-sm"
+                className="h-8 w-8"
+                aria-label={`Edit outgoing gate pass ${entry.gatePassNo}`}
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 text-muted-foreground hover:text-destructive"
+                aria-label={`Mark outgoing gate pass ${entry.gatePassNo} as null`}
+                onClick={() => setCancelOpen(true)}
+              >
+                <Ban className="mr-2 h-3.5 w-3.5" />
+                Mark as null
+              </Button>
+            </>
+          )}
           <Button variant="secondary" size="sm" className="h-8">
             <Printer className="mr-2 h-3.5 w-3.5" />
             Print
@@ -418,7 +570,13 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
         </div>
       </CardFooter>
 
-      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+      <EditOutgoingGatePassSheet
+        entry={entry}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+
+      <AlertDialog open={cancelOpen} onOpenChange={handleCancelOpenChange}>
         <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader className="sm:text-left">
             <AlertDialogTitle>
@@ -431,29 +589,27 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
           </AlertDialogHeader>
 
           <div className="space-y-2">
-            <label
-              htmlFor={`cancel-remarks-${entry._id}`}
-              className="text-sm font-medium text-foreground"
-            >
+            <FieldLabel htmlFor={`cancel-remarks-${entry._id}`}>
               Cancellation remarks
-            </label>
+            </FieldLabel>
             <Textarea
               id={`cancel-remarks-${entry._id}`}
               value={remarks}
               onChange={(event) => setRemarks(event.target.value)}
               placeholder="e.g. Issued in error — wrong truck and quantity"
-              className="min-h-[88px] resize-y text-base"
+              className="min-h-[88px] resize-y"
+              disabled={isNulling}
             />
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep active</AlertDialogCancel>
+            <AlertDialogCancel disabled={isNulling}>Keep active</AlertDialogCancel>
             <Button
               variant="destructive"
-              disabled={!remarks.trim()}
-              onClick={() => setCancelOpen(false)}
+              disabled={!remarks.trim() || isNulling}
+              onClick={() => void handleNullConfirm()}
             >
-              Mark as null
+              {isNulling ? "Marking as null…" : "Mark as null"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

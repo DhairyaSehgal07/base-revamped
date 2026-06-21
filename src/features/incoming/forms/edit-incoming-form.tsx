@@ -120,6 +120,34 @@ const EditIncomingForm = ({ gatePassId }: EditIncomingFormProps) => {
     )
   }
 
+  if (entry.status !== "OPEN") {
+    return (
+      <Card className="mx-auto w-full max-w-4xl shadow-sm">
+        <CardHeader className="border-b bg-muted/30 px-4 pb-6 sm:px-6">
+          <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+            Cannot edit closed gate pass
+          </CardTitle>
+          <CardDescription>
+            Only open incoming gate passes can be edited. This pass is{" "}
+            {entry.status.toLowerCase()}.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-4 py-6 sm:px-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              navigate({ to: "/daybook", search: DEFAULT_DAYBOOK_SEARCH })
+            }
+          >
+            <ArrowLeft className="mr-2 size-4" />
+            Back to daybook
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <IncomingForm
       key={gatePassId}
@@ -127,7 +155,11 @@ const EditIncomingForm = ({ gatePassId }: EditIncomingFormProps) => {
       gatePassNo={entry.gatePassNo}
       gatePassNoReady
       userId={userId}
+      gatePassId={gatePassId}
       editDefaultValues={mapped.editDefaultValues}
+      editBaselineValues={mapped.editDefaultValues}
+      originalBagSizes={entry.bagSizes ?? []}
+      rentEntryVoucherId={entry.rentEntryVoucherId}
       initialSelectedCommodity={mapped.initialSelectedCommodity}
       initialFarmerSearch={mapped.initialFarmerSearch}
       farmerLinkWarning={mapped.farmerLinkWarning}

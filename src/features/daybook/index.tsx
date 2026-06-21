@@ -3,7 +3,9 @@ import {
   ArrowRightFromLine,
   ArrowUpFromLine,
   FileText,
+  History,
   Loader2,
+  MoreHorizontal,
   RefreshCw,
   Search,
 } from "lucide-react"
@@ -12,6 +14,12 @@ import { useNavigate } from "@tanstack/react-router"
 import { Route } from "@/routes/_authenticated/daybook"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ListPaginationFooter } from "@/components/list-pagination-footer"
 import {
   Item,
@@ -54,6 +62,7 @@ import {
   type DaybookType,
 } from "./search"
 import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "./types"
+import { DEFAULT_INCOMING_EDIT_HISTORY_SEARCH } from "@/features/incoming-edit-history/search"
 
 const DaybookPage = () => {
   const navigate = useNavigate({ from: Route.fullPath })
@@ -174,8 +183,19 @@ const DaybookPage = () => {
     navigate({ to: "/transfer" })
   }
 
+  const handleIncomingEditHistory = () => {
+    navigate({
+      to: "/incoming/edit-history",
+      search: DEFAULT_INCOMING_EDIT_HISTORY_SEARCH,
+    })
+  }
+
+  const handleOutgoingEditHistory = () => {
+    navigate({ to: "/outgoing/edit-history" })
+  }
+
   const handleAddOutgoing = () => {
-    window.alert("Add outgoing is coming soon.")
+    navigate({ to: "/outgoing" })
   }
 
   const handleGetReports = () => {
@@ -306,15 +326,6 @@ const DaybookPage = () => {
             </Button>
 
             <Button
-              variant="secondary"
-              className="min-w-0 px-2.5 sm:px-3"
-              onClick={handleTransferStock}
-            >
-              <ArrowLeftRight className="h-4 w-4 shrink-0 sm:mr-2" />
-              <span className="truncate">Transfer Stock</span>
-            </Button>
-
-            <Button
               variant="outline"
               className="min-w-0 px-2.5 sm:px-3"
               onClick={handleGetReports}
@@ -322,6 +333,33 @@ const DaybookPage = () => {
               <FileText className="h-4 w-4 shrink-0 sm:mr-2" />
               <span className="truncate">Get Reports</span>
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="min-w-0 shrink-0"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onSelect={handleTransferStock}>
+                  <ArrowLeftRight className="h-4 w-4" />
+                  Transfer stock
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleIncomingEditHistory}>
+                  <History className="h-4 w-4" />
+                  Incoming edit history
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleOutgoingEditHistory}>
+                  <History className="h-4 w-4" />
+                  Outgoing edit history
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

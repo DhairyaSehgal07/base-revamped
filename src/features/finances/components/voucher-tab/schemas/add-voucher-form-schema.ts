@@ -69,7 +69,10 @@ export function formValuesToCreatePayload(
 export function formValuesToUpdatePayload(
   values: AddVoucherFormValues
 ): UpdateVoucherPayload {
-  return buildVoucherPayload(values)
+  return {
+    ...buildVoucherPayload(values),
+    narration: values.narration.trim(),
+  }
 }
 
 function resolveLedgerId(

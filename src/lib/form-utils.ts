@@ -11,3 +11,7 @@ export const numericInputProps = {
   min: 0,
   onWheel: (e: React.WheelEvent<HTMLInputElement>) => e.currentTarget.blur(),
 } as const
+
+export function normalizeUppercase(value: string): string {
+  return value.toUpperCase()
+}

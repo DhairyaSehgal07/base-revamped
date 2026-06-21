@@ -12,7 +12,8 @@ export type StorageGatePass = {
   _id: string
   farmerStorageLinkId: string
   gatePassNo: number
-  manualGatePassNumber: number
+  manualGatePassNumber?: number
+  manualParchiNumber?: string | null
   date: string
   variety: string
   storageCategory: string

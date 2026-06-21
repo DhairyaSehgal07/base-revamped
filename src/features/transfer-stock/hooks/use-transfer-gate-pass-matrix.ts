@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { getPreferredBagSizeOrderForTransfer } from "@/features/incoming/utils/incoming-preferences"
 import type {
   DatePassGroup,
   LocationFilters,
@@ -54,6 +56,13 @@ export function useTransferGatePassMatrix({
   })
   const [gatePassSearch, setGatePassSearch] = useState("")
 
+  const commodities = usePreferencesStore((state) => state.preferences?.commodities ?? [])
+
+  const preferredSizeOrder = useMemo(
+    () => getPreferredBagSizeOrderForTransfer(commodities, varietyFilter),
+    [commodities, varietyFilter]
+  )
+
   const uniqueVarieties = useMemo(
     () => getUniqueVarieties(allPasses),
     [allPasses]
@@ -75,11 +84,14 @@ export function useTransferGatePassMatrix({
   )
 
   const tableSizes = useMemo(
-    () => getUniqueSizes(filteredPasses),
-    [filteredPasses]
+    () => getUniqueSizes(filteredPasses, preferredSizeOrder),
+    [filteredPasses, preferredSizeOrder]
   )
 
-  const allTableSizes = useMemo(() => getUniqueSizes(allPasses), [allPasses])
+  const allTableSizes = useMemo(
+    () => getUniqueSizes(allPasses, preferredSizeOrder),
+    [allPasses, preferredSizeOrder]
+  )
 
   const visibleSizes = useMemo(
     () => resolveVisibleSizes(tableSizes, sizeVisibility),

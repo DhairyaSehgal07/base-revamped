@@ -43,12 +43,14 @@ type TransferGatePassesSectionProps = {
   fromFarmerStorageLinkId: string
   allocations: Record<string, number>
   onAllocationsChange: (next: Record<string, number>) => void
+  farmerPromptLabel?: string
 }
 
 export function TransferGatePassesSection({
   fromFarmerStorageLinkId,
   allocations,
   onAllocationsChange,
+  farmerPromptLabel = "From",
 }: TransferGatePassesSectionProps) {
   const { data: allPasses, isLoading, error } =
     useStorageGatePassesForFarmer(fromFarmerStorageLinkId)
@@ -65,7 +67,8 @@ export function TransferGatePassesSection({
         title="Select a farmer"
         description={
           <>
-            Choose a <span className="font-medium text-foreground">From</span>{" "}
+            Choose a{" "}
+            <span className="font-medium text-foreground">{farmerPromptLabel}</span>{" "}
             farmer to view storage gate passes.
           </>
         }

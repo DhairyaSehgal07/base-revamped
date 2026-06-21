@@ -47,6 +47,7 @@ export function createIncomingFormSchema(config: IncomingFormSchemaConfig) {
     stockFilter: stockFilterSchema(config.requireStockFilter),
     customMarka: customMarkaSchema(config.requireCustomMarka),
     date: z.string().datetime("Select a valid date."),
+    truckNumber: z.string(),
     remarks: z.string(),
   })
 

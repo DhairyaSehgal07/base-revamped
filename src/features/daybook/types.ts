@@ -22,6 +22,7 @@ export type IncomingBagSize = {
   initialQuantity: number
   currentQuantity: number
   location: DaybookLocation
+  paltaiLocation?: DaybookLocation
 }
 
 export type IncomingDaybookEntry = {
@@ -39,6 +40,7 @@ export type IncomingDaybookEntry = {
   bagSizes?: IncomingBagSize[]
   status: string
   remarks?: string
+  rentEntryVoucherId?: string
   farmerStorageLinkId: DaybookFarmerStorageLink
   createdBy?: DaybookCreatedBy | null
 }
@@ -81,6 +83,9 @@ export type OutgoingDaybookEntry = {
   orderDetails?: OutgoingOrderDetail[]
   incomingGatePassSnapshots?: IncomingGatePassSnapshot[]
   remarks?: string
+  isNull?: boolean
+  nulledAt?: string
+  nulledBy?: DaybookCreatedBy | null
   farmerStorageLinkId: DaybookFarmerStorageLink
   createdBy?: DaybookCreatedBy | null
 }

@@ -1,9 +1,14 @@
+import type { IncomingBagSize } from "@/features/daybook/types"
 import type { IncomingQuantityRow } from "@/features/incoming/schemas/incoming-quantities-schema"
 import {
   hasCompleteIncomingQuantityLocation,
 } from "@/features/incoming/schemas/incoming-quantities-schema"
-import type { CreateIncomingGatePassPayload } from "@/features/incoming/types/api"
+import type {
+  CreateIncomingGatePassBagSize,
+  CreateIncomingGatePassPayload,
+} from "@/features/incoming/types/api"
 import type { IncomingFormValues } from "@/features/incoming/types"
+import { normalizeUppercase } from "@/lib/form-utils"
 
 export function getActiveIncomingQuantityRows(
   quantities: IncomingQuantityRow[]
@@ -11,6 +16,53 @@ export function getActiveIncomingQuantityRows(
   return quantities.filter(
     (row) => (row.qty ?? 0) > 0 && hasCompleteIncomingQuantityLocation(row)
   )
+}
+
+function bagLocationKey(name: string, chamber: string, floor: string, row: string) {
+  return `${name}|${chamber.trim()}|${floor.trim()}|${row.trim()}`
+}
+
+export function mapQuantityRowsToBagSizes(
+  rows: IncomingQuantityRow[],
+  originalBags: IncomingBagSize[] = []
+): CreateIncomingGatePassBagSize[] {
+  const paltaiByLocation = new Map<string, IncomingBagSize["paltaiLocation"]>()
+
+  for (const bag of originalBags) {
+    if (!bag.paltaiLocation) continue
+    const key = bagLocationKey(
+      bag.name,
+      bag.location.chamber,
+      bag.location.floor,
+      bag.location.row
+    )
+    paltaiByLocation.set(key, bag.paltaiLocation)
+  }
+
+  return rows.map((row) => {
+    const chamber = row.chamber.trim()
+    const floor = row.floor.trim()
+    const rowValue = row.row.trim()
+    const key = bagLocationKey(row.size, chamber, floor, rowValue)
+    const paltaiLocation = paltaiByLocation.get(key)
+
+    const bagSize: CreateIncomingGatePassBagSize = {
+      name: row.size,
+      initialQuantity: row.qty ?? 0,
+      currentQuantity: row.qty ?? 0,
+      location: {
+        chamber,
+        floor,
+        row: rowValue,
+      },
+    }
+
+    if (paltaiLocation) {
+      bagSize.paltaiLocation = paltaiLocation
+    }
+
+    return bagSize
+  })
 }
 
 type BuildCreateIncomingGatePassPayloadOptions = {
@@ -41,16 +93,7 @@ export function buildCreateIncomingGatePassPayload(
     farmerStorageLinkId: values.farmerIncomingLinkId,
     date: values.date,
     variety: values.variety,
-    bagSizes: activeRows.map((row) => ({
-      name: row.size,
-      initialQuantity: row.qty ?? 0,
-      currentQuantity: row.qty ?? 0,
-      location: {
-        chamber: row.chamber.trim(),
-        floor: row.floor.trim(),
-        row: row.row.trim(),
-      },
-    })),
+    bagSizes: mapQuantityRowsToBagSizes(activeRows),
   }
 
   if (values.manualGatePassNumber != null) {
@@ -63,6 +106,10 @@ export function buildCreateIncomingGatePassPayload(
 
   if (values.customMarka.trim()) {
     payload.customMarka = values.customMarka.trim()
+  }
+
+  if (values.truckNumber.trim()) {
+    payload.truckNumber = normalizeUppercase(values.truckNumber.trim())
   }
 
   if (values.remarks.trim()) {

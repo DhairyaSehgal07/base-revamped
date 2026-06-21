@@ -17,4 +17,6 @@ export type {
   CreateIncomingGatePassPayload,
   CreateIncomingGatePassResponse,
   IncomingGatePassRecord,
+  UpdateIncomingGatePassPayload,
+  UpdateIncomingGatePassResponse,
 } from "@/features/incoming/types/api"

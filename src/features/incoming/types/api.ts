@@ -49,3 +49,28 @@ export type CreateIncomingGatePassResponse = {
   message?: string
   data: IncomingGatePassRecord | null
 }
+
+export type UpdateIncomingGatePassPayload = {
+  farmerStorageLinkId?: string
+  date?: string
+  variety?: string
+  truckNumber?: string
+  remarks?: string
+  manualParchiNumber?: string
+  stockFilter?: string
+  customMarka?: string
+  amount?: number
+  bagSizes?: CreateIncomingGatePassBagSize[]
+}
+
+export type UpdateIncomingGatePassResponse = {
+  success: boolean
+  message?: string
+  data: IncomingGatePassRecord | null
+}
+
+export type IncomingGatePassesByFarmerLinkResponse = {
+  success: boolean
+  message?: string
+  data: IncomingGatePassRecord[] | null
+}

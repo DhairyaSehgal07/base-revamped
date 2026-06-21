@@ -7,6 +7,7 @@ import type {
   TransferStockItem,
   VoucherSort,
 } from "@/features/transfer-stock/types/storage-gate-pass"
+import { sortSizeNamesByPreferenceOrder } from "@/features/incoming/utils/incoming-preferences"
 
 /** Unit separator — size names may contain `|`. */
 const KEY_SEP = "\u001f"
@@ -73,7 +74,10 @@ export function getBagSlotsForSize(
   return slots
 }
 
-export function getUniqueSizes(passes: StorageGatePass[]): string[] {
+export function getUniqueSizes(
+  passes: StorageGatePass[],
+  sizeOrder: string[] = []
+): string[] {
   const names = new Set<string>()
   for (const pass of passes) {
     for (const bag of pass.bagSizes) {
@@ -81,7 +85,7 @@ export function getUniqueSizes(passes: StorageGatePass[]): string[] {
       if (name) names.add(name)
     }
   }
-  return [...names].sort()
+  return sortSizeNamesByPreferenceOrder([...names], sizeOrder)
 }
 
 export function getUniqueVarieties(passes: StorageGatePass[]): string[] {
@@ -124,8 +128,16 @@ export function passMatchesGatePassSearch(
   const q = search.trim().toLowerCase()
   if (!q) return true
   const gate = String(pass.gatePassNo)
-  const manual = String(pass.manualGatePassNumber)
-  return gate.includes(q) || manual.includes(q)
+  const manual =
+    pass.manualGatePassNumber != null
+      ? String(pass.manualGatePassNumber)
+      : ""
+  const parchi = pass.manualParchiNumber?.trim().toLowerCase() ?? ""
+  return (
+    gate.includes(q) ||
+    manual.includes(q) ||
+    parchi.includes(q)
+  )
 }
 
 export function passMatchesLocationFilters(

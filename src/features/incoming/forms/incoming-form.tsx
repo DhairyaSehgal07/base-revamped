@@ -37,6 +37,7 @@ import { usePreferencesStore } from "@/features/auth/store/use-preferences-store
 import { useStoreAdminStore } from "@/features/auth/store/use-store-admin-store"
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
 import { useCreateIncomingGatePass } from "@/features/incoming/api/use-create-incoming-gate-pass"
+import { useUpdateIncomingGatePass } from "@/features/incoming/api/use-update-incoming-gate-pass"
 import {
   SearchableOptionCombobox,
   filterAndSortOptions,
@@ -54,10 +55,12 @@ import {
   toComboboxOptions,
 } from "@/features/incoming/utils/incoming-preferences"
 import { buildCreateIncomingGatePassPayload } from "@/features/incoming/utils/incoming-form-values-to-create-payload"
+import { buildUpdateIncomingGatePassPayload } from "@/features/incoming/utils/incoming-form-values-to-update-payload"
+import type { IncomingBagSize } from "@/features/daybook/types"
 import { AddFarmerDialog } from "@/features/people/components/add-farmer-dialog"
 import type { FarmerStorageLink } from "@/features/people/types"
 import { getLinkDisplayName } from "@/features/people/utils/get-link-display-fields"
-import { numericInputProps, parseOptionalNumber } from "@/lib/form-utils"
+import { numericInputProps, normalizeUppercase, parseOptionalNumber } from "@/lib/form-utils"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
@@ -83,6 +86,10 @@ export type IncomingFormProps = {
   isFarmersError: boolean
   farmersError: unknown
   farmerLinkWarning?: string
+  gatePassId?: string
+  editBaselineValues?: IncomingFormValues
+  originalBagSizes?: IncomingBagSize[]
+  rentEntryVoucherId?: string
 }
 
 export function IncomingForm({
@@ -103,6 +110,10 @@ export function IncomingForm({
   isFarmersError,
   farmersError,
   farmerLinkWarning,
+  gatePassId,
+  editBaselineValues,
+  originalBagSizes = [],
+  rentEntryVoucherId,
 }: IncomingFormProps) {
   const [todayIso] = useState(() => new Date().toISOString())
   const preferences = usePreferencesStore((s) => s.preferences)
@@ -143,6 +154,7 @@ export function IncomingForm({
       stockFilter: "",
       customMarka: "",
       date: todayIso,
+      truckNumber: "",
       quantities: createDefaultIncomingQuantities(initialBagSizes),
       remarks: "",
     }),
@@ -156,6 +168,7 @@ export function IncomingForm({
 
   const navigate = useNavigate()
   const { mutateAsync: createIncomingGatePass } = useCreateIncomingGatePass()
+  const { mutateAsync: updateIncomingGatePass } = useUpdateIncomingGatePass()
   const showFinances = usePreferencesStore(
     (s) => s.preferences?.showFinances ?? true
   )
@@ -204,11 +217,67 @@ export function IncomingForm({
     ]
   )
 
+  const handleEditSubmit = useCallback(
+    async (values: IncomingFormValues) => {
+      if (!gatePassId || !editBaselineValues) {
+        throw new Error("Edit context is missing for this gate pass.")
+      }
+
+      try {
+        const costPerBag = farmerStorageLinks.find(
+          (link) => link._id === values.farmerIncomingLinkId
+        )?.costPerBag
+
+        const payload = buildUpdateIncomingGatePassPayload(
+          values,
+          editBaselineValues,
+          {
+            showFinances,
+            costPerBag,
+            rentEntryVoucherId,
+            originalBagSizes,
+          }
+        )
+
+        if (!payload) {
+          toast.info("No changes to save", { position: "bottom-right" })
+          return
+        }
+
+        const updated = await updateIncomingGatePass({ id: gatePassId, payload })
+
+        toast.success(
+          `Incoming gate pass #${updated.gatePassNo.toLocaleString("en-IN")} updated`,
+          { position: "bottom-right" }
+        )
+        navigate({ to: "/daybook", search: DEFAULT_DAYBOOK_SEARCH })
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to update incoming gate pass",
+          { position: "bottom-right" }
+        )
+        throw error
+      }
+    },
+    [
+      gatePassId,
+      editBaselineValues,
+      farmerStorageLinks,
+      showFinances,
+      rentEntryVoucherId,
+      originalBagSizes,
+      updateIncomingGatePass,
+      navigate,
+    ]
+  )
+
   const form = useIncomingForm({
     schemaConfig,
     defaultValues: formDefaultValues,
-    mode,
-    onSubmitConfirmed: mode === "create" ? handleCreateSubmit : undefined,
+    onSubmitConfirmed:
+      mode === "create" ? handleCreateSubmit : handleEditSubmit,
   })
 
   const resetLabel = mode === "edit" ? "Reset changes" : "Reset Form"
@@ -488,6 +557,34 @@ export function IncomingForm({
                           onBlur={field.handleBlur}
                           aria-invalid={isInvalid}
                           placeholder="Pick a date"
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    )
+                  }}
+                </form.Field>
+
+                <form.Field name="truckNumber">
+                  {(field) => {
+                    const isInvalid = isFieldInvalid(field.state.meta)
+                    return (
+                      <Field data-invalid={isInvalid}>
+                        <FieldLabel htmlFor={`${fieldIdPrefix}-truck-number`}>
+                          Truck number
+                        </FieldLabel>
+                        <Input
+                          id={`${fieldIdPrefix}-truck-number`}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) =>
+                            field.handleChange(normalizeUppercase(e.target.value))
+                          }
+                          aria-invalid={isInvalid}
+                          placeholder="e.g. HR-26-AB-1234 (optional)"
+                          className="uppercase"
                         />
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />

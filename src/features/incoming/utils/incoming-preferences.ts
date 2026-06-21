@@ -73,6 +73,51 @@ export function sortByPreferenceOrder<T extends { name: string }>(
   })
 }
 
+export function sortSizeNamesByPreferenceOrder(
+  sizes: string[],
+  sizeOrder: string[]
+): string[] {
+  if (sizeOrder.length === 0) return [...sizes].sort()
+
+  return sortByPreferenceOrder(
+    sizes.map((name) => ({ name })),
+    sizeOrder
+  ).map((item) => item.name)
+}
+
+export function getMergedBagSizeOrder(
+  commodities: CommodityPreference[]
+): string[] {
+  const seen = new Set<string>()
+  const order: string[] = []
+
+  for (const commodity of commodities) {
+    for (const size of commodity.sizes) {
+      if (!seen.has(size)) {
+        seen.add(size)
+        order.push(size)
+      }
+    }
+  }
+
+  return order
+}
+
+export function getPreferredBagSizeOrderForTransfer(
+  commodities: CommodityPreference[],
+  varietyFilter: string
+): string[] {
+  const variety = varietyFilter.trim()
+  if (variety) {
+    const varietyOrder = getBagSizeOrderForVariety(commodities, variety)
+    if (varietyOrder.length > 0) return varietyOrder
+  }
+
+  if (commodities.length === 1) return commodities[0]?.sizes ?? []
+
+  return getMergedBagSizeOrder(commodities)
+}
+
 export function getBagSizeOrderForVariety(
   commodities: CommodityPreference[],
   variety: string

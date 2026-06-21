@@ -2,6 +2,33 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.0] - 2026-06-21
+
+Outgoing and transfer-stock gate pass flows, incoming edit API integration, edit-history auditing, and Vitest test infrastructure.
+
+### Added
+- Outgoing gate pass creation at `/outgoing` with farmer selection, transfer allocation matrix, review sheet, and `/outgoing-gate-pass/` API wiring.
+- Outgoing daybook card actions: inline edit sheet, null/void with confirmation, transfer-type badges, and order detail display.
+- Incoming gate pass update API integration on shared `IncomingForm` edit mode (`PATCH /incoming-gate-pass/:id`).
+- Incoming edit history page at `/incoming/edit-history` with paginated audit list and formatted field-level before/after values.
+- Transfer stock creation wired to `/transfer-stock` API with summary sheet and `AllocationReviewByVariety` for review.
+- `useIncomingGatePassesByFarmerLink` hook to load storage gate passes from live incoming records for transfer and outgoing forms.
+- `TransferGatePassBadge` and transfer-type helpers on incoming and outgoing daybook cards.
+- Vitest + Testing Library setup (`test`, `test:watch` scripts, `src/test/setup.ts`, shared `test-utils`).
+- Component and payload mapper tests for incoming, outgoing, transfer-stock, finances, and people flows.
+
+### Changed
+- Daybook toolbar: add outgoing, transfer stock, and edit-history actions via dropdown menu.
+- Outgoing gate pass card rebuilt with expand/collapse, ERP formatting, and edit/null mutations.
+- Incoming gate pass card relocated under `features/daybook`; transfer allocation badges on transfer-type entries.
+- Transfer stock form loads storage passes from API-backed incoming gate passes; schema and matrix utilities extended for create payload.
+- Incoming create/edit payload mappers updated for API field alignment.
+- Topbar title resolution for outgoing and incoming edit-history routes.
+- `form-utils`: `normalizeUppercase` helper.
+
+### Notes
+- Outgoing detail route (`/outgoing/:id`) and outgoing edit history page are route stubs for future work.
+
 ## [0.4.0] - 2026-06-20
 
 Incoming gate pass create and edit flows, shared form infrastructure, and list pagination improvements across daybook and finances.

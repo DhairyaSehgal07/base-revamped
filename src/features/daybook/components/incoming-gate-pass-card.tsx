@@ -19,7 +19,7 @@ import {
   Package,
   Pencil,
   Printer,
-  Sprout,
+  Truck,
   User,
   Warehouse,
   type LucideIcon,
@@ -40,6 +40,10 @@ import {
   getBagSizeOrderForVariety,
   sortByPreferenceOrder,
 } from "@/features/incoming/utils/incoming-preferences"
+import {
+  isIncomingTransferType,
+  TransferGatePassBadge,
+} from "@/features/daybook/components/transfer-gate-pass-badge"
 
 interface InfoBlockProps {
   label: string
@@ -65,6 +69,36 @@ const InfoBlock = ({
   </div>
 )
 
+interface SummaryFieldProps {
+  label: string
+  value: string | number
+  icon?: LucideIcon
+  valueClassName?: string
+}
+
+const SummaryField = ({
+  label,
+  value,
+  icon: Icon,
+  valueClassName,
+}: SummaryFieldProps) => (
+  <div className="min-w-0 space-y-1">
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p
+      className={cn(
+        "flex min-w-0 items-center gap-1.5 text-sm font-semibold text-foreground",
+        valueClassName
+      )}
+      title={typeof value === "string" ? value : String(value)}
+    >
+      {Icon ? (
+        <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+      ) : null}
+      <span className="truncate">{value}</span>
+    </p>
+  </div>
+)
+
 interface IncomingGatePassCardProps {
   entry: IncomingDaybookEntry
 }
@@ -85,6 +119,11 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
   const lotNo = formatIncomingLotNo(entry, preferences, totalBags)
   const manualParchi = formatManualParchi(entry.manualParchiNumber)
   const remarks = entry.remarks?.trim() || "—"
+  const truckNumber = entry.truckNumber?.trim()
+    ? entry.truckNumber.trim().toUpperCase()
+    : "—"
+  const accountLabel = `#${farmerLink.accountNumber.toLocaleString("en-IN")}`
+  const isTransfer = isIncomingTransferType(entry.type)
 
   return (
     <Card className="card-hover overflow-hidden border-border/60">
@@ -136,29 +175,50 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
           >
             {entry.status}
           </Badge>
-          <Badge
-            variant="outline"
-            className="bg-background text-xs tabular-nums"
-          >
-            {formatQuantity(totalBags)} Bags
-          </Badge>
+          {isTransfer ? (
+            <TransferGatePassBadge
+              bagCount={totalBags}
+              typeLabel={entry.type}
+              tone="incoming"
+            />
+          ) : (
+            <Badge
+              variant="outline"
+              className="bg-background text-xs tabular-nums"
+            >
+              {formatQuantity(totalBags)} Bags
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
       <CardContent className="pt-5">
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          <InfoBlock label="Farmer" value={farmerLink.name} icon={User} />
-          <InfoBlock
-            label="Lot no."
+        <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+          <SummaryField
+            label="Farmer"
+            value={farmerLink.name}
+            icon={User}
+          />
+          <SummaryField
+            label="Account"
+            value={accountLabel}
+            valueClassName="font-mono tabular-nums"
+          />
+          <SummaryField
+            label="Variety"
+            value={entry.variety}
+            icon={Package}
+          />
+          <SummaryField
+            label="Lot No"
             value={lotNo}
             valueClassName="font-mono tabular-nums"
           />
-          <InfoBlock label="Variety" value={entry.variety} icon={Sprout} />
-          <InfoBlock
-            label="Bag lines"
-            value={bagSizes.length}
-            icon={Package}
-            valueClassName="tabular-nums"
+          <SummaryField
+            label="Truck No"
+            value={truckNumber}
+            icon={Truck}
+            valueClassName="font-mono uppercase tabular-nums"
           />
         </div>
 
@@ -187,7 +247,7 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
                     Remarks
                   </h4>
                   <div className="rounded-xl border border-border/50 bg-muted/20 p-4">
-                    <p className="text-sm text-muted-foreground">{remarks}</p>
+                    <p className="text-sm italic text-muted-foreground">{remarks}</p>
                   </div>
                 </div>
               </div>
@@ -280,6 +340,12 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
             variant="outline"
             size="sm"
             className="h-8 bg-background"
+            disabled={entry.status !== "OPEN"}
+            title={
+              entry.status !== "OPEN"
+                ? "Only open gate passes can be edited"
+                : undefined
+            }
             onClick={() =>
               navigate({
                 to: "/incoming/$id",
@@ -318,8 +384,8 @@ export function IncomingGatePassCardSkeleton() {
         </div>
       </CardHeader>
       <CardContent className="pt-5">
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-6">
+          {Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="space-y-2">
               <Skeleton className="h-3 w-14" />
               <Skeleton className="h-5 w-full max-w-28" />

@@ -243,6 +243,9 @@ function IncomingReviewSummary({
             value={formatReviewDate(values.date)}
             icon={Calendar}
           />
+          {values.truckNumber.trim() ? (
+            <DetailRow label="Truck number" value={values.truckNumber.trim()} />
+          ) : null}
         </SummaryCard>
       </div>
 

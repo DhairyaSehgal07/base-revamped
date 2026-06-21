@@ -23,7 +23,6 @@ function isIncomingSubmitMeta(meta: unknown): meta is IncomingSubmitMeta {
 type UseIncomingFormOptions = {
   schemaConfig: IncomingFormSchemaConfig
   defaultValues: IncomingFormValues
-  mode?: "create" | "edit"
   onOpenReview?: () => void
   onCloseReview?: () => void
   onSubmitConfirmed?: (values: IncomingFormValues) => Promise<void>
@@ -32,7 +31,6 @@ type UseIncomingFormOptions = {
 export function useIncomingForm({
   schemaConfig,
   defaultValues,
-  mode = "create",
   onOpenReview,
   onCloseReview,
   onSubmitConfirmed,
@@ -55,8 +53,6 @@ export function useIncomingForm({
 
       if (onSubmitConfirmed) {
         await onSubmitConfirmed(parsed)
-      } else {
-        console.log(mode === "edit" ? { action: "update", ...parsed } : parsed)
       }
 
       onCloseReview?.()

@@ -23,16 +23,12 @@ import {
 } from "@/features/incoming/schemas/incoming-quantities-schema"
 import type { FarmerStorageLink } from "@/features/people/types"
 import { formatInr } from "@/features/finances/shared/format-currency"
-import { numericInputProps, parseOptionalNumber } from "@/lib/form-utils"
+import { numericInputProps, normalizeUppercase, parseOptionalNumber } from "@/lib/form-utils"
 import { Copy, Plus, Trash2 } from "lucide-react"
 import * as z from "zod"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
-}
-
-function normalizeUppercase(value: string): string {
-  return value.toUpperCase()
 }
 
 const compactInputClass =

@@ -37,6 +37,7 @@ export function useCreateIncomingForm({
       stockFilter: "",
       customMarka: "",
       date: todayIso,
+      truckNumber: "",
       quantities: createDefaultIncomingQuantities(initialBagSizes),
       remarks: "",
     }),
@@ -46,7 +47,6 @@ export function useCreateIncomingForm({
   return useIncomingForm({
     schemaConfig,
     defaultValues,
-    mode: "create",
     onOpenReview,
     onCloseReview,
   })

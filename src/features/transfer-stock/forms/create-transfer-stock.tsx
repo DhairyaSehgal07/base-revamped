@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
+import { toast } from "sonner"
 import {
   Card,
   CardContent,
@@ -8,15 +10,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  DEMO_FARMER_STORAGE_LINK_ID,
-  getMockStorageGatePassesForFarmer,
-} from "@/features/transfer-stock/data/mock-storage-gate-passes"
 import { TransferGatePassesSection } from "@/features/transfer-stock/forms/transfer-gate-passes-section"
 import { TransferStockSummarySheet } from "@/features/transfer-stock/forms/transfer-stock-summary-sheet"
 import { useCreateTransferStockForm } from "@/features/transfer-stock/forms/use-create-transfer-stock-form"
-import { transferStockFormSchema } from "@/features/transfer-stock/schemas/transfer-stock-form-schema"
+import { useCreateTransferStock } from "@/features/transfer-stock/api/use-create-transfer-stock"
+import { useStorageGatePassesForFarmer } from "@/features/transfer-stock/hooks/use-storage-gate-passes-for-farmer"
+import { createTransferStockFormSchema } from "@/features/transfer-stock/schemas/transfer-stock-form-schema"
+import type { TransferStockFormValues } from "@/features/transfer-stock/schemas/transfer-stock-form-schema"
 import { buildTransferItems } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
+import { buildCreateTransferStockPayload } from "@/features/transfer-stock/utils/transfer-form-values-to-create-payload"
 import {
   Field,
   FieldDescription,
@@ -27,77 +29,108 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { DatePickerInput } from "@/components/date-picker"
 import {
   SearchableOptionCombobox,
   filterAndSortOptions,
   type ComboboxOption,
 } from "@/components/searchable-option-combobox"
-
-const MOCK_FARMER_LINKS = [
-  {
-    id: DEMO_FARMER_STORAGE_LINK_ID,
-    label: "RAM KISHAN SETHIA — Acct #15",
-  },
-  {
-    id: "507f1f77bcf86cd799439011",
-    label: "Rajesh Sehgal — Acct #12045",
-  },
-  {
-    id: "507f191e810c19729de860ea",
-    label: "Gurpreet Singh — Acct #9821",
-  },
-  {
-    id: "507f191e810c19729de860eb",
-    label: "Harbhajan Singh — Acct #7643",
-  },
-  {
-    id: "507f191e810c19729de860ec",
-    label: "Maninder Pal — Acct #4512",
-  },
-  {
-    id: "507f191e810c19729de860ed",
-    label: "Jaswinder Kaur — Acct #8834",
-  },
-  {
-    id: "507f191e810c19729de860ee",
-    label: "Baldev Singh — Acct #2391",
-  },
-  {
-    id: "507f191e810c19729de860ef",
-    label: "Ranjit Kumar — Acct #6745",
-  },
-  {
-    id: "507f191e810c19729de860f0",
-    label: "Sukhchain Singh — Acct #1189",
-  },
-  {
-    id: "507f191e810c19729de860f1",
-    label: "Paramjit Kaur — Acct #5520",
-  },
-  {
-    id: "507f191e810c19729de860f2",
-    label: "Kuldeep Singh — Acct #9076",
-  },
-  {
-    id: "507f191e810c19729de860f3",
-    label: "Amritpal Singh — Acct #3318",
-  },
-  {
-    id: "507f191e810c19729de860f4",
-    label: "Navjot Singh — Acct #4467",
-  },
-] as const
+import { useFarmerStorageLinks } from "@/features/people/api/use-farmer-storage-links"
+import { getLinkDisplayName } from "@/features/people/utils/get-link-display-fields"
+import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { shouldShowCustomMarka } from "@/features/incoming/utils/incoming-preferences"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
 }
 
-const CreateTransferStock = () => {
-  const farmerOptions = useMemo<ComboboxOption[]>(
-    () => [...MOCK_FARMER_LINKS],
-    []
+type TransferStockReviewSheetProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  fromFarmerStorageLinkId: string
+  parsedData: TransferStockFormValues | null
+  getFarmerLabel: (farmerStorageLinkId: string) => string
+  onBack: () => void
+  onSubmit: () => void
+  canSubmit: boolean
+  isSubmitting: boolean
+  allocations: Record<string, number>
+}
+
+function TransferStockReviewSheet({
+  open,
+  onOpenChange,
+  fromFarmerStorageLinkId,
+  parsedData,
+  getFarmerLabel,
+  onBack,
+  onSubmit,
+  canSubmit,
+  isSubmitting,
+  allocations,
+}: TransferStockReviewSheetProps) {
+  const { data: passes } = useStorageGatePassesForFarmer(fromFarmerStorageLinkId)
+  const transferItems = parsedData
+    ? buildTransferItems(allocations, passes)
+    : []
+
+  return (
+    <TransferStockSummarySheet
+      open={open}
+      onOpenChange={onOpenChange}
+      values={parsedData}
+      transferItems={transferItems}
+      fromFarmerLabel={
+        parsedData ? getFarmerLabel(parsedData.fromFarmerStorageLinkId) : ""
+      }
+      toFarmerLabel={
+        parsedData ? getFarmerLabel(parsedData.toFarmerStorageLinkId) : ""
+      }
+      onBack={onBack}
+      onSubmit={onSubmit}
+      canSubmit={canSubmit}
+      isSubmitting={isSubmitting}
+    />
   )
+}
+
+const CreateTransferStock = () => {
+  const navigate = useNavigate()
+  const { mutateAsync: createTransferStock } = useCreateTransferStock()
+  const preferences = usePreferencesStore((state) => state.preferences)
+
+  const showCustomMarka = shouldShowCustomMarka(preferences?.customMarka)
+
+  const schemaConfig = useMemo(
+    () => ({
+      requireCustomMarka: showCustomMarka,
+    }),
+    [showCustomMarka]
+  )
+
+  const formSchema = useMemo(
+    () => createTransferStockFormSchema(schemaConfig),
+    [schemaConfig]
+  )
+
+  const {
+    data: farmerStorageLinks,
+    isLoading: isFarmersLoading,
+    isError: isFarmersError,
+    error: farmersError,
+  } = useFarmerStorageLinks()
+
+  const farmerOptions = useMemo<ComboboxOption[]>(
+    () =>
+      farmerStorageLinks.map((link) => ({
+        id: link._id,
+        label: `${getLinkDisplayName(link)} — Acct #${link.accountNumber}`,
+      })),
+    [farmerStorageLinks]
+  )
+
   const [fromFarmerSearch, setFromFarmerSearch] = useState("")
   const [fromFarmerComboboxOpen, setFromFarmerComboboxOpen] = useState(false)
   const [toFarmerSearch, setToFarmerSearch] = useState("")
@@ -113,14 +146,49 @@ const CreateTransferStock = () => {
     [toFarmerSearch, farmerOptions]
   )
 
+  const resetComboboxState = () => {
+    setFromFarmerSearch("")
+    setFromFarmerComboboxOpen(false)
+    setToFarmerSearch("")
+    setToFarmerComboboxOpen(false)
+  }
+
   const form = useCreateTransferStockForm({
+    schemaConfig,
     onOpenReview: () => setReviewOpen(true),
-    onCloseReview: () => setReviewOpen(false),
+    onSubmitConfirmed: async (values, items) => {
+      try {
+        const payload = buildCreateTransferStockPayload(values, items)
+        const created = await createTransferStock(payload)
+
+        toast.success(
+          `Transfer #${created.gatePassNo.toLocaleString("en-IN")} created`,
+          { position: "bottom-right" }
+        )
+        setReviewOpen(false)
+        form.reset()
+        resetComboboxState()
+        navigate({ to: "/daybook", search: DEFAULT_DAYBOOK_SEARCH })
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to create transfer stock gate pass",
+          { position: "bottom-right" }
+        )
+        throw error
+      }
+    },
   })
 
   const getFarmerLabel = (farmerStorageLinkId: string) =>
     farmerOptions.find((option) => option.id === farmerStorageLinkId)
       ?.label ?? farmerStorageLinkId
+
+  const farmerComboboxDisabled = isFarmersLoading || isFarmersError
+  const farmerComboboxPlaceholder = isFarmersLoading
+    ? "Loading farmers..."
+    : "Search farmers..."
 
   const handleOpenReview = () => {
     void form.handleSubmit({ submitAction: "review" })
@@ -128,13 +196,6 @@ const CreateTransferStock = () => {
 
   const handleConfirmSubmit = () => {
     void form.handleSubmit({ submitAction: "submit" })
-  }
-
-  const resetComboboxState = () => {
-    setFromFarmerSearch("")
-    setFromFarmerComboboxOpen(false)
-    setToFarmerSearch("")
-    setToFarmerComboboxOpen(false)
   }
 
   return (
@@ -181,7 +242,8 @@ const CreateTransferStock = () => {
                           }}
                           onBlur={field.handleBlur}
                           isInvalid={isInvalid}
-                          placeholder="Search farmers..."
+                          disabled={farmerComboboxDisabled}
+                          placeholder={farmerComboboxPlaceholder}
                           emptyMessage="No farmers found."
                           options={farmerOptions}
                           sortedOptions={sortedFromFarmers}
@@ -190,6 +252,13 @@ const CreateTransferStock = () => {
                           open={fromFarmerComboboxOpen}
                           setOpen={setFromFarmerComboboxOpen}
                         />
+                        {isFarmersError && (
+                          <FieldDescription className="text-destructive">
+                            {farmersError instanceof Error
+                              ? farmersError.message
+                              : "Something went wrong while fetching farmers."}
+                          </FieldDescription>
+                        )}
                         <FieldDescription>
                           Farmer account stock is transferred from.
                         </FieldDescription>
@@ -216,7 +285,8 @@ const CreateTransferStock = () => {
                           onValueChange={field.handleChange}
                           onBlur={field.handleBlur}
                           isInvalid={isInvalid}
-                          placeholder="Search farmers..."
+                          disabled={farmerComboboxDisabled}
+                          placeholder={farmerComboboxPlaceholder}
                           emptyMessage="No farmers found."
                           options={farmerOptions}
                           sortedOptions={sortedToFarmers}
@@ -225,6 +295,13 @@ const CreateTransferStock = () => {
                           open={toFarmerComboboxOpen}
                           setOpen={setToFarmerComboboxOpen}
                         />
+                        {isFarmersError && (
+                          <FieldDescription className="text-destructive">
+                            {farmersError instanceof Error
+                              ? farmersError.message
+                              : "Something went wrong while fetching farmers."}
+                          </FieldDescription>
+                        )}
                         <FieldDescription>
                           Farmer account receiving the transferred stock.
                         </FieldDescription>
@@ -266,6 +343,36 @@ const CreateTransferStock = () => {
                     )
                   }}
                 </form.Field>
+
+                {showCustomMarka ? (
+                  <form.Field
+                    name="customMarka"
+                    validators={{ onChange: formSchema.shape.customMarka }}
+                  >
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="transfer-stock-custom-marka">
+                            Custom marka
+                          </FieldLabel>
+                          <Input
+                            id="transfer-stock-custom-marka"
+                            name={field.name}
+                            value={field.state.value}
+                            onBlur={field.handleBlur}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            aria-invalid={isInvalid}
+                            placeholder="Enter marka identifier"
+                          />
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
               </FieldGroup>
             </FieldSet>
 
@@ -364,38 +471,20 @@ const CreateTransferStock = () => {
           isSubmitting: state.isSubmitting,
         })}
         children={({ values, canSubmit, isSubmitting }) => {
-          const parsed = transferStockFormSchema.safeParse(values)
-          const fromFarmerId = parsed.success
-            ? parsed.data.fromFarmerStorageLinkId
-            : values.fromFarmerStorageLinkId
-          const passes = fromFarmerId
-            ? getMockStorageGatePassesForFarmer(fromFarmerId)
-            : []
-          const transferItems =
-            parsed.success
-              ? buildTransferItems(parsed.data.allocations, passes)
-              : []
+          const parsed = formSchema.safeParse(values)
 
           return (
-            <TransferStockSummarySheet
+            <TransferStockReviewSheet
               open={reviewOpen}
               onOpenChange={setReviewOpen}
-              values={parsed.success ? parsed.data : null}
-              transferItems={transferItems}
-              fromFarmerLabel={
-                parsed.success
-                  ? getFarmerLabel(parsed.data.fromFarmerStorageLinkId)
-                  : ""
-              }
-              toFarmerLabel={
-                parsed.success
-                  ? getFarmerLabel(parsed.data.toFarmerStorageLinkId)
-                  : ""
-              }
+              fromFarmerStorageLinkId={values.fromFarmerStorageLinkId}
+              parsedData={parsed.success ? parsed.data : null}
+              getFarmerLabel={getFarmerLabel}
               onBack={() => setReviewOpen(false)}
               onSubmit={handleConfirmSubmit}
               canSubmit={canSubmit}
               isSubmitting={isSubmitting}
+              allocations={values.allocations}
             />
           )
         }}
