@@ -1,0 +1,260 @@
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  BookOpen,
+  Boxes,
+  MapPin,
+  Pencil,
+  Phone,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { formatInr } from "@/features/finances/shared/format-currency"
+import { cn } from "@/lib/utils"
+
+export type FarmerBagTotals = {
+  incomingBags: number
+  outgoingBags: number
+  transferIncomingBags: number
+  transferOutgoingBags: number
+}
+
+type FarmerProfileCardProps = {
+  displayName: string
+  accountLabel: string
+  costPerBag?: number
+  mobileNumber?: string
+  address?: string
+  bagTotals?: FarmerBagTotals
+  isLoadingTotals?: boolean
+  onEditClick?: () => void
+  onFinancesClick?: () => void
+  onStockLedgerClick?: () => void
+  onFinancialLedgerClick?: () => void
+}
+
+const bagCountFormatter = new Intl.NumberFormat("en-IN")
+
+const PLACEHOLDER_BAG_TOTALS: FarmerBagTotals = {
+  incomingBags: 0,
+  outgoingBags: 0,
+  transferIncomingBags: 0,
+  transferOutgoingBags: 0,
+}
+
+type BagStat = {
+  label: string
+  valueKey: keyof Pick<FarmerBagTotals, "incomingBags" | "outgoingBags">
+  transferKey: keyof Pick<
+    FarmerBagTotals,
+    "transferIncomingBags" | "transferOutgoingBags"
+  >
+  icon: LucideIcon
+  tone: "primary" | "muted"
+}
+
+const BAG_STATS: BagStat[] = [
+  {
+    label: "Incoming",
+    valueKey: "incomingBags",
+    transferKey: "transferIncomingBags",
+    icon: ArrowDownLeft,
+    tone: "primary",
+  },
+  {
+    label: "Outgoing",
+    valueKey: "outgoingBags",
+    transferKey: "transferOutgoingBags",
+    icon: ArrowUpRight,
+    tone: "muted",
+  },
+]
+
+function getInitials(name: string) {
+  if (!name) return ""
+
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+export function FarmerProfileCard({
+  displayName,
+  accountLabel,
+  costPerBag,
+  mobileNumber,
+  address,
+  bagTotals = PLACEHOLDER_BAG_TOTALS,
+  isLoadingTotals = false,
+  onEditClick,
+  onFinancesClick,
+  onStockLedgerClick,
+  onFinancialLedgerClick,
+}: FarmerProfileCardProps) {
+  const actions = [
+    { label: "Finances", icon: Wallet, onClick: onFinancesClick },
+    {
+      label: "View Financial Ledger",
+      icon: BookOpen,
+      onClick: onFinancialLedgerClick,
+    },
+    { label: "View Stock Ledger", icon: Boxes, onClick: onStockLedgerClick },
+  ]
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex min-w-0 items-start gap-3">
+          <Avatar className="size-14">
+            <AvatarFallback className="bg-primary text-base font-semibold text-primary-foreground">
+              {getInitials(displayName)}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="truncate text-xl font-semibold" title={displayName}>
+              {displayName}
+            </CardTitle>
+
+            <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <Badge variant="secondary" className="tabular-nums font-normal">
+                {accountLabel}
+              </Badge>
+
+              {typeof costPerBag === "number" ? (
+                <span className="tabular-nums text-foreground">
+                  <span className="font-medium text-primary">
+                    {formatInr(costPerBag)}
+                  </span>
+                  <span> / bag</span>
+                </span>
+              ) : null}
+
+              {mobileNumber ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="size-3.5 shrink-0" aria-hidden />
+                  <span className="tabular-nums">{mobileNumber}</span>
+                </span>
+              ) : null}
+
+              {address ? (
+                <span
+                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 sm:max-w-xs"
+                  title={address}
+                >
+                  <MapPin className="size-3.5 shrink-0" aria-hidden />
+                  <span className="truncate">{address}</span>
+                </span>
+              ) : null}
+            </CardDescription>
+          </div>
+        </div>
+
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Edit farmer"
+            onClick={onEditClick}
+          >
+            <Pencil aria-hidden />
+          </Button>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent className="flex flex-wrap gap-2">
+        {actions.map((action) => {
+          const Icon = action.icon
+
+          return (
+            <Button
+              key={action.label}
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={action.onClick}
+            >
+              <Icon className="text-primary" aria-hidden />
+              {action.label}
+            </Button>
+          )
+        })}
+      </CardContent>
+
+      <Separator />
+
+      <CardFooter className="grid grid-cols-2 gap-4">
+        {BAG_STATS.map((stat) => (
+          <BagStatCell
+            key={stat.valueKey}
+            stat={stat}
+            value={bagTotals[stat.valueKey]}
+            transferValue={bagTotals[stat.transferKey]}
+            isLoading={isLoadingTotals}
+          />
+        ))}
+      </CardFooter>
+    </Card>
+  )
+}
+
+function BagStatCell({
+  stat,
+  value,
+  transferValue,
+  isLoading,
+}: {
+  stat: BagStat
+  value: number
+  transferValue: number
+  isLoading: boolean
+}) {
+  const Icon = stat.icon
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "flex size-8 items-center justify-center rounded-md",
+            stat.tone === "primary"
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">
+          {stat.label}
+        </span>
+      </div>
+
+      <div className="space-y-0.5 tabular-nums text-foreground">
+        <p className="text-sm font-medium">
+          {isLoading ? "—" : `${bagCountFormatter.format(value)} gate passes`}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {isLoading ? "—" : `${bagCountFormatter.format(transferValue)} bags`}
+        </p>
+      </div>
+    </div>
+  )
+}

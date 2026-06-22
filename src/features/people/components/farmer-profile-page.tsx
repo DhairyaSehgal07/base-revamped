@@ -1,28 +1,110 @@
-import { Link } from "@tanstack/react-router"
-import { ArrowLeft, MapPin, Phone, User } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
+import { getRouteApi, Link } from "@tanstack/react-router"
+import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty"
-import { formatInr } from "@/features/finances/shared/format-currency"
+import { EditFarmerDialog } from "@/features/people/components/edit-farmer-dialog"
+import { FarmerGatePassesSection } from "@/features/people/components/farmer-gate-passes-section"
+import { FarmerProfileCard } from "@/features/people/components/farmer-profile-card"
+import type { FarmerGatePassSummaries } from "@/features/people/api/use-farmer-gate-passes"
 import type { PersonDetailSearch } from "@/features/people/search"
+import type { FarmerStorageLink } from "@/features/people/types"
+
+const peopleDetailRouteApi = getRouteApi("/_authenticated/people/$id")
+
+const EMPTY_BAG_TOTALS = {
+  incomingBags: 0,
+  outgoingBags: 0,
+  transferIncomingBags: 0,
+  transferOutgoingBags: 0,
+}
 
 type FarmerProfilePageProps = {
   linkId: string
   search: PersonDetailSearch
 }
 
+function personDetailSearchToFarmerLink(
+  linkId: string,
+  search: PersonDetailSearch,
+): FarmerStorageLink | null {
+  const name = search.name?.trim()
+  const mobileNumber = search.mobileNumber?.trim()
+  const address = search.address?.trim()
+
+  if (
+    !name ||
+    typeof search.accountNumber !== "number" ||
+    !mobileNumber ||
+    !address
+  ) {
+    return null
+  }
+
+  return {
+    _id: linkId,
+    name,
+    accountNumber: search.accountNumber,
+    mobileNumber,
+    address,
+    costPerBag: search.costPerBag ?? 0,
+    isActive: true,
+  }
+}
+
+function summariesToBagTotals(summaries: FarmerGatePassSummaries) {
+  return {
+    incomingBags: summaries.totalIncomingBags,
+    outgoingBags: summaries.totalOutgoingBags,
+    transferIncomingBags: summaries.totalInternallyTransferredIncomingBags,
+    transferOutgoingBags: summaries.totalInternallyTransferredOutgoingBags,
+  }
+}
+
 export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
+  const navigate = peopleDetailRouteApi.useNavigate()
+  const [editOpen, setEditOpen] = useState(false)
+  const [bagTotals, setBagTotals] = useState(EMPTY_BAG_TOTALS)
+  const [isLoadingTotals, setIsLoadingTotals] = useState(true)
+
+  const editLink = useMemo(
+    () => personDetailSearchToFarmerLink(linkId, search),
+    [linkId, search],
+  )
+
   const displayName = search.name?.trim() || "Farmer"
   const accountLabel =
     typeof search.accountNumber === "number"
       ? `Account #${search.accountNumber}`
       : "Account"
+
+  const handleSummariesChange = useCallback(
+    (summaries: FarmerGatePassSummaries, isLoading: boolean) => {
+      setBagTotals(summariesToBagTotals(summaries))
+      setIsLoadingTotals(isLoading)
+    },
+    [],
+  )
+
+  const handleEditSuccess = (updatedLink: FarmerStorageLink) => {
+    navigate({
+      search: (current) => ({
+        ...current,
+        name: updatedLink.name,
+        mobileNumber: updatedLink.mobileNumber,
+        accountNumber: updatedLink.accountNumber,
+        address: updatedLink.address,
+        costPerBag: updatedLink.costPerBag,
+      }),
+    })
+  }
+
+  const handleStockLedgerClick = () => {
+    void navigate({
+      to: "./report",
+      search,
+    })
+  }
 
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
@@ -35,70 +117,31 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
         </Button>
       </div>
 
-      <div className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-            <User className="size-5 text-primary" aria-hidden />
-          </div>
+      <FarmerProfileCard
+        displayName={displayName}
+        accountLabel={accountLabel}
+        costPerBag={search.costPerBag}
+        mobileNumber={search.mobileNumber}
+        address={search.address}
+        bagTotals={bagTotals}
+        isLoadingTotals={isLoadingTotals}
+        onEditClick={editLink ? () => setEditOpen(true) : undefined}
+        onStockLedgerClick={handleStockLedgerClick}
+      />
 
-          <div className="min-w-0 flex-1">
-            <h2 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground">
-              {displayName}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {accountLabel}
-            </p>
+      {editLink ? (
+        <EditFarmerDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          link={editLink}
+          onSuccess={handleEditSuccess}
+        />
+      ) : null}
 
-            {typeof search.costPerBag === "number" ? (
-              <p className="mt-1 text-sm tabular-nums text-foreground">
-                <span className="font-medium">
-                  {formatInr(search.costPerBag)}
-                </span>
-                <span className="text-muted-foreground"> / bag</span>
-              </p>
-            ) : null}
-
-            {search.mobileNumber ? (
-              <p className="mt-3 flex items-center gap-2 text-sm text-foreground">
-                <Phone
-                  className="size-3.5 shrink-0 text-muted-foreground"
-                  aria-hidden
-                />
-                <span className="tabular-nums">{search.mobileNumber}</span>
-              </p>
-            ) : null}
-
-            {search.address ? (
-              <p className="mt-2 flex items-start gap-2 text-sm leading-relaxed text-muted-foreground">
-                <MapPin
-                  className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
-                  aria-hidden
-                />
-                <span>{search.address}</span>
-              </p>
-            ) : null}
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              Link ID: <span className="font-mono">{linkId}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <Empty className="rounded-xl border bg-muted/10">
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <User />
-          </EmptyMedia>
-
-          <EmptyTitle>Farmer detail coming soon</EmptyTitle>
-
-          <EmptyDescription>
-            Incoming, dispatch ledger, and account tabs for this farmer will
-            appear here.
-          </EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <FarmerGatePassesSection
+        linkId={linkId}
+        onSummariesChange={handleSummariesChange}
+      />
     </main>
   )
 }

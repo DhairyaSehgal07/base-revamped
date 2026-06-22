@@ -1,6 +1,17 @@
 import type { Preferences } from "@/features/auth/types"
 import type { DaybookLocation, IncomingDaybookEntry } from "@/features/daybook/types"
 
+export function formatDaybookDate(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return "—"
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date)
+}
+
 export function formatDaybookDateTime(iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return "—"
@@ -16,6 +27,10 @@ export function formatDaybookDateTime(iso: string): string {
 
 export function formatLocation(location: DaybookLocation): string {
   return `Chamber ${location.chamber} / Floor ${location.floor} / Row ${location.row}`
+}
+
+export function formatCompactLocation(location: DaybookLocation): string {
+  return `${location.chamber}/${location.floor}/${location.row}`
 }
 
 export function formatManualParchi(value: string | number | undefined): string {

@@ -52,6 +52,11 @@ function resolvePageTitle(
     return routeTitles[pathname];
   }
   if (pathname.startsWith('/people/') && pathname !== '/people') {
+    if (pathname.endsWith('/report')) {
+      const farmerName = personName?.trim();
+      return farmerName ? `Stock Ledger — ${farmerName}` : 'Stock Ledger';
+    }
+
     return personName?.trim() || 'Farmer';
   }
   if (pathname === '/incoming/edit-history') {

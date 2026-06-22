@@ -48,3 +48,18 @@ export type QuickRegisterFarmerResponse = {
   message?: string
   data: QuickRegisterFarmerData | null
 }
+
+export type UpdateFarmerStorageLinkPayload = {
+  name?: string
+  address?: string
+  mobileNumber?: string
+  accountNumber?: number
+  costPerBag?: number
+  openingBalance?: number
+}
+
+export type UpdateFarmerStorageLinkResponse = {
+  success: boolean
+  message?: string
+  data: QuickRegisterFarmerData | null
+}

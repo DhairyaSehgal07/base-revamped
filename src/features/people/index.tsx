@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { useFarmerStorageLinks } from "@/features/people/api/use-farmer-storage-links"
 import { AddFarmerDialog } from "@/features/people/components/add-farmer-dialog"
 import { PeopleCard } from "@/features/people/components/people-card"
@@ -118,19 +119,24 @@ const PeoplePage = () => {
         </ItemActions>
       </Item>
 
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 text-card-foreground shadow-sm sm:gap-4 sm:p-4">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+        <div className="p-3 sm:p-4">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-          <Input
-            placeholder="Search by name"
-            className="w-full pl-10"
-            inputMode="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+            <Input
+              placeholder="Search by name"
+              className="w-full pl-10"
+              inputMode="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
         </div>
 
+        <Separator />
+
+        <div className="space-y-3 bg-muted/20 p-3 sm:space-y-4 sm:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div>
             <Select
@@ -160,6 +166,7 @@ const PeoplePage = () => {
               <span className="hidden sm:inline">Add Farmer</span>
             </Button>
           </div>
+        </div>
         </div>
       </div>
 

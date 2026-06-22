@@ -1,0 +1,138 @@
+import type { DaybookEntry } from "@/features/daybook/types"
+import {
+  isIncomingDaybookEntry,
+  isOutgoingDaybookEntry,
+} from "@/features/daybook/types"
+
+import {
+  collectUniqueBagSizes,
+  getGatePassTotalBags,
+  sumSizeColumn,
+} from "./gate-pass-table-helpers"
+
+export type FarmerReportRowKind = "gate-pass" | "opening-balance"
+
+export type FarmerReportTableRow = {
+  entry: DaybookEntry | null
+  runningTotal: number
+  rowBags: number
+  kind: FarmerReportRowKind
+  sizeTotals?: Record<string, number>
+}
+
+export type FarmerReportSectionMode = "incoming" | "outgoing"
+
+export type FarmerReportSections = {
+  incoming: FarmerReportTableRow[]
+  outgoing: FarmerReportTableRow[]
+  incomingClosingBalance: number
+}
+
+function getEntrySortTimestamp(entry: DaybookEntry): number {
+  const timestamp = Date.parse(entry.createdAt || entry.date)
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+function sortEntriesOldestFirst(entries: DaybookEntry[]): DaybookEntry[] {
+  return [...entries].sort((left, right) => {
+    const leftTimestamp = getEntrySortTimestamp(left)
+    const rightTimestamp = getEntrySortTimestamp(right)
+
+    if (leftTimestamp !== rightTimestamp) {
+      return leftTimestamp - rightTimestamp
+    }
+
+    return left.gatePassNo - right.gatePassNo
+  })
+}
+
+export function splitFarmerReportEntries(entries: DaybookEntry[]): {
+  incoming: DaybookEntry[]
+  outgoing: DaybookEntry[]
+} {
+  const incoming = sortEntriesOldestFirst(entries.filter(isIncomingDaybookEntry))
+  const outgoing = sortEntriesOldestFirst(
+    entries.filter(
+      (entry) => isOutgoingDaybookEntry(entry) && entry.isNull !== true,
+    ),
+  )
+
+  return { incoming, outgoing }
+}
+
+export function buildFarmerReportRows(
+  entries: DaybookEntry[],
+  mode: FarmerReportSectionMode,
+  startingBalance = 0,
+): FarmerReportTableRow[] {
+  let runningTotal = startingBalance
+
+  return entries.map((entry) => {
+    const rowBags = getGatePassTotalBags(entry)
+
+    if (mode === "incoming") {
+      runningTotal += rowBags
+    } else {
+      runningTotal -= rowBags
+    }
+
+    return {
+      entry,
+      runningTotal,
+      rowBags,
+      kind: "gate-pass",
+    }
+  })
+}
+
+function buildOpeningBalanceRow(
+  incomingEntries: DaybookEntry[],
+  closingBalance: number,
+): FarmerReportTableRow {
+  const sizes = collectUniqueBagSizes(incomingEntries)
+  const sizeTotals: Record<string, number> = {}
+
+  for (const size of sizes) {
+    const total = sumSizeColumn(incomingEntries, size)
+    if (total > 0) {
+      sizeTotals[size] = total
+    }
+  }
+
+  return {
+    entry: null,
+    runningTotal: closingBalance,
+    rowBags: 0,
+    kind: "opening-balance",
+    sizeTotals,
+  }
+}
+
+export function buildFarmerReportSections(
+  entries: DaybookEntry[],
+): FarmerReportSections {
+  const { incoming, outgoing } = splitFarmerReportEntries(entries)
+  const incomingRows = buildFarmerReportRows(incoming, "incoming")
+  const incomingClosingBalance =
+    incomingRows.length > 0
+      ? incomingRows[incomingRows.length - 1]!.runningTotal
+      : 0
+  const outgoingGatePassRows = buildFarmerReportRows(
+    outgoing,
+    "outgoing",
+    incomingClosingBalance,
+  )
+  const openingBalanceRow =
+    incomingRows.length > 0 && outgoingGatePassRows.length > 0
+      ? buildOpeningBalanceRow(incoming, incomingClosingBalance)
+      : null
+  const outgoingRows = openingBalanceRow
+    ? [openingBalanceRow, ...outgoingGatePassRows]
+    : outgoingGatePassRows
+
+  return {
+    incoming: incomingRows,
+    outgoing: outgoingRows,
+    incomingClosingBalance,
+  }
+}

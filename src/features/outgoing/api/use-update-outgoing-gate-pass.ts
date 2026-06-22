@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { DAYBOOK_QUERY_KEY } from "@/features/daybook/api/use-daybook"
 import { DAYBOOK_SEARCH_QUERY_KEY } from "@/features/daybook/api/use-daybook-search"
+import { FARMER_GATE_PASSES_QUERY_KEY } from "@/features/people/api/use-farmer-gate-passes"
 import type {
   OutgoingGatePassRecord,
   UpdateOutgoingGatePassPayload,
@@ -44,6 +45,9 @@ export function useUpdateOutgoingGatePass() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: DAYBOOK_QUERY_KEY })
       void queryClient.invalidateQueries({ queryKey: DAYBOOK_SEARCH_QUERY_KEY })
+      void queryClient.invalidateQueries({
+        queryKey: FARMER_GATE_PASSES_QUERY_KEY,
+      })
     },
   })
 }

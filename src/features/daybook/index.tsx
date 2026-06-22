@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 
 import {
   Empty,
@@ -242,45 +243,50 @@ const DaybookPage = () => {
         </ItemActions>
       </Item>
 
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 text-card-foreground shadow-sm sm:gap-4 sm:p-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative order-1 min-w-0 w-full sm:order-2 sm:flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+        <div className="p-3 sm:p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative order-1 min-w-0 w-full sm:order-2 sm:flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
-            <Input
-              placeholder={getSearchPlaceholder(search.searchBy)}
-              className={`w-full pl-10${showSearchSpinner ? " pr-10" : ""}`}
-              inputMode="search"
-              value={query}
-              onChange={(event) => setDraftQuery(event.target.value)}
-              aria-busy={showSearchSpinner}
-            />
-
-            {showSearchSpinner ? (
-              <Loader2
-                className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
-                aria-hidden
+              <Input
+                placeholder={getSearchPlaceholder(search.searchBy)}
+                className={`w-full pl-10${showSearchSpinner ? " pr-10" : ""}`}
+                inputMode="search"
+                value={query}
+                onChange={(event) => setDraftQuery(event.target.value)}
+                aria-busy={showSearchSpinner}
               />
-            ) : null}
-          </div>
 
-          <div className="order-2 w-full sm:order-1 sm:w-[150px] sm:shrink-0">
-            <Select value={search.searchBy} onValueChange={handleSearchByChange}>
-              <SelectTrigger className="w-full min-w-0">
-                <SelectValue placeholder="Search by" />
-              </SelectTrigger>
+              {showSearchSpinner ? (
+                <Loader2
+                  className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground"
+                  aria-hidden
+                />
+              ) : null}
+            </div>
 
-              <SelectContent>
-                {DAYBOOK_SEARCH_BY_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="order-2 w-full sm:order-1 sm:w-[150px] sm:shrink-0">
+              <Select value={search.searchBy} onValueChange={handleSearchByChange}>
+                <SelectTrigger className="w-full min-w-0">
+                  <SelectValue placeholder="Search by" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {DAYBOOK_SEARCH_BY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
+        <Separator />
+
+        <div className="space-y-3 bg-muted/20 p-3 sm:space-y-4 sm:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-row">
             <Select value={search.sortBy} onValueChange={handleSortChange}>
@@ -361,6 +367,7 @@ const DaybookPage = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
         </div>
       </div>
 
