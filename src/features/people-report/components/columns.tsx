@@ -1,4 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
+import { memo } from "react"
 import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 
 import type { CommodityPreference } from "@/features/auth/types"
@@ -96,6 +97,8 @@ function SizeQuantityCell({
   )
 }
 
+const MemoizedSizeQuantityCell = memo(SizeQuantityCell)
+
 function isOpeningBalanceRow(row: FarmerReportTableRow): boolean {
   return row.kind === "opening-balance"
 }
@@ -120,14 +123,20 @@ function emptyGroupedAggregatedCell() {
 
 const noGroupAggregation = () => null
 
-export function getFarmerReportColumns(
+const columnCache = new Map<string, ColumnDef<FarmerReportTableRow>[]>()
+
+export function getFarmerReportBagSizeSignature(
   rows: DaybookEntry[],
   commodities: CommodityPreference[] = [],
-  showCustomMarka = false,
-  showStockFilter = false,
-): ColumnDef<FarmerReportTableRow>[] {
-  const orderedSizes = orderBagSizes(collectUniqueBagSizes(rows), commodities)
+): string {
+  return orderBagSizes(collectUniqueBagSizes(rows), commodities).join("\0")
+}
 
+function buildFarmerReportColumnsForSizes(
+  orderedSizes: string[],
+  showCustomMarka: boolean,
+  showStockFilter: boolean,
+): ColumnDef<FarmerReportTableRow>[] {
   const staticColumns: ColumnDef<FarmerReportTableRow>[] = [
     {
       id: "date",
@@ -284,7 +293,7 @@ export function getFarmerReportColumns(
         )
       },
       cell: ({ row }) => (
-        <SizeQuantityCell row={row.original} size={size} />
+        <MemoizedSizeQuantityCell row={row.original} size={size} />
       ),
     }),
   )
@@ -331,4 +340,36 @@ export function getFarmerReportColumns(
   ]
 
   return [...staticColumns, ...sizeColumns, ...trailingColumns]
+}
+
+export function getFarmerReportColumnsForSizes(
+  orderedSizes: string[],
+  showCustomMarka = false,
+  showStockFilter = false,
+): ColumnDef<FarmerReportTableRow>[] {
+  const cacheKey = `${orderedSizes.join("\0")}|cm:${showCustomMarka}|sf:${showStockFilter}`
+  const cached = columnCache.get(cacheKey)
+  if (cached) return cached
+
+  const columns = buildFarmerReportColumnsForSizes(
+    orderedSizes,
+    showCustomMarka,
+    showStockFilter,
+  )
+  columnCache.set(cacheKey, columns)
+  return columns
+}
+
+export function getFarmerReportColumns(
+  rows: DaybookEntry[],
+  commodities: CommodityPreference[] = [],
+  showCustomMarka = false,
+  showStockFilter = false,
+): ColumnDef<FarmerReportTableRow>[] {
+  const orderedSizes = orderBagSizes(collectUniqueBagSizes(rows), commodities)
+  return getFarmerReportColumnsForSizes(
+    orderedSizes,
+    showCustomMarka,
+    showStockFilter,
+  )
 }

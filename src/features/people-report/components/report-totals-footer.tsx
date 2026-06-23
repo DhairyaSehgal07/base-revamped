@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useMemo, type ReactNode } from "react"
 import type { Table as TanStackTable } from "@tanstack/react-table"
 
 import { TableCell, TableFooter, TableRow } from "@/components/ui/table"
@@ -48,13 +48,13 @@ function getClosingBalanceForSize(
   return openingTotal - outgoingTotal
 }
 
-function getFooterCellContent(
+function buildFooterCellContent(
   columnId: string,
   columnIndex: number,
   rows: FarmerReportTableRow[],
   sectionMode: FarmerReportSectionMode,
+  gatePassRows: FarmerReportTableRow[],
 ): ReactNode {
-  const gatePassRows = getGatePassRows(rows)
   const footerLabel = sectionMode === "outgoing" ? "Closing Balance" : "Total"
 
   if (columnIndex === 0) {
@@ -84,8 +84,10 @@ function getFooterCellContent(
       )
     }
 
-    const entries = gatePassRows.map((row) => row.entry!)
-    const total = sumSizeColumn(entries, size)
+    const total = sumSizeColumn(
+      gatePassRows.map((row) => row.entry!),
+      size,
+    )
     return (
       <span className="tabular-nums font-semibold text-foreground">
         {total > 0 ? formatQuantity(total) : "—"}
@@ -102,9 +104,25 @@ export function ReportTotalsFooter({
   sectionMode,
   isFooterElevated,
 }: ReportTotalsFooterProps) {
-  if (rows.length === 0) return null
-
   const visibleColumns = table.getVisibleLeafColumns()
+
+  const footerCells = useMemo(() => {
+    const gatePassRows = getGatePassRows(rows)
+
+    return visibleColumns.map((column, columnIndex) => ({
+      columnId: column.id,
+      meta: column.columnDef.meta,
+      content: buildFooterCellContent(
+        column.id,
+        columnIndex,
+        rows,
+        sectionMode,
+        gatePassRows,
+      ),
+    }))
+  }, [rows, sectionMode, visibleColumns])
+
+  if (rows.length === 0) return null
 
   const footerRowClassName =
     sectionMode === "outgoing"
@@ -119,12 +137,12 @@ export function ReportTotalsFooter({
       )}
     >
       <TableRow className={footerRowClassName}>
-        {visibleColumns.map((column, columnIndex) => (
+        {footerCells.map((cell) => (
           <TableCell
-            key={column.id}
-            className={getFooterClassName(column.columnDef.meta)}
+            key={cell.columnId}
+            className={getFooterClassName(cell.meta)}
           >
-            {getFooterCellContent(column.id, columnIndex, rows, sectionMode)}
+            {cell.content}
           </TableCell>
         ))}
       </TableRow>

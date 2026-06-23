@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { pdf } from "@react-pdf/renderer"
 import { FileDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -6,22 +6,33 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
 import FarmerStockLedgerReport from "@/features/people-report/pdf/farmer-stock-ledger-report-pdf"
-import type { FarmerStockLedgerPdfData } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import {
+  buildFarmerStockLedgerPdfData,
+  type BuildFarmerStockLedgerPdfDataInput,
+  type FarmerStockLedgerPdfData,
+} from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 
 type FarmerStockLedgerPdfButtonProps = {
-  pdfData: FarmerStockLedgerPdfData | null
+  getPdfBuildInput: () => BuildFarmerStockLedgerPdfDataInput | null
   disabled?: boolean
 }
 
 export function FarmerStockLedgerPdfButton({
-  pdfData,
+  getPdfBuildInput,
   disabled = false,
 }: FarmerStockLedgerPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false)
-  const coldStorage = useColdStorageStore((state) => state.coldStorage)
+  const coldStorageName = useColdStorageStore((state) => state.coldStorage?.name)
+  const coldStorageAddress = useColdStorageStore(
+    (state) => state.coldStorage?.address,
+  )
+  const coldStorageLogo = useColdStorageStore(
+    (state) => state.coldStorage?.imageUrl,
+  )
 
-  const handleOpenPdf = async () => {
-    if (!pdfData || !coldStorage?.name) {
+  const handleOpenPdf = useCallback(async () => {
+    const buildInput = getPdfBuildInput()
+    if (!buildInput || !coldStorageName) {
       toast.error("Report data is not ready yet.")
       return
     }
@@ -29,12 +40,17 @@ export function FarmerStockLedgerPdfButton({
     try {
       setIsGenerating(true)
 
+      const pdfData: FarmerStockLedgerPdfData = buildFarmerStockLedgerPdfData({
+        ...buildInput,
+        generatedAt: new Date(),
+      })
+
       const doc = (
         <FarmerStockLedgerReport
           {...pdfData}
-          coldStorageName={coldStorage.name}
-          coldStorageAddress={coldStorage.address}
-          coldStorageLogo={coldStorage.imageUrl || undefined}
+          coldStorageName={coldStorageName}
+          coldStorageAddress={coldStorageAddress}
+          coldStorageLogo={coldStorageLogo || undefined}
         />
       )
       const asPdf = pdf(doc)
@@ -48,7 +64,12 @@ export function FarmerStockLedgerPdfButton({
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [
+    coldStorageAddress,
+    coldStorageLogo,
+    coldStorageName,
+    getPdfBuildInput,
+  ])
 
   return (
     <Button
@@ -56,7 +77,7 @@ export function FarmerStockLedgerPdfButton({
       size="sm"
       className="shrink-0"
       onClick={() => void handleOpenPdf()}
-      disabled={disabled || isGenerating || !pdfData}
+      disabled={disabled || isGenerating || !coldStorageName}
     >
       {isGenerating ? (
         <>

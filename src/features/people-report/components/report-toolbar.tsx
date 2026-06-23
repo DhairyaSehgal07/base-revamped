@@ -12,7 +12,7 @@ import {
   type FarmerReportGroupColumnId,
 } from "@/features/people-report/utils/report-grouping"
 import { FarmerStockLedgerPdfButton } from "@/features/people-report/components/farmer-stock-ledger-pdf-button"
-import type { FarmerStockLedgerPdfData } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 import { cn } from "@/lib/utils"
 
 type ReportToolbarProps = {
@@ -26,7 +26,7 @@ type ReportToolbarProps = {
   isLoading?: boolean
   isFetching?: boolean
   onRefresh: () => void
-  pdfData: FarmerStockLedgerPdfData | null
+  getPdfBuildInput: () => BuildFarmerStockLedgerPdfDataInput | null
   pdfDisabled?: boolean
 }
 
@@ -41,7 +41,7 @@ export function ReportToolbar({
   isLoading = false,
   isFetching = false,
   onRefresh,
-  pdfData,
+  getPdfBuildInput,
   pdfDisabled = false,
 }: ReportToolbarProps) {
   const [fromDate, setFromDate] = useState<Date | undefined>(() =>
@@ -135,7 +135,10 @@ export function ReportToolbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 self-end lg:self-auto">
-          <FarmerStockLedgerPdfButton pdfData={pdfData} disabled={pdfDisabled} />
+          <FarmerStockLedgerPdfButton
+            getPdfBuildInput={getPdfBuildInput}
+            disabled={pdfDisabled}
+          />
           <Button
             type="button"
             size="sm"

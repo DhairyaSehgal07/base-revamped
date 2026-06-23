@@ -12,7 +12,8 @@ import {
 
 import type {
   FarmerStockLedgerPdfData,
-  PdfLedgerRow,
+  PdfLedgerItem,
+  PdfLedgerLeafRow,
   PdfLedgerSizeValue,
 } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data";
 import type { StockSummaryMatrix } from "@/features/people/utils/build-farmer-stock-summary";
@@ -363,6 +364,22 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: COLOR.accent,
   },
+  groupRow: {
+    backgroundColor: "#f4f4f5",
+    borderTopWidth: 0.75,
+    borderTopColor: COLOR.hairline,
+    borderBottomWidth: 0.5,
+    borderBottomColor: COLOR.hairline,
+    paddingTop: 5,
+    paddingBottom: 5,
+    alignItems: "center",
+  },
+  groupLabel: {
+    fontSize: 9.5,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+    color: COLOR.ink,
+  },
   highlightFooterRow: {
     backgroundColor: COLOR.accentWash,
     borderLeftWidth: 3,
@@ -622,6 +639,88 @@ function renderSizeCell(value: PdfLedgerSizeValue | null | undefined) {
   return <Text style={styles.tableCellData}>{value.value}</Text>;
 }
 
+function renderGroupRow(row: Extract<PdfLedgerItem, { kind: "group" }>) {
+  const depthPadding = 8 + row.depth * 10;
+
+  return (
+    <View
+      style={{
+        width: "100%",
+        paddingLeft: depthPadding,
+        borderLeftWidth: 2,
+        borderLeftColor: "#d4d4d8",
+      }}
+    >
+      <Text style={styles.groupLabel}>{row.label}</Text>
+    </View>
+  );
+}
+
+function renderSuppressedCell() {
+  return <Text style={styles.tableCellMuted}> </Text>;
+}
+
+function renderLeafRow(
+  row: PdfLedgerLeafRow,
+  layout: ReturnType<typeof getLedgerLayout>,
+  sizeColumns: string[],
+  showStockFilter: boolean,
+  showCustomMarka: boolean,
+) {
+  const depthPadding = 6 + row.depth * 8;
+  const suppressVariety = row.suppressedGroupColumns.includes("variety");
+  const suppressStockFilter = row.suppressedGroupColumns.includes("stockFilter");
+
+  return (
+    <>
+      <View style={{ width: layout.date, paddingLeft: depthPadding }}>
+        <Text
+          style={
+            row.isOpeningBalance ? styles.tableCellAccent : styles.tableCellData
+          }
+        >
+          {row.date}
+        </Text>
+      </View>
+      <View style={{ width: layout.gatePass }}>
+        <Text style={styles.tableCellMono}>{row.gatePass}</Text>
+      </View>
+      <View style={{ width: layout.variety }}>
+        {suppressVariety ? (
+          renderSuppressedCell()
+        ) : (
+          <Text style={styles.tableCellBold}>{row.variety}</Text>
+        )}
+      </View>
+      {showStockFilter ? (
+        <View style={{ width: layout.stockFilter! }}>
+          {suppressStockFilter ? (
+            renderSuppressedCell()
+          ) : (
+            <Text style={styles.tableCellData}>{row.stockFilter}</Text>
+          )}
+        </View>
+      ) : null}
+      {showCustomMarka ? (
+        <View style={{ width: layout.customMarka! }}>
+          <Text style={styles.tableCellData}>{row.customMarka}</Text>
+        </View>
+      ) : null}
+      {sizeColumns.map((size) => (
+        <View key={size} style={{ width: layout.size, alignItems: "center" }}>
+          {renderSizeCell(row.sizes[size])}
+        </View>
+      ))}
+      <View style={{ width: layout.total, alignItems: "center" }}>
+        <Text style={styles.tableCellBold}>{row.total}</Text>
+      </View>
+      <View style={{ width: layout.remarks, paddingRight: 6 }}>
+        <Text style={styles.tableCellData}>{row.remarks}</Text>
+      </View>
+    </>
+  );
+}
+
 function LedgerTable({
   data,
   sizeColumns,
@@ -631,7 +730,7 @@ function LedgerTable({
   showStockFilter,
   showCustomMarka,
 }: {
-  data: PdfLedgerRow[];
+  data: PdfLedgerItem[];
   sizeColumns: string[];
   footerLabel: string;
   footerSizeTotals: Record<string, number>;
@@ -645,7 +744,11 @@ function LedgerTable({
     showCustomMarka,
   );
 
-  const getRowStyle = (row: PdfLedgerRow, index: number) => {
+  const getRowStyle = (row: PdfLedgerItem, index: number) => {
+    if (row.kind === "group") {
+      return [styles.tableRow, styles.groupRow];
+    }
+
     if (row.isOpeningBalance) {
       return [styles.tableRow, styles.highlightRow];
     }
@@ -657,6 +760,14 @@ function LedgerTable({
     return [styles.tableRow];
   };
 
+  const getRowKey = (row: PdfLedgerItem, index: number) => {
+    if (row.kind === "group") {
+      return `group-${row.columnId}-${row.label}-${row.depth}-${index}`;
+    }
+
+    return `leaf-${row.gatePass}-${row.date}-${index}`;
+  };
+
   return (
     <View style={styles.table}>
       <View style={styles.tableHeaderRow}>
@@ -664,7 +775,8 @@ function LedgerTable({
           <Text style={styles.tableCellHeader}>Date</Text>
         </View>
         <View style={{ width: layout.gatePass }}>
-          <Text style={styles.tableCellHeader}>Gate Pass</Text>
+          <Text style={styles.tableCellHeader}>Gate</Text>
+          <Text style={styles.tableCellHeader}>Pass</Text>
         </View>
         <View style={{ width: layout.variety }}>
           <Text style={styles.tableCellHeader}>Variety</Text>
@@ -696,46 +808,10 @@ function LedgerTable({
       </View>
 
       {data.map((row, index) => (
-        <View
-          key={`${row.gatePass}-${row.date}-${index}`}
-          style={getRowStyle(row, index)}
-        >
-          <View style={{ width: layout.date, paddingLeft: 6 }}>
-            <Text
-              style={
-                row.isOpeningBalance ? styles.tableCellAccent : styles.tableCellData
-              }
-            >
-              {row.date}
-            </Text>
-          </View>
-          <View style={{ width: layout.gatePass }}>
-            <Text style={styles.tableCellMono}>{row.gatePass}</Text>
-          </View>
-          <View style={{ width: layout.variety }}>
-            <Text style={styles.tableCellBold}>{row.variety}</Text>
-          </View>
-          {showStockFilter ? (
-            <View style={{ width: layout.stockFilter! }}>
-              <Text style={styles.tableCellData}>{row.stockFilter}</Text>
-            </View>
-          ) : null}
-          {showCustomMarka ? (
-            <View style={{ width: layout.customMarka! }}>
-              <Text style={styles.tableCellData}>{row.customMarka}</Text>
-            </View>
-          ) : null}
-          {sizeColumns.map((size) => (
-            <View key={size} style={{ width: layout.size, alignItems: "center" }}>
-              {renderSizeCell(row.sizes[size])}
-            </View>
-          ))}
-          <View style={{ width: layout.total, alignItems: "center" }}>
-            <Text style={styles.tableCellBold}>{row.total}</Text>
-          </View>
-          <View style={{ width: layout.remarks, paddingRight: 6 }}>
-            <Text style={styles.tableCellData}>{row.remarks}</Text>
-          </View>
+        <View key={getRowKey(row, index)} style={getRowStyle(row, index)}>
+          {row.kind === "group"
+            ? renderGroupRow(row)
+            : renderLeafRow(row, layout, sizeColumns, showStockFilter, showCustomMarka)}
         </View>
       ))}
 

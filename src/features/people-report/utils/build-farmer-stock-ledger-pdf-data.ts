@@ -1,3 +1,5 @@
+import type { GroupingState, SortingState } from "@tanstack/react-table"
+
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
 import { isIncomingDaybookEntry } from "@/features/daybook/types"
@@ -12,6 +14,9 @@ import {
 import type { FarmerReportSections } from "@/features/people-report/utils/build-farmer-report-sections"
 import { splitFarmerReportEntries } from "@/features/people-report/utils/build-farmer-report-sections"
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import { buildPdfGroupedLedgerItems } from "@/features/people-report/utils/build-farmer-report-pdf-grouped-ledger"
+import { getFarmerReportColumnsForSizes } from "@/features/people-report/components/columns"
+import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import {
   collectUniqueBagSizes,
   getGatePassSizeQuantityLines,
@@ -36,6 +41,24 @@ export type PdfLedgerRow = {
   isOpeningBalance?: boolean
 }
 
+export type PdfLedgerGroupRow = {
+  kind: "group"
+  columnId: "variety" | "stockFilter"
+  label: string
+  depth: number
+  childCount: number
+  sizes: Record<string, number>
+  rowBagsTotal: number
+}
+
+export type PdfLedgerLeafRow = PdfLedgerRow & {
+  kind: "leaf"
+  depth: number
+  suppressedGroupColumns: ("variety" | "stockFilter")[]
+}
+
+export type PdfLedgerItem = PdfLedgerGroupRow | PdfLedgerLeafRow
+
 export type FarmerStockLedgerPdfData = {
   farmer: {
     name: string
@@ -55,8 +78,8 @@ export type FarmerStockLedgerPdfData = {
   showCustomMarka: boolean
   stockSummary: StockSummaryMatrix
   sizeColumns: string[]
-  incomingLedger: PdfLedgerRow[]
-  outgoingLedger: PdfLedgerRow[]
+  incomingLedger: PdfLedgerItem[]
+  outgoingLedger: PdfLedgerItem[]
   incomingFooterSizes: Record<string, number>
   outgoingFooterSizes: Record<string, number>
   incomingClosingBalance: number
@@ -109,6 +132,10 @@ export type BuildFarmerStockLedgerPdfDataInput = {
   search: PersonDetailSearch
   showStockFilter?: boolean
   showCustomMarka?: boolean
+  grouping?: GroupingState
+  sorting?: SortingState
+  incomingSorting?: SortingState
+  outgoingSorting?: SortingState
   generatedAt?: Date
 }
 
@@ -172,41 +199,39 @@ function getRowCustomMarka(row: FarmerReportTableRow): string {
   return row.entry.customMarka?.trim() || "—"
 }
 
-function mapLedgerRows(
-  rows: FarmerReportTableRow[],
+export function mapFarmerReportRowToPdfLedger(
+  row: FarmerReportTableRow,
   sizeColumns: string[],
-): PdfLedgerRow[] {
-  return rows.map((row) => {
-    const sizes = Object.fromEntries(
-      sizeColumns.map((size) => [size, mapSizeValueForEntry(row, size)]),
-    ) as Record<string, PdfLedgerSizeValue | null>
+): PdfLedgerRow {
+  const sizes = Object.fromEntries(
+    sizeColumns.map((size) => [size, mapSizeValueForEntry(row, size)]),
+  ) as Record<string, PdfLedgerSizeValue | null>
 
-    if (row.kind === "opening-balance") {
-      return {
-        date: "Opening Balance",
-        gatePass: "—",
-        variety: "—",
-        stockFilter: "—",
-        customMarka: "—",
-        sizes,
-        total: formatQuantity(row.runningTotal),
-        remarks: "—",
-        isOpeningBalance: true,
-      }
-    }
-
-    const entry = row.entry!
+  if (row.kind === "opening-balance") {
     return {
-      date: formatDaybookDate(entry.date || entry.createdAt),
-      gatePass: `#${entry.gatePassNo}`,
-      variety: getGatePassVariety(entry),
-      stockFilter: getRowStockFilter(row),
-      customMarka: getRowCustomMarka(row),
+      date: "Opening Balance",
+      gatePass: "—",
+      variety: "—",
+      stockFilter: "—",
+      customMarka: "—",
       sizes,
       total: formatQuantity(row.runningTotal),
-      remarks: entry.remarks?.trim() || "—",
+      remarks: "—",
+      isOpeningBalance: true,
     }
-  })
+  }
+
+  const entry = row.entry!
+  return {
+    date: formatDaybookDate(entry.date || entry.createdAt),
+    gatePass: `#${entry.gatePassNo}`,
+    variety: getGatePassVariety(entry),
+    stockFilter: getRowStockFilter(row),
+    customMarka: getRowCustomMarka(row),
+    sizes,
+    total: formatQuantity(row.runningTotal),
+    remarks: entry.remarks?.trim() || "—",
+  }
 }
 
 export function buildFarmerStockLedgerPdfData({
@@ -217,6 +242,10 @@ export function buildFarmerStockLedgerPdfData({
   search,
   showStockFilter = false,
   showCustomMarka = false,
+  grouping = [],
+  sorting = FARMER_REPORT_DEFAULT_SORTING,
+  incomingSorting,
+  outgoingSorting,
   generatedAt = new Date(),
 }: BuildFarmerStockLedgerPdfDataInput): FarmerStockLedgerPdfData {
   const incomingPasses = entries.filter(isIncomingDaybookEntry)
@@ -231,6 +260,31 @@ export function buildFarmerStockLedgerPdfData({
     collectUniqueBagSizes(entries),
     commodities,
   )
+
+  const columns = getFarmerReportColumnsForSizes(
+    sizeColumns,
+    showCustomMarka,
+    showStockFilter,
+  )
+
+  const resolvedIncomingSorting = incomingSorting ?? sorting
+  const resolvedOutgoingSorting = outgoingSorting ?? sorting
+
+  const incomingResult = buildPdfGroupedLedgerItems({
+    rows: sections.incoming,
+    columns,
+    grouping,
+    sorting: resolvedIncomingSorting,
+    sizeColumns,
+  })
+
+  const outgoingResult = buildPdfGroupedLedgerItems({
+    rows: sections.outgoing,
+    columns,
+    grouping,
+    sorting: resolvedOutgoingSorting,
+    sizeColumns,
+  })
 
   const { incoming, outgoing } = splitFarmerReportEntries(entries)
 
@@ -258,8 +312,11 @@ export function buildFarmerStockLedgerPdfData({
     showCustomMarka,
     stockSummary,
     sizeColumns,
-    incomingLedger: mapLedgerRows(sections.incoming, sizeColumns),
-    outgoingLedger: mapLedgerRows(sections.outgoing, sizeColumns),
+    incomingLedger: incomingResult.items,
+    outgoingLedger: [
+      ...outgoingResult.openingBalanceRows,
+      ...outgoingResult.items,
+    ],
     incomingFooterSizes: computeIncomingFooterSizes(
       sections.incoming,
       sizeColumns,

@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, type Dispatch, type SetStateAction } from "react"
+import { memo, useMemo, useState, useCallback, type Dispatch, type SetStateAction } from "react"
 import { FileText } from "lucide-react"
 import type { GroupingState, SortingState } from "@tanstack/react-table"
 
@@ -17,7 +17,10 @@ import {
   shouldShowCustomMarka,
   shouldShowStockFilter,
 } from "@/features/incoming/utils/incoming-preferences"
-import { getFarmerReportColumns } from "@/features/people-report/components/columns"
+import {
+  getFarmerReportBagSizeSignature,
+  getFarmerReportColumnsForSizes,
+} from "@/features/people-report/components/columns"
 import { DataTable, FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import {
   FarmerReportHeaderSkeleton,
@@ -28,7 +31,7 @@ import {
   ReportToolbar,
 } from "@/features/people-report/components/report-toolbar"
 import { buildFarmerReportSections } from "@/features/people-report/utils/build-farmer-report-sections"
-import { buildFarmerStockLedgerPdfData } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
 import type { PersonDetailSearch } from "@/features/people/search"
 import {
@@ -55,7 +58,7 @@ type ReportTableSectionProps = {
   sectionMode?: "incoming" | "outgoing"
 }
 
-function ReportTableSection({
+const ReportTableSection = memo(function ReportTableSection({
   title,
   subtitle,
   rowCount,
@@ -91,21 +94,31 @@ function ReportTableSection({
       />
     </div>
   )
-}
+})
 
 export function FarmerReportGatePassesSection({
   linkId,
   search,
 }: FarmerReportGatePassesSectionProps) {
-  const preferences = usePreferencesStore((state) => state.preferences)
-  const commodities = preferences?.commodities ?? []
-  const showCustomMarka = shouldShowCustomMarka(preferences?.customMarka)
-  const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
+  const commodities = usePreferencesStore((state) => state.preferences?.commodities ?? [])
+  const customMarkaPreference = usePreferencesStore(
+    (state) => state.preferences?.customMarka,
+  )
+  const stockFilterPreference = usePreferencesStore(
+    (state) => state.preferences?.stockFilter,
+  )
+  const showCustomMarka = shouldShowCustomMarka(customMarkaPreference)
+  const showStockFilter = shouldShowStockFilter(stockFilterPreference)
 
   const [appliedFrom, setAppliedFrom] = useState<string | undefined>()
   const [appliedTo, setAppliedTo] = useState<string | undefined>()
   const [grouping, setGrouping] = useState<GroupingState>([])
-  const [sorting, setSorting] = useState<SortingState>(FARMER_REPORT_DEFAULT_SORTING)
+  const [incomingSorting, setIncomingSorting] = useState<SortingState>(
+    FARMER_REPORT_DEFAULT_SORTING,
+  )
+  const [outgoingSorting, setOutgoingSorting] = useState<SortingState>(
+    FARMER_REPORT_DEFAULT_SORTING,
+  )
 
   const activeGrouping = useMemo(() => {
     if (showStockFilter) return grouping
@@ -140,47 +153,71 @@ export function FarmerReportGatePassesSection({
     [displayedRows],
   )
 
-  const pdfData = useMemo(
-    () =>
-      buildFarmerStockLedgerPdfData({
-        entries: displayedRows,
-        sections,
-        summaries: gatePasses.summaries,
-        commodities,
-        search,
-        showStockFilter,
-        showCustomMarka,
-      }),
-    [displayedRows, sections, gatePasses.summaries, commodities, search, showStockFilter, showCustomMarka],
+  const bagSizeSignature = useMemo(
+    () => getFarmerReportBagSizeSignature(displayedRows, commodities),
+    [displayedRows, commodities],
   )
 
   const columns = useMemo(
     () =>
-      getFarmerReportColumns(
-        displayedRows,
-        commodities,
+      getFarmerReportColumnsForSizes(
+        bagSizeSignature ? bagSizeSignature.split("\0") : [],
         showCustomMarka,
         showStockFilter,
       ),
-    [displayedRows, commodities, showCustomMarka, showStockFilter],
+    [bagSizeSignature, showCustomMarka, showStockFilter],
   )
 
-  const handleApplyDates = (from?: string, to?: string) => {
-    setAppliedFrom(from)
-    setAppliedTo(to)
-  }
-
-  const handleResetDates = () => {
-    setAppliedFrom(undefined)
-    setAppliedTo(undefined)
-  }
-
-  const handleRefresh = () => {
-    void gatePasses.refetch()
-  }
+  const outgoingGatePassCount = useMemo(
+    () => sections.outgoing.filter((row) => row.kind === "gate-pass").length,
+    [sections.outgoing],
+  )
 
   const hasAnyRows =
     sections.incoming.length > 0 || sections.outgoing.length > 0
+
+  const getPdfBuildInput = useCallback((): BuildFarmerStockLedgerPdfDataInput | null => {
+    if (!hasAnyRows) return null
+
+    return {
+      entries: displayedRows,
+      sections,
+      summaries: gatePasses.summaries,
+      commodities,
+      search,
+      showStockFilter,
+      showCustomMarka,
+      grouping: activeGrouping,
+      incomingSorting,
+      outgoingSorting,
+    }
+  }, [
+    activeGrouping,
+    commodities,
+    displayedRows,
+    gatePasses.summaries,
+    hasAnyRows,
+    incomingSorting,
+    outgoingSorting,
+    search,
+    sections,
+    showCustomMarka,
+    showStockFilter,
+  ])
+
+  const handleApplyDates = useCallback((from?: string, to?: string) => {
+    setAppliedFrom(from)
+    setAppliedTo(to)
+  }, [])
+
+  const handleResetDates = useCallback(() => {
+    setAppliedFrom(undefined)
+    setAppliedTo(undefined)
+  }, [])
+
+  const handleRefresh = useCallback(() => {
+    void gatePasses.refetch()
+  }, [gatePasses])
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6">
@@ -203,7 +240,7 @@ export function FarmerReportGatePassesSection({
               isLoading={gatePasses.isLoading}
               isFetching={gatePasses.isFetching}
               onRefresh={handleRefresh}
-              pdfData={hasAnyRows ? pdfData : null}
+              getPdfBuildInput={getPdfBuildInput}
               pdfDisabled={gatePasses.isLoading || gatePasses.isFetching || !hasAnyRows}
             />
           </ReportHeaderCard>
@@ -251,8 +288,8 @@ export function FarmerReportGatePassesSection({
                   columns={columns}
                   data={sections.incoming}
                   grouping={activeGrouping}
-                  sorting={sorting}
-                  onSortingChange={setSorting}
+                  sorting={incomingSorting}
+                  onSortingChange={setIncomingSorting}
                   sectionMode="incoming"
                 />
               ) : null}
@@ -261,15 +298,12 @@ export function FarmerReportGatePassesSection({
                 <ReportTableSection
                   title="Outgoing gate passes"
                   subtitle="Deliveries and internal transfers for the selected date range."
-                  rowCount={
-                    sections.outgoing.filter((row) => row.kind === "gate-pass")
-                      .length
-                  }
+                  rowCount={outgoingGatePassCount}
                   columns={columns}
                   data={sections.outgoing}
                   grouping={activeGrouping}
-                  sorting={sorting}
-                  onSortingChange={setSorting}
+                  sorting={outgoingSorting}
+                  onSortingChange={setOutgoingSorting}
                   sectionMode="outgoing"
                 />
               ) : null}

@@ -153,12 +153,14 @@ function renderPinnedTableRow(
   row: Row<FarmerReportTableRow>,
   visibleColumns: Column<FarmerReportTableRow, unknown>[],
 ) {
+  const cellsByColumnId = new Map(
+    row.getVisibleCells().map((cell) => [cell.column.id, cell]),
+  )
+
   return (
     <TableRow key={row.id} className={getTableRowClassName(row)}>
       {visibleColumns.map((column, columnIndex) => {
-        const cell = row
-          .getVisibleCells()
-          .find((visibleCell) => visibleCell.column.id === column.id)
+        const cell = cellsByColumnId.get(column.id)
 
         if (!cell) {
           return (
@@ -213,6 +215,9 @@ export function DataTable({
   const [isHeaderScrolled, setIsHeaderScrolled] = React.useState(false)
   const [isFooterElevated, setIsFooterElevated] = React.useState(false)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+  const scrollRafRef = React.useRef<number | null>(null)
+  const isHeaderScrolledRef = React.useRef(false)
+  const isFooterElevatedRef = React.useRef(false)
 
   React.useEffect(() => {
     setExpanded(grouping.length > 0 ? true : {})
@@ -268,15 +273,37 @@ export function DataTable({
   const hasDataRows = pinnedTableRows.length > 0 || rows.length > 0
 
   const handleTableScroll = React.useCallback(() => {
-    const el = scrollContainerRef.current
-    if (!el) return
+    if (scrollRafRef.current !== null) return
 
-    setIsHeaderScrolled(el.scrollTop > 0)
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null
+      const el = scrollContainerRef.current
+      if (!el) return
 
-    const hasOverflow = el.scrollHeight > el.clientHeight
-    const isAtBottom =
-      Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight
-    setIsFooterElevated(hasOverflow && !isAtBottom)
+      const nextHeaderScrolled = el.scrollTop > 0
+      const hasOverflow = el.scrollHeight > el.clientHeight
+      const isAtBottom =
+        Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight
+      const nextFooterElevated = hasOverflow && !isAtBottom
+
+      if (nextHeaderScrolled !== isHeaderScrolledRef.current) {
+        isHeaderScrolledRef.current = nextHeaderScrolled
+        setIsHeaderScrolled(nextHeaderScrolled)
+      }
+
+      if (nextFooterElevated !== isFooterElevatedRef.current) {
+        isFooterElevatedRef.current = nextFooterElevated
+        setIsFooterElevated(nextFooterElevated)
+      }
+    })
+  }, [])
+
+  React.useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current)
+      }
+    }
   }, [])
 
   React.useEffect(() => {
