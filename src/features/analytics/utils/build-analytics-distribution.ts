@@ -18,7 +18,9 @@ export type AnalyticsDistribution = {
   chartConfig: ChartConfig
 }
 
-const CHART_COLOR_COUNT = 8
+const CHART_COLOR_COUNT = 16
+const SMALL_SLICE_THRESHOLD_PERCENT = 2
+const OTHERS_LABEL = "Others"
 
 function toChartKey(label: string, index: number): string {
   const base =
@@ -50,6 +52,30 @@ function buildChartConfig(
   return { config, keys }
 }
 
+function clubSmallSlices(
+  entries: Array<{ label: string; bags: number }>,
+  total: number,
+): Array<{ label: string; bags: number }> {
+  const main: Array<{ label: string; bags: number }> = []
+  let othersBags = 0
+
+  for (const entry of entries) {
+    const share = (entry.bags / total) * 100
+
+    if (share < SMALL_SLICE_THRESHOLD_PERCENT) {
+      othersBags += entry.bags
+    } else {
+      main.push(entry)
+    }
+  }
+
+  if (othersBags <= 0) {
+    return main
+  }
+
+  return [...main, { label: OTHERS_LABEL, bags: othersBags }]
+}
+
 function toDistributionItems(
   entries: Array<{ label: string; bags: number }>,
 ): AnalyticsDistribution {
@@ -66,16 +92,20 @@ function toDistributionItems(
     return a.label.localeCompare(b.label)
   })
 
-  const { config, keys } = buildChartConfig(sorted.map((entry) => entry.label))
+  const grouped = clubSmallSlices(sorted, total)
 
-  const items: DistributionItem[] = sorted.map((entry, index) => {
+  const { config, keys } = buildChartConfig(grouped.map((entry) => entry.label))
+
+  const items: DistributionItem[] = grouped.map((entry, index) => {
     const key = keys[index]
+    const colorIndex = (index % CHART_COLOR_COUNT) + 1
+
     return {
       key,
       label: entry.label,
       bags: entry.bags,
       share: (entry.bags / total) * 100,
-      fill: `var(--color-${key})`,
+      fill: `var(--chart-${colorIndex})`,
       shortLabel:
         entry.label.length > 16 ? `${entry.label.slice(0, 14).trim()}…` : entry.label,
     }

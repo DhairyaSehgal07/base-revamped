@@ -170,7 +170,7 @@ export function FarmerStockSummaryTable({
                             numeric: true,
                             align: "right",
                           }),
-                          value > 0 && accentTextClass,
+                          value === 0 && "font-normal text-muted-foreground",
                           isClickable &&
                             cn(
                               "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
@@ -207,7 +207,10 @@ export function FarmerStockSummaryTable({
 
                   <TableCell
                     className={cn(
-                      getCellClassName({ numeric: true, align: "right" }),
+                      getCellClassName({
+                        numeric: true,
+                        align: "right",
+                      }),
                       accentTextClass,
                     )}
                   >

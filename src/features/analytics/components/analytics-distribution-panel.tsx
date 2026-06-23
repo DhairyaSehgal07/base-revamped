@@ -1,4 +1,5 @@
-import { Cell, Label, Pie, PieChart } from "recharts"
+import type { LucideIcon } from "lucide-react"
+import { Cell, Pie, PieChart } from "recharts"
 
 import {
   Card,
@@ -9,13 +10,12 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
 import { AnalyticsDistributionTable } from "@/features/analytics/components/analytics-distribution-table"
-import type { AnalyticsDistribution } from "@/features/analytics/utils/build-analytics-distribution"
+import { formatQuantity } from "@/features/daybook/utils/format"
+import type { AnalyticsDistribution, DistributionItem } from "@/features/analytics/utils/build-analytics-distribution"
 import type { StockQuantityMode } from "@/features/people/utils/build-farmer-stock-summary"
 
 const QUANTITY_MODE_SUBTITLES: Record<StockQuantityMode, string> = {
@@ -24,8 +24,16 @@ const QUANTITY_MODE_SUBTITLES: Record<StockQuantityMode, string> = {
   outgoing: "By outgoing quantities",
 }
 
+function formatShare(value: number): string {
+  return `${value.toLocaleString("en-IN", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`
+}
+
 type AnalyticsDistributionPanelProps = {
   title: string
+  icon: LucideIcon
   labelColumn: string
   distribution: AnalyticsDistribution
   quantityMode: StockQuantityMode
@@ -33,26 +41,18 @@ type AnalyticsDistributionPanelProps = {
 
 export function AnalyticsDistributionPanel({
   title,
+  icon: Icon,
   labelColumn,
   distribution,
   quantityMode,
 }: AnalyticsDistributionPanelProps) {
-  const hasData = distribution.total > 0 && distribution.items.length > 0
-  const topItem = distribution.items[0] ?? null
-
-  const chartData = distribution.items.map((item) => ({
-    ...item,
-    name: item.key,
-    shareLabel: `${item.share.toLocaleString("en-IN", {
-      minimumFractionDigits: 1,
-      maximumFractionDigits: 1,
-    })}%`,
-  }))
+  const pieData = distribution.items
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="font-heading text-base font-semibold">
+    <Card className="min-w-0">
+      <CardHeader>
+        <CardTitle className="font-heading flex items-center gap-2 text-base font-semibold">
+          <Icon className="size-5 text-primary" aria-hidden />
           {title}
         </CardTitle>
         <CardDescription>
@@ -60,158 +60,84 @@ export function AnalyticsDistributionPanel({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex flex-col gap-6">
-        {hasData ? (
-          <ChartContainer
-            config={distribution.chartConfig}
-            className="mx-auto aspect-square max-h-[320px] w-full max-w-[360px]"
-          >
-            <PieChart>
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    nameKey="name"
-                    labelFormatter={(_, payload) => {
-                      const item = payload?.[0]?.payload as
-                        | { label?: string; share?: number }
-                        | undefined
-                      if (!item?.label) return null
-
-                      return (
-                        <div className="flex items-center justify-between gap-2">
-                          <span>{item.label}</span>
-                          {typeof item.share === "number" ? (
-                            <span className="tabular-nums text-muted-foreground">
-                              {item.share.toLocaleString("en-IN", {
-                                minimumFractionDigits: 1,
-                                maximumFractionDigits: 1,
-                              })}
-                              %
-                            </span>
-                          ) : null}
-                        </div>
-                      )
-                    }}
-                    formatter={(value) => [
-                      <span className="tabular-nums">
-                        {typeof value === "number"
-                          ? value.toLocaleString("en-IN")
-                          : value}{" "}
-                        bags
-                      </span>,
-                      "",
-                    ]}
-                  />
-                }
-              />
-              <Pie
-                data={chartData}
-                dataKey="bags"
-                nameKey="name"
-                innerRadius="58%"
-                outerRadius="88%"
-                strokeWidth={4}
-                stroke="hsl(var(--background))"
-                paddingAngle={2}
-                labelLine={false}
-                label={({ cx, cy, midAngle, outerRadius, payload }) => {
-                  if (
-                    !payload ||
-                    payload.share < 6 ||
-                    midAngle === undefined ||
-                    cx === undefined ||
-                    cy === undefined
-                  ) {
-                    return null
-                  }
-
-                  const radius = Number(outerRadius) + 18
-                  const x = Number(cx) + radius * Math.cos((-midAngle * Math.PI) / 180)
-                  const y = Number(cy) + radius * Math.sin((-midAngle * Math.PI) / 180)
-
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      fill="currentColor"
-                      textAnchor={x > Number(cx) ? "start" : "end"}
-                      dominantBaseline="central"
-                      className="fill-foreground text-[11px] font-medium"
-                    >
-                      {payload.shortLabel} {payload.shareLabel}
-                    </text>
-                  )
-                }}
-              >
-                <Label
-                  content={({ viewBox }) => {
-                    if (
-                      !viewBox ||
-                      !topItem ||
-                      !("cx" in viewBox) ||
-                      !("cy" in viewBox) ||
-                      viewBox.cx === undefined ||
-                      viewBox.cy === undefined
-                    ) {
-                      return null
-                    }
-
-                    const { cx, cy } = viewBox
-
-                    return (
-                      <text
-                        x={cx}
-                        y={cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        <tspan
-                          x={cx}
-                          y={cy - 10}
-                          className="fill-muted-foreground text-[11px]"
-                        >
-                          Top share
-                        </tspan>
-                        <tspan
-                          x={cx}
-                          y={cy + 12}
-                          className="fill-foreground text-sm font-semibold"
-                        >
-                          {topItem.share.toLocaleString("en-IN", {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 1,
-                          })}
-                          %
-                        </tspan>
-                      </text>
-                    )
-                  }}
-                />
-                {chartData.map((item) => (
-                  <Cell key={item.key} fill={item.fill} />
-                ))}
-              </Pie>
-              <ChartLegend
-                verticalAlign="bottom"
-                content={
-                  <ChartLegendContent
-                    nameKey="name"
-                    className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-4"
-                  />
-                }
-              />
-            </PieChart>
-          </ChartContainer>
+      <CardContent className="space-y-4 sm:space-y-6">
+        {pieData.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No {labelColumn.toLowerCase()} data for this view.
+          </p>
         ) : (
-          <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-border bg-muted/20 px-4 text-sm text-muted-foreground">
-            No chart data for this view.
-          </div>
-        )}
+          <>
+            <ChartContainer
+              config={distribution.chartConfig}
+              className="mx-auto min-h-[220px] w-full max-w-md sm:min-h-[280px] [&_.recharts-pie-label-text]:fill-foreground [&_.recharts-pie-label-text]:text-xs"
+            >
+              <PieChart
+                accessibilityLayer
+                margin={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              >
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      nameKey="key"
+                      labelFormatter={(_, payload) => {
+                        const item = payload?.[0]?.payload as
+                          | DistributionItem
+                          | undefined
+                        return item?.label ?? null
+                      }}
+                      formatter={(value, _name, item) => {
+                        const share = (item.payload as DistributionItem).share
 
-        <AnalyticsDistributionTable
-          distribution={distribution}
-          labelColumn={labelColumn}
-        />
+                        return (
+                          <div className="flex w-full flex-col gap-0.5 text-xs">
+                            <span className="font-medium tabular-nums text-foreground">
+                              {formatQuantity(Number(value))} bags
+                            </span>
+                            <span className="tabular-nums text-primary">
+                              {formatShare(share)}
+                            </span>
+                          </div>
+                        )
+                      }}
+                    />
+                  }
+                />
+                <Pie
+                  data={pieData}
+                  dataKey="bags"
+                  nameKey="key"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="52%"
+                  outerRadius="82%"
+                  paddingAngle={2}
+                  cornerRadius={4}
+                  label={({ name, percent, payload }) => {
+                    const label =
+                      (payload as { label?: string } | undefined)?.label ??
+                      name
+                    return `${label}: ${((percent ?? 0) * 100).toFixed(1)}%`
+                  }}
+                  labelLine={{ stroke: "var(--border)", strokeWidth: 1 }}
+                >
+                  {pieData.map((entry) => (
+                    <Cell
+                      key={entry.key}
+                      fill={entry.fill}
+                      stroke="var(--background)"
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ChartContainer>
+
+            <AnalyticsDistributionTable
+              distribution={distribution}
+              labelColumn={labelColumn}
+            />
+          </>
+        )}
       </CardContent>
     </Card>
   )

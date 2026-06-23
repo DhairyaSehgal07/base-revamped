@@ -162,7 +162,7 @@ class ColumnWidthTracker {
       const length =
         typeof cell === "number"
           ? cell.toLocaleString("en-IN").length
-          : String(cell).length
+          : getStringCellDisplayLength(String(cell))
 
       if (length > this.widths[index] - 2) {
         this.widths[index] = Math.min(40, length + 2)
@@ -218,8 +218,20 @@ export function getExportDateLabel(date: Date): string {
 
 function formatPdfSizeValue(value: PdfLedgerSizeValue | null | undefined): string {
   if (!value) return "—"
-  if (value.type === "stacked") return `${value.main} ${value.sub}`
+  if (value.type === "stacked") return `${value.main}\n${value.sub}`
   return value.value
+}
+
+function getStringCellDisplayLength(value: string): number {
+  return value
+    .split("\n")
+    .reduce((max, line) => Math.max(max, line.length), 0)
+}
+
+function rowHasStackedSizeCell(values: Array<string | number>): boolean {
+  return values.some(
+    (value) => typeof value === "string" && value.includes("\n"),
+  )
 }
 
 function parseLocaleNumber(value: string): number | null {
@@ -412,7 +424,8 @@ function styleBodyRow(
   dataRow: ExcelBodyRow,
   columnCount: number,
 ) {
-  excelRow.height = EXCEL_DATA_ROW_HEIGHT
+  const hasStackedSizeCell = rowHasStackedSizeCell(dataRow.values)
+  excelRow.height = hasStackedSizeCell ? 32 : EXCEL_DATA_ROW_HEIGHT
 
   const rowFill = dataRow.isSectionTitle
     ? FILLS.section
@@ -432,12 +445,13 @@ function styleBodyRow(
       : isBold
         ? FONT_BODY_BOLD
         : FONT_BODY
-    cell.alignment = ALIGN_LEFT
 
     const cellValue = dataRow.values[columnNumber - 1]
     if (typeof cellValue === "number") {
       cell.alignment = ALIGN_RIGHT
       cell.numFmt = SMART_NUMBER_FORMAT
+    } else {
+      cell.alignment = ALIGN_LEFT
     }
   }
 }

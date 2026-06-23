@@ -19,6 +19,7 @@ import {
 } from "@/features/analytics/components/analytics-summary-cards"
 import { AnalyticsSizeDistribution } from "@/features/analytics/components/analytics-size-distribution"
 import { AnalyticsStockSummarySection } from "@/features/analytics/components/analytics-stock-summary-section"
+import { AnalyticsTopFarmersChart } from "@/features/analytics/components/analytics-top-farmers-chart"
 import { AnalyticsVarietyDistribution } from "@/features/analytics/components/analytics-variety-distribution"
 import {
   buildSizeDistribution,
@@ -152,6 +153,7 @@ export function AnalyticsTabContent({
 
         <CardSkeleton />
         <DistributionChartsSkeleton />
+        <TopFarmersChartSkeleton />
       </div>
     )
   }
@@ -215,6 +217,10 @@ export function AnalyticsTabContent({
           distribution={sizeDistribution}
           quantityMode={quantityMode}
         />
+        <AnalyticsTopFarmersChart
+          topFarmers={topFarmers.response}
+          quantityMode={quantityMode}
+        />
       </div>
     </div>
   )
@@ -241,18 +247,40 @@ function DistributionChartsSkeleton() {
       {Array.from({ length: 2 }).map((_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm"
+          className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
         >
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="mt-2 h-4 w-48" />
-          <Skeleton className="mx-auto mt-6 aspect-square max-h-[280px] w-full max-w-[320px] rounded-full" />
-          <div className="mt-6 overflow-hidden rounded-lg border border-border">
-            <Skeleton className="h-10 w-full rounded-none" />
-            <Skeleton className="h-10 w-full rounded-none" />
-            <Skeleton className="h-10 w-full rounded-none" />
+          <div className="space-y-1.5 p-6 pb-0">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="space-y-4 p-6 sm:space-y-6">
+            <Skeleton className="mx-auto min-h-[220px] w-full max-w-md rounded-lg sm:min-h-[280px]" />
+            <div className="space-y-3">
+              <Skeleton className="h-4 w-52" />
+              <div className="overflow-hidden rounded-lg border border-border">
+                <Skeleton className="h-10 w-full rounded-none" />
+                <Skeleton className="h-11 w-full rounded-none" />
+                <Skeleton className="h-11 w-full rounded-none" />
+                <Skeleton className="h-11 w-full rounded-none" />
+              </div>
+            </div>
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+function TopFarmersChartSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+      <div className="space-y-1.5 p-6 pb-0">
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-4 w-56" />
+      </div>
+      <div className="p-6">
+        <Skeleton className="h-48 w-full rounded-lg" />
+      </div>
     </div>
   )
 }

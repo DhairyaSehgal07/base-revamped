@@ -125,8 +125,11 @@ export function AnalyticsStockSummaryTable({
                     <TableCell
                       key={`${row.variety}-${size}`}
                       className={cn(
-                        getCellClassName({ numeric: true, align: "right" }),
-                        value > 0 && accentTextClass,
+                        getCellClassName({
+                          numeric: true,
+                          align: "right",
+                        }),
+                        value === 0 && "font-normal text-muted-foreground",
                       )}
                     >
                       {formatQuantity(value)}
@@ -136,7 +139,10 @@ export function AnalyticsStockSummaryTable({
 
                 <TableCell
                   className={cn(
-                    getCellClassName({ numeric: true, align: "right" }),
+                    getCellClassName({
+                      numeric: true,
+                      align: "right",
+                    }),
                     accentTextClass,
                   )}
                 >

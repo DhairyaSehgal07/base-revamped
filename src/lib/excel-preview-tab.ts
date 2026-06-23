@@ -81,6 +81,10 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;")
 }
 
+function escapeHtmlWithLineBreaks(value: string): string {
+  return escapeHtml(value).replace(/\n/g, "<br />")
+}
+
 function formatCellValue(value: string | number | undefined): string {
   if (value == null || value === "") return ""
   if (typeof value === "number") {
@@ -110,7 +114,12 @@ function renderLedgerTableBodyRows(
           const isNumeric = typeof value === "number"
           const bold = row.boldByColumn?.[index] ? " strong" : ""
           const align = isNumeric ? " num" : ""
-          return `<td class="${bold}${align}">${escapeHtml(formatCellValue(value))}</td>`
+          const formatted = formatCellValue(value)
+          const cellHtml =
+            typeof value === "string" && value.includes("\n")
+              ? escapeHtmlWithLineBreaks(formatted)
+              : escapeHtml(formatted)
+          return `<td class="${bold}${align}">${cellHtml}</td>`
         })
         .join("")
 

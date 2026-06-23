@@ -113,7 +113,6 @@ export function FarmerStockSummaryCellBreakdownDialog({
                     <TableCell
                       className={cn(
                         getCellClassName({ numeric: true, align: "right" }),
-                        accentTextClass,
                       )}
                     >
                       {bagCountFormatter.format(line.quantity)}
