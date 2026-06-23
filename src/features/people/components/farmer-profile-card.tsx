@@ -27,6 +27,8 @@ import { formatInr } from "@/features/finances/shared/format-currency"
 import { cn } from "@/lib/utils"
 
 export type FarmerBagTotals = {
+  incomingGatePasses: number
+  outgoingGatePasses: number
   incomingBags: number
   outgoingBags: number
   transferIncomingBags: number
@@ -50,6 +52,8 @@ type FarmerProfileCardProps = {
 const bagCountFormatter = new Intl.NumberFormat("en-IN")
 
 const PLACEHOLDER_BAG_TOTALS: FarmerBagTotals = {
+  incomingGatePasses: 0,
+  outgoingGatePasses: 0,
   incomingBags: 0,
   outgoingBags: 0,
   transferIncomingBags: 0,
@@ -58,7 +62,11 @@ const PLACEHOLDER_BAG_TOTALS: FarmerBagTotals = {
 
 type BagStat = {
   label: string
-  valueKey: keyof Pick<FarmerBagTotals, "incomingBags" | "outgoingBags">
+  gatePassKey: keyof Pick<
+    FarmerBagTotals,
+    "incomingGatePasses" | "outgoingGatePasses"
+  >
+  bagKey: keyof Pick<FarmerBagTotals, "incomingBags" | "outgoingBags">
   transferKey: keyof Pick<
     FarmerBagTotals,
     "transferIncomingBags" | "transferOutgoingBags"
@@ -70,14 +78,16 @@ type BagStat = {
 const BAG_STATS: BagStat[] = [
   {
     label: "Incoming",
-    valueKey: "incomingBags",
+    gatePassKey: "incomingGatePasses",
+    bagKey: "incomingBags",
     transferKey: "transferIncomingBags",
     icon: ArrowDownLeft,
     tone: "primary",
   },
   {
     label: "Outgoing",
-    valueKey: "outgoingBags",
+    gatePassKey: "outgoingGatePasses",
+    bagKey: "outgoingBags",
     transferKey: "transferOutgoingBags",
     icon: ArrowUpRight,
     tone: "muted",
@@ -204,10 +214,11 @@ export function FarmerProfileCard({
       <CardFooter className="grid grid-cols-2 gap-4">
         {BAG_STATS.map((stat) => (
           <BagStatCell
-            key={stat.valueKey}
+            key={stat.gatePassKey}
             stat={stat}
-            value={bagTotals[stat.valueKey]}
-            transferValue={bagTotals[stat.transferKey]}
+            gatePassCount={bagTotals[stat.gatePassKey]}
+            bagCount={bagTotals[stat.bagKey]}
+            transferBagCount={bagTotals[stat.transferKey]}
             isLoading={isLoadingTotals}
           />
         ))}
@@ -218,13 +229,15 @@ export function FarmerProfileCard({
 
 function BagStatCell({
   stat,
-  value,
-  transferValue,
+  gatePassCount,
+  bagCount,
+  transferBagCount,
   isLoading,
 }: {
   stat: BagStat
-  value: number
-  transferValue: number
+  gatePassCount: number
+  bagCount: number
+  transferBagCount: number
   isLoading: boolean
 }) {
   const Icon = stat.icon
@@ -249,10 +262,17 @@ function BagStatCell({
 
       <div className="space-y-0.5 tabular-nums text-foreground">
         <p className="text-sm font-medium">
-          {isLoading ? "—" : `${bagCountFormatter.format(value)} gate passes`}
+          {isLoading
+            ? "—"
+            : `${bagCountFormatter.format(gatePassCount)} gate passes`}
         </p>
         <p className="text-sm text-muted-foreground">
-          {isLoading ? "—" : `${bagCountFormatter.format(transferValue)} bags`}
+          {isLoading ? "—" : `${bagCountFormatter.format(bagCount)} bags`}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {isLoading
+            ? "—"
+            : `${bagCountFormatter.format(transferBagCount)} bags (internal)`}
         </p>
       </div>
     </div>

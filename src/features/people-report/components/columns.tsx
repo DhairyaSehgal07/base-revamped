@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
@@ -8,10 +8,51 @@ import { formatDaybookDate, formatQuantity } from "@/features/daybook/utils/form
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
 import {
   collectUniqueBagSizes,
+  getGatePassSizeQuantity,
   getGatePassSizeQuantityLines,
   getGatePassVariety,
   orderBagSizes,
 } from "@/features/people-report/utils/gate-pass-table-helpers"
+
+const farmerReportNumericSortingFn: SortingFn<FarmerReportTableRow> = (
+  rowA,
+  rowB,
+  columnId,
+) => {
+  const a = Number(rowA.getValue(columnId))
+  const b = Number(rowB.getValue(columnId))
+
+  if (!Number.isFinite(a) && !Number.isFinite(b)) return 0
+  if (!Number.isFinite(a)) return -1
+  if (!Number.isFinite(b)) return 1
+
+  return a === b ? 0 : a > b ? 1 : -1
+}
+
+export const farmerReportSortingFns = {
+  farmerReportNumeric: farmerReportNumericSortingFn,
+}
+
+function getRowDateSortValue(row: FarmerReportTableRow): number | null {
+  if (row.kind === "opening-balance" || !row.entry) return null
+
+  const timestamp = Date.parse(row.entry.date || row.entry.createdAt)
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+function getRowSizeSortValue(
+  row: FarmerReportTableRow,
+  size: string,
+): number | null {
+  if (row.kind === "opening-balance") {
+    const total = row.sizeTotals?.[size]
+    return total !== undefined && total > 0 ? total : null
+  }
+
+  if (!row.entry) return null
+
+  return getGatePassSizeQuantity(row.entry, size)
+}
 
 function RunningTotalCell({ value }: { value: number }) {
   return <span className="tabular-nums">{formatQuantity(value)}</span>
@@ -59,23 +100,47 @@ function isOpeningBalanceRow(row: FarmerReportTableRow): boolean {
   return row.kind === "opening-balance"
 }
 
+function getRowVarietyGroupingValue(row: FarmerReportTableRow): string {
+  if (row.kind === "opening-balance") return "Opening Balance"
+  if (!row.entry) return "—"
+  return getGatePassVariety(row.entry)
+}
+
+function getRowStockFilterGroupingValue(row: FarmerReportTableRow): string {
+  if (row.kind === "opening-balance") return "Opening Balance"
+  if (row.entry && isIncomingDaybookEntry(row.entry)) {
+    return row.entry.stockFilter?.trim() || "—"
+  }
+  return "—"
+}
+
+function emptyGroupedAggregatedCell() {
+  return <span className="text-muted-foreground">—</span>
+}
+
+const noGroupAggregation = () => null
+
 export function getFarmerReportColumns(
   rows: DaybookEntry[],
   commodities: CommodityPreference[] = [],
   showCustomMarka = false,
+  showStockFilter = false,
 ): ColumnDef<FarmerReportTableRow>[] {
   const orderedSizes = orderBagSizes(collectUniqueBagSizes(rows), commodities)
 
   const staticColumns: ColumnDef<FarmerReportTableRow>[] = [
     {
       id: "date",
-      accessorFn: (row) => row.entry?.date || row.entry?.createdAt || "",
+      accessorFn: (row) => getRowDateSortValue(row),
       header: "Date",
-      enableSorting: false,
+      sortingFn: farmerReportNumericSortingFn,
+      sortUndefined: "first",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {
         if (isOpeningBalanceRow(row.original)) {
           return (
-            <span className="font-semibold text-foreground">Closing Stock</span>
+            <span className="font-semibold text-primary">Opening Balance</span>
           )
         }
 
@@ -93,7 +158,10 @@ export function getFarmerReportColumns(
       accessorFn: (row) => row.entry?.gatePassNo ?? null,
       header: "Gate Pass No",
       meta: { mono: true, numeric: true },
-      enableSorting: false,
+      sortingFn: farmerReportNumericSortingFn,
+      sortUndefined: "first",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {
         if (isOpeningBalanceRow(row.original) || !row.original.entry) {
           return <span className="text-muted-foreground">—</span>
@@ -109,8 +177,12 @@ export function getFarmerReportColumns(
       accessorFn: (row) =>
         row.entry ? getGatePassVariety(row.entry) : "—",
       header: "Variety",
-      meta: { compact: true },
-      enableSorting: false,
+      meta: { groupable: true },
+      enableGrouping: true,
+      getGroupingValue: getRowVarietyGroupingValue,
+      sortingFn: "text",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {
         if (isOpeningBalanceRow(row.original) || !row.original.entry) {
           return <span className="text-muted-foreground">—</span>
@@ -118,13 +190,45 @@ export function getFarmerReportColumns(
 
         const variety = getGatePassVariety(row.original.entry)
         return (
-          <span className="block truncate" title={variety}>
+          <span className="block min-w-0" title={variety}>
             {variety}
           </span>
         )
       },
     },
   ]
+
+  if (showStockFilter) {
+    staticColumns.push({
+      id: "stockFilter",
+      accessorFn: (row) =>
+        row.entry && isIncomingDaybookEntry(row.entry)
+          ? row.entry.stockFilter?.trim() || "—"
+          : "—",
+      header: "Filter",
+      meta: { groupable: true },
+      enableGrouping: true,
+      getGroupingValue: getRowStockFilterGroupingValue,
+      sortingFn: "text",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
+      cell: ({ row }) => {
+        if (isOpeningBalanceRow(row.original) || !row.original.entry) {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        const stockFilter = isIncomingDaybookEntry(row.original.entry)
+          ? row.original.entry.stockFilter?.trim() || "—"
+          : "—"
+
+        return (
+          <span className="block min-w-0" title={stockFilter}>
+            {stockFilter}
+          </span>
+        )
+      },
+    })
+  }
 
   if (showCustomMarka) {
     staticColumns.push({
@@ -133,9 +237,11 @@ export function getFarmerReportColumns(
         row.entry && isIncomingDaybookEntry(row.entry)
           ? row.entry.customMarka?.trim() || "—"
           : "—",
-      header: "Custom Marka",
+      header: "Marka",
       meta: { compact: true },
-      enableSorting: false,
+      sortingFn: "text",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {
         if (isOpeningBalanceRow(row.original) || !row.original.entry) {
           return <span className="text-muted-foreground">—</span>
@@ -157,14 +263,26 @@ export function getFarmerReportColumns(
   const sizeColumns: ColumnDef<FarmerReportTableRow>[] = orderedSizes.map(
     (size, index) => ({
       id: `size-${size}`,
-      accessorFn: (row) => row,
+      accessorFn: (row) => getRowSizeSortValue(row, size),
       header: size,
       meta: {
         align: "right",
         numeric: true,
         groupStart: index === 0,
       },
-      enableSorting: false,
+      sortingFn: farmerReportNumericSortingFn,
+      sortUndefined: "last",
+      aggregationFn: "sum",
+      aggregatedCell: ({ getValue }) => {
+        const value = Number(getValue())
+        if (!Number.isFinite(value) || value <= 0) {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        return (
+          <span className="tabular-nums font-medium">{formatQuantity(value)}</span>
+        )
+      },
       cell: ({ row }) => (
         <SizeQuantityCell row={row.original} size={size} />
       ),
@@ -177,7 +295,14 @@ export function getFarmerReportColumns(
       accessorFn: (row) => row.runningTotal,
       header: "Total Bags",
       meta: { align: "right", numeric: true },
-      enableSorting: false,
+      sortingFn: farmerReportNumericSortingFn,
+      aggregationFn: (_, leafRows) =>
+        leafRows.reduce((total, row) => total + row.original.rowBags, 0),
+      aggregatedCell: ({ getValue }) => (
+        <span className="tabular-nums font-medium">
+          {formatQuantity(Number(getValue()))}
+        </span>
+      ),
       cell: ({ row }) => (
         <RunningTotalCell value={row.original.runningTotal} />
       ),
@@ -187,7 +312,9 @@ export function getFarmerReportColumns(
       accessorFn: (row) => row.entry?.remarks?.trim() || "—",
       header: "Remarks",
       meta: { wrap: true },
-      enableSorting: false,
+      sortingFn: "text",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {
         if (isOpeningBalanceRow(row.original)) {
           return <span className="text-muted-foreground">—</span>

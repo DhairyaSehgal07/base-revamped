@@ -21,7 +21,7 @@ export function PeopleReportPage() {
         </Button>
       </div>
 
-      <FarmerReportDocument linkId={linkId} />
+      <FarmerReportDocument linkId={linkId} search={search} />
     </main>
   )
 }

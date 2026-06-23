@@ -15,6 +15,7 @@ type ColumnMeta = {
   mono?: boolean
   wrap?: boolean
   compact?: boolean
+  groupable?: boolean
   groupStart?: boolean
 }
 
@@ -37,6 +38,8 @@ export function getHeadClassName(
     meta?.numeric === true && "tabular-nums",
     meta?.wrap === true && "min-w-[14rem] whitespace-normal",
     meta?.compact === true && "w-[1%] max-w-[9rem] whitespace-nowrap",
+    meta?.groupable === true &&
+      "min-w-[12rem] max-w-[20rem] whitespace-nowrap",
     meta?.groupStart === true && "border-l-2 border-l-border/60",
     align === "right" && "text-right",
   )
@@ -51,9 +54,11 @@ export function getCellClassName(meta: ColumnMeta | undefined) {
     meta?.mono === true && "font-mono",
     meta?.wrap === true
       ? "min-w-[14rem] max-w-[22rem] whitespace-normal break-words leading-relaxed"
-      : meta?.compact === true
-        ? "w-[1%] max-w-[9rem] whitespace-nowrap"
-        : "whitespace-nowrap",
+      : meta?.groupable === true
+        ? "min-w-[12rem] max-w-[20rem] whitespace-nowrap"
+        : meta?.compact === true
+          ? "w-[1%] max-w-[9rem] whitespace-nowrap"
+          : "whitespace-nowrap",
     meta?.groupStart === true && "border-l-2 border-l-border/60",
     align === "right" && "text-right",
   )
@@ -70,3 +75,20 @@ export function getFooterClassName(meta: ColumnMeta | undefined) {
     align === "right" && "text-right",
   )
 }
+
+/** Opening balance row in the outgoing ledger table */
+export const OPENING_BALANCE_ROW_CLASS = cn(
+  "border-0 font-semibold",
+  "bg-primary/5 hover:bg-primary/5",
+  "shadow-[inset_3px_0_0_0] shadow-primary/70",
+)
+
+/** Closing balance footer in the outgoing ledger table */
+export const CLOSING_BALANCE_ROW_CLASS = cn(
+  "border-0 font-semibold hover:bg-transparent",
+  "bg-primary/5",
+  "shadow-[inset_3px_0_0_0] shadow-primary/70",
+)
+
+/** Total footer in the incoming ledger table — matches closing balance highlight */
+export const INCOMING_TOTAL_ROW_CLASS = CLOSING_BALANCE_ROW_CLASS

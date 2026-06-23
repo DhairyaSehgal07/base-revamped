@@ -162,10 +162,7 @@ export function getGatePassTotalBags(entry: DaybookEntry): number {
   return 0
 }
 
-export function sumSizeColumn(
-  rows: DaybookEntry[],
-  size: string,
-): number {
+export function sumSizeColumn(rows: DaybookEntry[], size: string): number {
   return rows.reduce((total, row) => {
     const quantity = getGatePassSizeQuantity(row, size)
     return total + (quantity ?? 0)

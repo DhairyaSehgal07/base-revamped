@@ -31,11 +31,11 @@ import {
 } from "@/features/daybook/types"
 import {
   paginateFarmerGatePassEntries,
-  type FarmerGatePassSummaries,
   useFarmerGatePasses,
 } from "@/features/people/api/use-farmer-gate-passes"
 import { FarmerGatePassesSectionSkeleton } from "@/features/people/components/farmer-gate-passes-section-skeleton"
 import { FarmerGatePassesToolbar } from "@/features/people/components/farmer-gate-passes-toolbar"
+import type { FarmerBagTotals } from "@/features/people/components/farmer-profile-card"
 import { FarmerStockSummarySection } from "@/features/people/components/farmer-stock-summary-section"
 import {
   filterFarmerGatePassEntries,
@@ -52,10 +52,7 @@ const DEFAULT_LIMIT = DAYBOOK_PAGE_SIZE_OPTIONS[0]
 
 type FarmerGatePassesSectionProps = {
   linkId: string
-  onSummariesChange?: (
-    summaries: FarmerGatePassSummaries,
-    isLoading: boolean,
-  ) => void
+  onSummariesChange?: (totals: FarmerBagTotals, isLoading: boolean) => void
 }
 
 export function FarmerGatePassesSection({
@@ -112,9 +109,43 @@ export function FarmerGatePassesSection({
     [filteredEntries, page, limit],
   )
 
+  const incomingGatePassCount = useMemo(
+    () => gatePasses.entries.filter(isIncomingDaybookEntry).length,
+    [gatePasses.entries],
+  )
+
+  const outgoingGatePassCount = useMemo(
+    () =>
+      gatePasses.entries.filter(
+        (entry) => isOutgoingDaybookEntry(entry) && entry.isNull !== true,
+      ).length,
+    [gatePasses.entries],
+  )
+
+  const profileBagTotals = useMemo<FarmerBagTotals>(
+    () => ({
+      incomingGatePasses: incomingGatePassCount,
+      outgoingGatePasses: outgoingGatePassCount,
+      incomingBags: gatePasses.summaries.totalIncomingBags,
+      outgoingBags: gatePasses.summaries.totalOutgoingBags,
+      transferIncomingBags:
+        gatePasses.summaries.totalInternallyTransferredIncomingBags,
+      transferOutgoingBags:
+        gatePasses.summaries.totalInternallyTransferredOutgoingBags,
+    }),
+    [
+      incomingGatePassCount,
+      outgoingGatePassCount,
+      gatePasses.summaries.totalIncomingBags,
+      gatePasses.summaries.totalOutgoingBags,
+      gatePasses.summaries.totalInternallyTransferredIncomingBags,
+      gatePasses.summaries.totalInternallyTransferredOutgoingBags,
+    ],
+  )
+
   useEffect(() => {
-    onSummariesChange?.(gatePasses.summaries, gatePasses.isLoading)
-  }, [gatePasses.summaries, gatePasses.isLoading, onSummariesChange])
+    onSummariesChange?.(profileBagTotals, gatePasses.isLoading)
+  }, [profileBagTotals, gatePasses.isLoading, onSummariesChange])
 
   const gatePassCount = pagination.totalItems
   const currentPage = pagination.currentPage

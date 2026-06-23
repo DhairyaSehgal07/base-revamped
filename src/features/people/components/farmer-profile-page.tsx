@@ -5,14 +5,19 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EditFarmerDialog } from "@/features/people/components/edit-farmer-dialog"
 import { FarmerGatePassesSection } from "@/features/people/components/farmer-gate-passes-section"
-import { FarmerProfileCard } from "@/features/people/components/farmer-profile-card"
-import type { FarmerGatePassSummaries } from "@/features/people/api/use-farmer-gate-passes"
+import {
+  FarmerProfileCard,
+  type FarmerBagTotals,
+} from "@/features/people/components/farmer-profile-card"
 import type { PersonDetailSearch } from "@/features/people/search"
 import type { FarmerStorageLink } from "@/features/people/types"
+import { personDetailSearchToFarmerLink } from "@/features/people/utils/person-detail-search"
 
 const peopleDetailRouteApi = getRouteApi("/_authenticated/people/$id")
 
-const EMPTY_BAG_TOTALS = {
+const EMPTY_BAG_TOTALS: FarmerBagTotals = {
+  incomingGatePasses: 0,
+  outgoingGatePasses: 0,
   incomingBags: 0,
   outgoingBags: 0,
   transferIncomingBags: 0,
@@ -22,43 +27,6 @@ const EMPTY_BAG_TOTALS = {
 type FarmerProfilePageProps = {
   linkId: string
   search: PersonDetailSearch
-}
-
-function personDetailSearchToFarmerLink(
-  linkId: string,
-  search: PersonDetailSearch,
-): FarmerStorageLink | null {
-  const name = search.name?.trim()
-  const mobileNumber = search.mobileNumber?.trim()
-  const address = search.address?.trim()
-
-  if (
-    !name ||
-    typeof search.accountNumber !== "number" ||
-    !mobileNumber ||
-    !address
-  ) {
-    return null
-  }
-
-  return {
-    _id: linkId,
-    name,
-    accountNumber: search.accountNumber,
-    mobileNumber,
-    address,
-    costPerBag: search.costPerBag ?? 0,
-    isActive: true,
-  }
-}
-
-function summariesToBagTotals(summaries: FarmerGatePassSummaries) {
-  return {
-    incomingBags: summaries.totalIncomingBags,
-    outgoingBags: summaries.totalOutgoingBags,
-    transferIncomingBags: summaries.totalInternallyTransferredIncomingBags,
-    transferOutgoingBags: summaries.totalInternallyTransferredOutgoingBags,
-  }
 }
 
 export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
@@ -79,8 +47,8 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
       : "Account"
 
   const handleSummariesChange = useCallback(
-    (summaries: FarmerGatePassSummaries, isLoading: boolean) => {
-      setBagTotals(summariesToBagTotals(summaries))
+    (totals: FarmerBagTotals, isLoading: boolean) => {
+      setBagTotals(totals)
       setIsLoadingTotals(isLoading)
     },
     [],

@@ -1,10 +1,20 @@
 import * as React from "react"
 import {
+  type Cell,
+  type Column,
   type ColumnDef,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
+  getGroupedRowModel,
+  getSortedRowModel,
+  type GroupingState,
+  type OnChangeFn,
+  type Row,
+  type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
+import { ChevronRight } from "lucide-react"
 
 import {
   Table,
@@ -14,37 +24,248 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import type {
+  FarmerReportSectionMode,
+  FarmerReportTableRow,
+} from "@/features/people-report/utils/build-farmer-report-sections"
 import { cn } from "@/lib/utils"
 
+import { farmerReportSortingFns } from "./columns"
 import { DataTableColumnHeader } from "./data-table-column-header"
 import { ReportTotalsFooter } from "./report-totals-footer"
 import {
   getCellClassName,
   getColumnAlign,
   getHeadClassName,
+  OPENING_BALANCE_ROW_CLASS,
   TABLE_GRID_CLASS,
 } from "./table-styles"
 
 interface DataTableProps {
   columns: ColumnDef<FarmerReportTableRow>[]
   data: FarmerReportTableRow[]
+  grouping: GroupingState
+  sorting: SortingState
+  onSortingChange: OnChangeFn<SortingState>
+  sectionMode?: FarmerReportSectionMode
+  flush?: boolean
 }
 
-export function DataTable({ columns, data }: DataTableProps) {
+export const FARMER_REPORT_DEFAULT_SORTING: SortingState = [
+  { id: "date", desc: false },
+]
+
+function renderGroupedCell(
+  row: Row<FarmerReportTableRow>,
+  cell: Cell<FarmerReportTableRow, unknown>,
+) {
+  const canExpand = row.getCanExpand()
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        "flex w-full min-w-0 items-center gap-1.5 text-left font-medium text-foreground",
+        canExpand ? "cursor-pointer" : "cursor-default",
+      )}
+      onClick={row.getToggleExpandedHandler()}
+      disabled={!canExpand}
+    >
+      <ChevronRight
+        className={cn(
+          "size-4 shrink-0 text-muted-foreground transition-transform",
+          row.getIsExpanded() && "rotate-90",
+        )}
+        aria-hidden
+      />
+      <span className="min-w-0 flex-1">
+        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+      </span>
+      <span className="shrink-0 tabular-nums text-xs text-muted-foreground">
+        ({row.subRows.length})
+      </span>
+    </button>
+  )
+}
+
+function renderDataCell(
+  row: Row<FarmerReportTableRow>,
+  cell: Cell<FarmerReportTableRow, unknown>,
+) {
+  if (cell.getIsGrouped()) {
+    return renderGroupedCell(row, cell)
+  }
+
+  if (cell.getIsAggregated()) {
+    return flexRender(
+      cell.column.columnDef.aggregatedCell ?? cell.column.columnDef.cell,
+      cell.getContext(),
+    )
+  }
+
+  if (cell.getIsPlaceholder()) {
+    return null
+  }
+
+  return flexRender(cell.column.columnDef.cell, cell.getContext())
+}
+
+function getTableRowClassName(row: Row<FarmerReportTableRow>) {
+  if (row.original.kind === "opening-balance") {
+    return OPENING_BALANCE_ROW_CLASS
+  }
+
+  return cn(
+    "border-0",
+    row.getIsGrouped()
+      ? "bg-muted/50 font-medium hover:bg-muted/50"
+      : "even:bg-muted/20 hover:bg-muted/40",
+  )
+}
+
+function renderTableRow(
+  row: Row<FarmerReportTableRow>,
+  isGroupingActive: boolean,
+) {
+  return (
+    <TableRow key={row.id} className={getTableRowClassName(row)}>
+      {row.getVisibleCells().map((cell, cellIndex) => (
+        <TableCell
+          key={cell.id}
+          className={cn(
+            getCellClassName(cell.column.columnDef.meta),
+            isGroupingActive && row.depth > 0 && "bg-background/40",
+          )}
+          style={
+            isGroupingActive && row.depth > 0 && cellIndex === 0
+              ? { paddingLeft: `${row.depth * 1.25 + 0.75}rem` }
+              : undefined
+          }
+        >
+          {renderDataCell(row, cell)}
+        </TableCell>
+      ))}
+    </TableRow>
+  )
+}
+
+function renderPinnedTableRow(
+  row: Row<FarmerReportTableRow>,
+  visibleColumns: Column<FarmerReportTableRow, unknown>[],
+) {
+  return (
+    <TableRow key={row.id} className={getTableRowClassName(row)}>
+      {visibleColumns.map((column, columnIndex) => {
+        const cell = row
+          .getVisibleCells()
+          .find((visibleCell) => visibleCell.column.id === column.id)
+
+        if (!cell) {
+          return (
+            <TableCell
+              key={column.id}
+              className={getCellClassName(column.columnDef.meta)}
+            />
+          )
+        }
+
+        let content: React.ReactNode
+
+        if (row.original.kind === "opening-balance") {
+          if (columnIndex === 0) {
+            content = (
+              <span className="font-semibold text-primary">Opening Balance</span>
+            )
+          } else if (column.id === "date") {
+            content = <span className="text-muted-foreground">—</span>
+          } else {
+            content = renderDataCell(row, cell)
+          }
+        } else {
+          content = renderDataCell(row, cell)
+        }
+
+        return (
+          <TableCell
+            key={cell.id}
+            className={getCellClassName(column.columnDef.meta)}
+          >
+            {content}
+          </TableCell>
+        )
+      })}
+    </TableRow>
+  )
+}
+
+export function DataTable({
+  columns,
+  data,
+  grouping,
+  sorting,
+  onSortingChange,
+  sectionMode = "incoming",
+  flush = false,
+}: DataTableProps) {
+  const [expanded, setExpanded] = React.useState<true | Record<string, boolean>>(
+    true,
+  )
   const [isHeaderScrolled, setIsHeaderScrolled] = React.useState(false)
   const [isFooterElevated, setIsFooterElevated] = React.useState(false)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 
+  React.useEffect(() => {
+    setExpanded(grouping.length > 0 ? true : {})
+  }, [grouping])
+
+  const isGroupingActive = grouping.length > 0
+
+  const pinnedRows = React.useMemo(
+    () =>
+      isGroupingActive
+        ? data.filter((row) => row.kind === "opening-balance")
+        : [],
+    [data, isGroupingActive],
+  )
+
+  const groupableData = React.useMemo(
+    () =>
+      isGroupingActive
+        ? data.filter((row) => row.kind !== "opening-balance")
+        : data,
+    [data, isGroupingActive],
+  )
+
   const table = useReactTable({
-    data,
+    data: groupableData,
     columns,
+    state: {
+      sorting,
+      grouping,
+      expanded,
+    },
+    onSortingChange,
+    onExpandedChange: setExpanded,
     getCoreRowModel: getCoreRowModel(),
-    enableSorting: false,
+    getSortedRowModel: getSortedRowModel(),
+    getGroupedRowModel: getGroupedRowModel(),
+    getExpandedRowModel: getExpandedRowModel(),
+    sortingFns: farmerReportSortingFns,
+    enableSortingRemoval: true,
+    sortDescFirst: false,
+    groupedColumnMode: "reorder",
   })
 
+  const pinnedTable = useReactTable({
+    data: pinnedRows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
+  const pinnedTableRows = pinnedTable.getRowModel().rows
   const rows = table.getRowModel().rows
-  const hasDataRows = rows.length > 0
+  const visibleColumns = table.getVisibleLeafColumns()
+  const hasDataRows = pinnedTableRows.length > 0 || rows.length > 0
 
   const handleTableScroll = React.useCallback(() => {
     const el = scrollContainerRef.current
@@ -63,7 +284,12 @@ export function DataTable({ columns, data }: DataTableProps) {
   }, [handleTableScroll, rows.length, columns.length])
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-lg border border-border">
+    <div
+      className={cn(
+        "min-w-0 overflow-hidden",
+        flush ? "rounded-none border-0" : "rounded-lg border border-border",
+      )}
+    >
       <div
         ref={scrollContainerRef}
         onScroll={handleTableScroll}
@@ -81,6 +307,7 @@ export function DataTable({ columns, data }: DataTableProps) {
                 {headerGroup.headers.map((header) => {
                   const meta = header.column.columnDef.meta
                   const align = getColumnAlign(meta)
+                  const sorted = header.column.getIsSorted()
 
                   return (
                     <TableHead
@@ -89,11 +316,18 @@ export function DataTable({ columns, data }: DataTableProps) {
                         "group/head",
                         getHeadClassName(meta, isHeaderScrolled),
                       )}
+                      aria-sort={
+                        sorted === "asc"
+                          ? "ascending"
+                          : sorted === "desc"
+                            ? "descending"
+                            : "none"
+                      }
                     >
                       {header.isPlaceholder ? null : (
                         <DataTableColumnHeader
                           column={header.column}
-                          sorted={false}
+                          sorted={sorted}
                           align={align}
                         >
                           {flexRender(
@@ -111,29 +345,12 @@ export function DataTable({ columns, data }: DataTableProps) {
 
           <TableBody className="[&_tr:last-child]:border-0">
             {hasDataRows ? (
-              rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={cn(
-                    "border-0",
-                    row.original.kind === "opening-balance"
-                      ? "bg-muted/80 font-semibold hover:bg-muted/80"
-                      : "even:bg-muted/20 hover:bg-muted/40",
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={getCellClassName(cell.column.columnDef.meta)}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              <>
+                {pinnedTableRows.map((row) =>
+                  renderPinnedTableRow(row, visibleColumns),
+                )}
+                {rows.map((row) => renderTableRow(row, isGroupingActive))}
+              </>
             ) : (
               <TableRow className="border-0">
                 <TableCell
@@ -149,6 +366,8 @@ export function DataTable({ columns, data }: DataTableProps) {
           {hasDataRows ? (
             <ReportTotalsFooter
               table={table}
+              rows={data}
+              sectionMode={sectionMode}
               isFooterElevated={isFooterElevated}
             />
           ) : null}
