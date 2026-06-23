@@ -160,7 +160,9 @@ export function AnalyticsTopFarmersChart({
                   offset={8}
                   className="fill-(--color-label)"
                   fontSize={12}
-                  formatter={(value: string) => truncateFarmerLabel(value)}
+                  formatter={(value) =>
+                    truncateFarmerLabel(String(value ?? ""))
+                  }
                 />
                 <LabelList
                   dataKey="bags"
@@ -168,7 +170,7 @@ export function AnalyticsTopFarmersChart({
                   offset={8}
                   className="fill-foreground tabular-nums"
                   fontSize={12}
-                  formatter={(value: number) => formatQuantity(value)}
+                  formatter={(value) => formatQuantity(Number(value ?? 0))}
                 />
               </Bar>
             </BarChart>
