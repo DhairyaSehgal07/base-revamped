@@ -1,0 +1,258 @@
+import { useMemo, useState } from "react"
+
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { useAnalyticsSummary } from "@/features/analytics/api/use-analytics-summary"
+import { useAnalyticsTopFarmers } from "@/features/analytics/api/use-analytics-top-farmers"
+import { AnalyticsCapacityUtilization } from "@/features/analytics/components/analytics-capacity-utilization"
+import {
+  AnalyticsSummaryCards,
+  AnalyticsSummaryCardsSkeleton,
+} from "@/features/analytics/components/analytics-summary-cards"
+import { AnalyticsSizeDistribution } from "@/features/analytics/components/analytics-size-distribution"
+import { AnalyticsStockSummarySection } from "@/features/analytics/components/analytics-stock-summary-section"
+import { AnalyticsVarietyDistribution } from "@/features/analytics/components/analytics-variety-distribution"
+import {
+  buildSizeDistribution,
+  buildVarietyDistribution,
+} from "@/features/analytics/utils/build-analytics-distribution"
+import { buildAnalyticsStockSummary } from "@/features/analytics/utils/build-analytics-stock-summary"
+import { buildAnalyticsSummaryCards } from "@/features/analytics/utils/build-analytics-summary-cards"
+import { resolveAnalyticsSummaryData } from "@/features/analytics/utils/resolve-analytics-summary-data"
+import { shouldShowStockFilter } from "@/features/incoming/utils/incoming-preferences"
+import type { StockFilterTab } from "@/features/people/utils/build-farmer-stock-summary"
+import type { StockQuantityMode } from "@/features/people/utils/build-farmer-stock-summary"
+import { RefreshCw } from "lucide-react"
+
+type AnalyticsTabContentProps = {
+  quantityMode: StockQuantityMode
+  enabled: boolean
+}
+
+export function AnalyticsTabContent({
+  quantityMode,
+  enabled,
+}: AnalyticsTabContentProps) {
+  const preferences = usePreferencesStore((state) => state.preferences)
+  const showStockFilterTabs = shouldShowStockFilter(preferences?.stockFilter)
+  const [stockFilterTab, setStockFilterTab] = useState<StockFilterTab>("all")
+
+  const coldStorageCapacity = useColdStorageStore(
+    (state) => state.coldStorage?.capacity,
+  )
+
+  const useGroupedApi = showStockFilterTabs && stockFilterTab !== "all"
+  const needsStoreWideSummary = showStockFilterTabs && stockFilterTab !== "all"
+
+  const summary = useAnalyticsSummary(
+    { stockFilter: useGroupedApi },
+    { enabled },
+  )
+  const storeSummary = useAnalyticsSummary({}, {
+    enabled: enabled && needsStoreWideSummary,
+  })
+  const topFarmers = useAnalyticsTopFarmers({ enabled })
+
+  const isLoading =
+    summary.isLoading ||
+    topFarmers.isLoading ||
+    (needsStoreWideSummary && storeSummary.isLoading)
+
+  const isError =
+    summary.isError ||
+    topFarmers.isError ||
+    (needsStoreWideSummary && storeSummary.isError)
+
+  const error = summary.error ?? topFarmers.error ?? storeSummary.error
+
+  const summaryData = useMemo(
+    () =>
+      resolveAnalyticsSummaryData(
+        summary.response?.data,
+        stockFilterTab,
+        showStockFilterTabs,
+      ),
+    [summary.response, stockFilterTab, showStockFilterTabs],
+  )
+
+  const storeWideSummaryData = useMemo(() => {
+    if (!needsStoreWideSummary) {
+      return summaryData
+    }
+
+    return resolveAnalyticsSummaryData(
+      storeSummary.response?.data,
+      "all",
+      false,
+    )
+  }, [needsStoreWideSummary, storeSummary.response, summaryData])
+
+  const cards = useMemo(() => {
+    if (!summaryData) return null
+    return buildAnalyticsSummaryCards(
+      summaryData,
+      topFarmers.response,
+      quantityMode,
+    )
+  }, [summaryData, topFarmers.response, quantityMode])
+
+  const matrix = useMemo(() => {
+    if (!summaryData) return null
+    return buildAnalyticsStockSummary({
+      stockSummary: summaryData.stockSummary,
+      sizeOrder: summaryData.chartData.sizes,
+      quantityMode,
+    })
+  }, [summaryData, quantityMode])
+
+  const varietyDistribution = useMemo(() => {
+    if (!summaryData) return null
+    return buildVarietyDistribution(summaryData.stockSummary, quantityMode)
+  }, [summaryData, quantityMode])
+
+  const sizeDistribution = useMemo(() => {
+    if (!summaryData) return null
+    return buildSizeDistribution(
+      summaryData.stockSummary,
+      quantityMode,
+      summaryData.chartData.sizes,
+    )
+  }, [summaryData, quantityMode])
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <AnalyticsSummaryCardsSkeleton />
+
+        <section className="flex flex-col gap-4">
+          <div className="space-y-1">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="p-4">
+              <div className="overflow-hidden rounded-lg border border-border">
+                <Skeleton className="h-11 w-full rounded-none" />
+                <Skeleton className="h-12 w-full rounded-none" />
+                <Skeleton className="h-12 w-full rounded-none" />
+                <Skeleton className="h-12 w-full rounded-none" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <CardSkeleton />
+        <DistributionChartsSkeleton />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <Empty className="rounded-xl border border-border bg-card">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <RefreshCw />
+          </EmptyMedia>
+          <EmptyTitle>Could not load analytics</EmptyTitle>
+          <EmptyDescription>
+            {error instanceof Error
+              ? error.message
+              : "Something went wrong while fetching analytics data."}
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
+  if (!summaryData || !cards || !matrix || !varietyDistribution || !sizeDistribution) {
+    return (
+      <Empty className="rounded-xl border border-border bg-card">
+        <EmptyHeader>
+          <EmptyTitle>Stock summary unavailable</EmptyTitle>
+          <EmptyDescription>
+            Could not resolve analytics data for the selected stock filter.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <AnalyticsSummaryCards cards={cards} />
+
+      <AnalyticsStockSummarySection
+        matrix={matrix}
+        quantityMode={quantityMode}
+        stockFilterTab={stockFilterTab}
+        onStockFilterTabChange={setStockFilterTab}
+      />
+
+      <AnalyticsCapacityUtilization
+        currentQuantity={
+          storeWideSummaryData?.totalInventory.current ??
+          summaryData.totalInventory.current
+        }
+        totalCapacity={coldStorageCapacity}
+      />
+
+      <div className="flex w-full flex-col gap-6">
+        <AnalyticsVarietyDistribution
+          distribution={varietyDistribution}
+          quantityMode={quantityMode}
+        />
+        <AnalyticsSizeDistribution
+          distribution={sizeDistribution}
+          quantityMode={quantityMode}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm">
+      <Skeleton className="h-5 w-40" />
+      <Skeleton className="mt-2 h-4 w-48" />
+      <Skeleton className="mt-4 h-2.5 w-full rounded-full" />
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-20 rounded-lg" />
+        <Skeleton className="h-20 rounded-lg" />
+      </div>
+    </div>
+  )
+}
+
+function DistributionChartsSkeleton() {
+  return (
+    <div className="flex w-full flex-col gap-6">
+      {Array.from({ length: 2 }).map((_, index) => (
+        <div
+          key={index}
+          className="overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm"
+        >
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="mt-2 h-4 w-48" />
+          <Skeleton className="mx-auto mt-6 aspect-square max-h-[280px] w-full max-w-[320px] rounded-full" />
+          <div className="mt-6 overflow-hidden rounded-lg border border-border">
+            <Skeleton className="h-10 w-full rounded-none" />
+            <Skeleton className="h-10 w-full rounded-none" />
+            <Skeleton className="h-10 w-full rounded-none" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

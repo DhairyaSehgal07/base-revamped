@@ -1,24 +1,8 @@
-import { useState } from "react"
 import { getRouteApi } from "@tanstack/react-router"
-import {
-  ArrowLeftRight,
-  BarChart3,
-  Inbox,
-  PackageCheck,
-  RefreshCw,
-  Scale,
-  Sprout,
-} from "lucide-react"
+import { useIsFetching, useQueryClient } from "@tanstack/react-query"
+import { BarChart3, Loader2, RefreshCw } from "lucide-react"
 
-import { DatePickerInput } from "@/components/date-picker"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import {
   Item,
   ItemActions,
@@ -35,39 +19,27 @@ import {
 
 import { preserveScroll } from "@/lib/preserve-scroll"
 
-import Overview from "./components/overview"
+import { ANALYTICS_SUMMARY_QUERY_KEY } from "./api/use-analytics-summary"
+import { ANALYTICS_TOP_FARMERS_QUERY_KEY } from "./api/use-analytics-top-farmers"
+import { AnalyticsTabContent } from "./components/analytics-tab-content"
 import type { AnalyticsTab } from "./search"
 
 const analyticsRouteApi = getRouteApi("/_authenticated/analytics")
 
-const TAB_PLACEHOLDER: Record<AnalyticsTab, string> = {
-  incoming: "Show Incoming Analytics here",
-  grading: "Show Grading Analytics here",
-  storage: "Show Storage Analytics here",
-  "dispatch-pre-storage": "Show Dispatch (pre-storage) Analytics here",
-  "dispatch-post-storage": "Show Dispatch (post-storage) Analytics here",
-}
-
-function AnalyticsTabPlaceholder({ tab }: { tab: AnalyticsTab }) {
-  return (
-    <Card className="card-hover">
-      <CardHeader>
-        <CardTitle>Analytics</CardTitle>
-        <CardDescription>Placeholder content for this section</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{TAB_PLACEHOLDER[tab]}</p>
-      </CardContent>
-    </Card>
-  )
-}
+const ANALYTICS_QUERY_KEYS = [
+  ANALYTICS_SUMMARY_QUERY_KEY,
+  ANALYTICS_TOP_FARMERS_QUERY_KEY,
+] as const
 
 const AnalyticsPage = () => {
   const { tab } = analyticsRouteApi.useSearch()
   const navigate = analyticsRouteApi.useNavigate()
-
-  const [fromDate, setFromDate] = useState<Date | undefined>()
-  const [toDate, setToDate] = useState<Date | undefined>()
+  const queryClient = useQueryClient()
+  const summaryFetching = useIsFetching({ queryKey: ANALYTICS_SUMMARY_QUERY_KEY })
+  const topFarmersFetching = useIsFetching({
+    queryKey: ANALYTICS_TOP_FARMERS_QUERY_KEY,
+  })
+  const isRefreshing = summaryFetching > 0 || topFarmersFetching > 0
 
   const handleTabChange = (value: string) => {
     navigate({
@@ -76,13 +48,10 @@ const AnalyticsPage = () => {
     })
   }
 
-  const handleApply = () => {
-    // TODO: load analytics for the selected date range
-  }
-
-  const handleReset = () => {
-    setFromDate(undefined)
-    setToDate(undefined)
+  const handleRefresh = () => {
+    for (const queryKey of ANALYTICS_QUERY_KEYS) {
+      void queryClient.invalidateQueries({ queryKey })
+    }
   }
 
   return (
@@ -99,98 +68,39 @@ const AnalyticsPage = () => {
         </ItemContent>
 
         <ItemActions>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" />
+            )}
             Refresh
           </Button>
         </ItemActions>
       </Item>
 
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 text-card-foreground shadow-sm sm:gap-4 sm:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-4">
-          <DatePickerInput
-            id="analytics-from"
-            label="From"
-            placeholder="Start date"
-            value={fromDate}
-            onChange={setFromDate}
-            className="min-w-0 sm:max-w-[220px] sm:flex-1"
-          />
-
-          <DatePickerInput
-            id="analytics-to"
-            label="To"
-            placeholder="End date"
-            value={toDate}
-            onChange={setToDate}
-            className="min-w-0 sm:max-w-[220px] sm:flex-1"
-          />
-
-          <div className="flex gap-2 sm:shrink-0">
-            <Button className="flex-1 sm:flex-none" onClick={handleApply}>
-              Apply
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1 sm:flex-none"
-              onClick={handleReset}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <section>
-        <Overview />
-      </section>
-
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full gap-4">
         <TabsList className="h-11 w-full">
-          <TabsTrigger value="incoming">
-            <Sprout className="h-5 w-5 sm:hidden" />
-            <span className="hidden sm:block">Incoming</span>
-          </TabsTrigger>
-
-          <TabsTrigger value="grading">
-            <Inbox className="h-5 w-5 sm:hidden" />
-            <span className="hidden sm:block">Grading</span>
-          </TabsTrigger>
-
-          <TabsTrigger value="storage">
-            <Scale className="h-5 w-5 sm:hidden" />
-            <span className="hidden sm:block">Storage</span>
-          </TabsTrigger>
-
-          <TabsTrigger value="dispatch-pre-storage">
-            <PackageCheck className="h-5 w-5 sm:hidden" />
-            <span className="hidden sm:block">Dispatch (pre-storage)</span>
-          </TabsTrigger>
-
-          <TabsTrigger value="dispatch-post-storage">
-            <ArrowLeftRight className="h-5 w-5 sm:hidden" />
-            <span className="hidden sm:block">Dispatch (post-storage)</span>
-          </TabsTrigger>
+          <TabsTrigger value="current">Current</TabsTrigger>
+          <TabsTrigger value="initial">Initial</TabsTrigger>
+          <TabsTrigger value="outgoing">Outgoing</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="incoming" className="min-w-0">
-          <AnalyticsTabPlaceholder tab="incoming" />
+        <TabsContent value="current" className="min-w-0">
+          <AnalyticsTabContent quantityMode="current" enabled={tab === "current"} />
         </TabsContent>
 
-        <TabsContent value="grading" className="min-w-0">
-          <AnalyticsTabPlaceholder tab="grading" />
+        <TabsContent value="initial" className="min-w-0">
+          <AnalyticsTabContent quantityMode="initial" enabled={tab === "initial"} />
         </TabsContent>
 
-        <TabsContent value="storage" className="min-w-0">
-          <AnalyticsTabPlaceholder tab="storage" />
-        </TabsContent>
-
-        <TabsContent value="dispatch-pre-storage" className="min-w-0">
-          <AnalyticsTabPlaceholder tab="dispatch-pre-storage" />
-        </TabsContent>
-
-        <TabsContent value="dispatch-post-storage" className="min-w-0">
-          <AnalyticsTabPlaceholder tab="dispatch-post-storage" />
+        <TabsContent value="outgoing" className="min-w-0">
+          <AnalyticsTabContent quantityMode="outgoing" enabled={tab === "outgoing"} />
         </TabsContent>
       </Tabs>
     </div>

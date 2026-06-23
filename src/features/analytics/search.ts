@@ -1,17 +1,11 @@
 import { z } from "zod"
 
-export const ANALYTICS_TAB_VALUES = [
-  "incoming",
-  "grading",
-  "storage",
-  "dispatch-pre-storage",
-  "dispatch-post-storage",
-] as const
+export const ANALYTICS_TAB_VALUES = ["current", "initial", "outgoing"] as const
 
 export const analyticsTabSchema = z.enum(ANALYTICS_TAB_VALUES)
 
 export const analyticsSearchSchema = z.object({
-  tab: analyticsTabSchema.catch("incoming"),
+  tab: analyticsTabSchema.catch("current"),
 })
 
 export type AnalyticsTab = z.infer<typeof analyticsTabSchema>
