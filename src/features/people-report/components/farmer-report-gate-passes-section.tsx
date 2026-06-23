@@ -31,6 +31,7 @@ import {
   ReportToolbar,
 } from "@/features/people-report/components/report-toolbar"
 import { buildFarmerReportSections } from "@/features/people-report/utils/build-farmer-report-sections"
+import type { BuildFarmerStockLedgerExcelDataInput } from "@/features/people-report/components/farmer-stock-ledger-excel-button"
 import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
 import type { PersonDetailSearch } from "@/features/people/search"
@@ -205,6 +206,17 @@ export function FarmerReportGatePassesSection({
     showStockFilter,
   ])
 
+  const getExcelBuildInput = useCallback((): BuildFarmerStockLedgerExcelDataInput | null => {
+    const pdfInput = getPdfBuildInput()
+    if (!pdfInput) return null
+
+    return {
+      ...pdfInput,
+      appliedFrom,
+      appliedTo,
+    }
+  }, [appliedFrom, appliedTo, getPdfBuildInput])
+
   const handleApplyDates = useCallback((from?: string, to?: string) => {
     setAppliedFrom(from)
     setAppliedTo(to)
@@ -241,7 +253,9 @@ export function FarmerReportGatePassesSection({
               isFetching={gatePasses.isFetching}
               onRefresh={handleRefresh}
               getPdfBuildInput={getPdfBuildInput}
+              getExcelBuildInput={getExcelBuildInput}
               pdfDisabled={gatePasses.isLoading || gatePasses.isFetching || !hasAnyRows}
+              excelDisabled={gatePasses.isLoading || gatePasses.isFetching || !hasAnyRows}
             />
           </ReportHeaderCard>
 

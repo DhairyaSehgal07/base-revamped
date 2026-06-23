@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { Loader2, RefreshCw, Table2 } from "lucide-react"
+import { Loader2, RefreshCw } from "lucide-react"
 import type { GroupingState } from "@tanstack/react-table"
 
 import { DatePickerInput } from "@/components/date-picker"
@@ -12,6 +12,10 @@ import {
   type FarmerReportGroupColumnId,
 } from "@/features/people-report/utils/report-grouping"
 import { FarmerStockLedgerPdfButton } from "@/features/people-report/components/farmer-stock-ledger-pdf-button"
+import {
+  FarmerStockLedgerExcelButton,
+  type BuildFarmerStockLedgerExcelDataInput,
+} from "@/features/people-report/components/farmer-stock-ledger-excel-button"
 import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 import { cn } from "@/lib/utils"
 
@@ -27,7 +31,9 @@ type ReportToolbarProps = {
   isFetching?: boolean
   onRefresh: () => void
   getPdfBuildInput: () => BuildFarmerStockLedgerPdfDataInput | null
+  getExcelBuildInput: () => BuildFarmerStockLedgerExcelDataInput | null
   pdfDisabled?: boolean
+  excelDisabled?: boolean
 }
 
 export function ReportToolbar({
@@ -42,7 +48,9 @@ export function ReportToolbar({
   isFetching = false,
   onRefresh,
   getPdfBuildInput,
+  getExcelBuildInput,
   pdfDisabled = false,
+  excelDisabled = false,
 }: ReportToolbarProps) {
   const [fromDate, setFromDate] = useState<Date | undefined>(() =>
     parseDateParam(appliedFrom),
@@ -139,15 +147,10 @@ export function ReportToolbar({
             getPdfBuildInput={getPdfBuildInput}
             disabled={pdfDisabled}
           />
-          <Button
-            type="button"
-            size="sm"
-            className="min-h-9 shrink-0"
-            onClick={() => window.alert("Excel export coming soon.")}
-          >
-            <Table2 className="mr-2 size-4" />
-            Excel
-          </Button>
+          <FarmerStockLedgerExcelButton
+            getExcelBuildInput={getExcelBuildInput}
+            disabled={excelDisabled}
+          />
           <Button
             type="button"
             variant="outline"

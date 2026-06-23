@@ -30,7 +30,15 @@ export default defineConfig({
     port:3000
   },
   build: {
-    // @react-pdf/renderer is ~1.5 MB and lazy-loaded on PDF export only.
+    // @react-pdf/renderer and exceljs are large and lazy-loaded on export only.
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("exceljs")) return "exceljs"
+          if (id.includes("@react-pdf")) return "react-pdf"
+        },
+      },
+    },
   },
 });
