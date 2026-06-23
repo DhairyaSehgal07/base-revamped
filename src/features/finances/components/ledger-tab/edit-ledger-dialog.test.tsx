@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { toast } from 'sonner';
 
 import { EditLedgerDialog } from '@/features/finances/components/ledger-tab/edit-ledger-dialog';
 import type { Ledger } from '@/features/finances/components/ledger-tab/types';

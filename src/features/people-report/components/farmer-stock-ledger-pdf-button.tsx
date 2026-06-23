@@ -1,16 +1,10 @@
 import { useState, useCallback } from "react"
-import { pdf } from "@react-pdf/renderer"
 import { FileDown, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
-import FarmerStockLedgerReport from "@/features/people-report/pdf/farmer-stock-ledger-report-pdf"
-import {
-  buildFarmerStockLedgerPdfData,
-  type BuildFarmerStockLedgerPdfDataInput,
-  type FarmerStockLedgerPdfData,
-} from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 
 type FarmerStockLedgerPdfButtonProps = {
   getPdfBuildInput: () => BuildFarmerStockLedgerPdfDataInput | null
@@ -40,21 +34,16 @@ export function FarmerStockLedgerPdfButton({
     try {
       setIsGenerating(true)
 
-      const pdfData: FarmerStockLedgerPdfData = buildFarmerStockLedgerPdfData({
-        ...buildInput,
-        generatedAt: new Date(),
-      })
-
-      const doc = (
-        <FarmerStockLedgerReport
-          {...pdfData}
-          coldStorageName={coldStorageName}
-          coldStorageAddress={coldStorageAddress}
-          coldStorageLogo={coldStorageLogo || undefined}
-        />
+      const { generateFarmerStockLedgerPdf } = await import(
+        "@/features/people-report/utils/generate-farmer-stock-ledger-pdf"
       )
-      const asPdf = pdf(doc)
-      const blob = await asPdf.toBlob()
+
+      const blob = await generateFarmerStockLedgerPdf({
+        ...buildInput,
+        coldStorageName,
+        coldStorageAddress,
+        coldStorageLogo: coldStorageLogo || undefined,
+      })
 
       const url = URL.createObjectURL(blob)
       window.open(url, "_blank")

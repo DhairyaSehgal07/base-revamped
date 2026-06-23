@@ -7,7 +7,11 @@ import type {
 } from "@/features/daybook/types"
 
 import { buildFarmerReportSections } from "./build-farmer-report-sections"
-import { buildFarmerStockLedgerPdfData } from "./build-farmer-stock-ledger-pdf-data"
+import {
+  buildFarmerStockLedgerPdfData,
+  type PdfLedgerItem,
+  type PdfLedgerLeafRow,
+} from "./build-farmer-stock-ledger-pdf-data"
 
 const farmerLink = {
   _id: "link-1",
@@ -86,10 +90,17 @@ const commodities = [
 ]
 
 const search = {
+  tab: "incoming" as const,
   name: "Tirlok Singh",
   address: "Village Raipur",
   mobileNumber: "9876543210",
   accountNumber: 42,
+}
+
+function expectLeafRow(
+  row: PdfLedgerItem | undefined,
+): asserts row is PdfLedgerLeafRow {
+  expect(row?.kind).toBe("leaf")
 }
 
 describe("buildFarmerStockLedgerPdfData", () => {
@@ -133,9 +144,11 @@ describe("buildFarmerStockLedgerPdfData", () => {
       search,
     })
 
-    expect(result.outgoingLedger[0]?.isOpeningBalance).toBe(true)
-    expect(result.outgoingLedger[0]?.date).toBe("Opening Balance")
-    expect(result.outgoingLedger[0]?.sizes.Ration).toEqual({
+    const openingRow = result.outgoingLedger[0]
+    expectLeafRow(openingRow)
+    expect(openingRow.isOpeningBalance).toBe(true)
+    expect(openingRow.date).toBe("Opening Balance")
+    expect(openingRow.sizes.Ration).toEqual({
       type: "plain",
       value: "100",
     })
@@ -214,7 +227,11 @@ describe("buildFarmerStockLedgerPdfData", () => {
       search,
     })
 
-    expect(result.incomingLedger.map((row) => row.total)).toEqual(["100", "150"])
+    expect(
+      result.incomingLedger
+        .filter((row): row is PdfLedgerLeafRow => row.kind === "leaf")
+        .map((row) => row.total),
+    ).toEqual(["100", "150"])
     expect(result.incomingClosingBalance).toBe(150)
   })
 
@@ -239,7 +256,9 @@ describe("buildFarmerStockLedgerPdfData", () => {
 
     expect(result.showStockFilter).toBe(true)
     expect(result.showCustomMarka).toBe(true)
-    expect(result.incomingLedger[0]?.stockFilter).toBe("Own Stock")
-    expect(result.incomingLedger[0]?.customMarka).toBe("TS-42")
+    const incomingRow = result.incomingLedger[0]
+    expectLeafRow(incomingRow)
+    expect(incomingRow.stockFilter).toBe("Own Stock")
+    expect(incomingRow.customMarka).toBe("TS-42")
   })
 })

@@ -175,7 +175,7 @@ function seedIncomingPasses(queryClient: ReturnType<typeof renderWithProviders>[
 const handledSubmitRejections = new Set<string>();
 
 beforeAll(() => {
-  process.on('unhandledRejection', (reason) => {
+  process.on('unhandledRejection', (reason: unknown) => {
     if (reason instanceof Error && handledSubmitRejections.has(reason.message)) {
       handledSubmitRejections.delete(reason.message);
     }

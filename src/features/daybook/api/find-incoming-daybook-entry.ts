@@ -19,10 +19,11 @@ export function findIncomingEntryInDaybookCache(
   })
 
   for (const [, data] of listQueries) {
-    const found = data?.entries.find(
-      (entry) => isIncomingDaybookEntry(entry) && entry._id === id
-    )
-    if (found) return found
+    for (const entry of data?.entries ?? []) {
+      if (isIncomingDaybookEntry(entry) && entry._id === id) {
+        return entry
+      }
+    }
   }
 
   const searchQueries = queryClient.getQueriesData<DaybookSearchResult>({

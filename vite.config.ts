@@ -28,5 +28,9 @@ export default defineConfig({
   ],
   server: {
     port:3000
-  }
+  },
+  build: {
+    // @react-pdf/renderer is ~1.5 MB and lazy-loaded on PDF export only.
+    chunkSizeWarningLimit: 1000,
+  },
 });

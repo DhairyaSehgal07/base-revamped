@@ -64,7 +64,9 @@ export function FarmerGatePassesSection({
   const [appliedFrom, setAppliedFrom] = useState<string | undefined>()
   const [appliedTo, setAppliedTo] = useState<string | undefined>()
   const [page, setPage] = useState(DEFAULT_PAGE)
-  const [limit, setLimit] = useState(DEFAULT_LIMIT)
+  const [limit, setLimit] = useState<(typeof DAYBOOK_PAGE_SIZE_OPTIONS)[number]>(
+    DEFAULT_LIMIT,
+  )
   const [searchQuery, setSearchQuery] = useState("")
   const [searchBy, setSearchBy] = useState<DaybookSearchBy>("gatePassNumber")
 
@@ -211,7 +213,15 @@ export function FarmerGatePassesSection({
   }
 
   const handlePageSizeChange = (nextLimit: number) => {
-    setLimit(nextLimit)
+    if (
+      !DAYBOOK_PAGE_SIZE_OPTIONS.includes(
+        nextLimit as (typeof DAYBOOK_PAGE_SIZE_OPTIONS)[number],
+      )
+    ) {
+      return
+    }
+
+    setLimit(nextLimit as (typeof DAYBOOK_PAGE_SIZE_OPTIONS)[number])
     setPage(1)
   }
 

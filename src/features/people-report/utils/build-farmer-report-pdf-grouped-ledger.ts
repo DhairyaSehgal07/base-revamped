@@ -125,6 +125,7 @@ function createFarmerReportPdfTable(
     enableSortingRemoval: true,
     sortDescFirst: false,
     groupedColumnMode: "reorder",
+    renderFallbackValue: null,
   })
 }
 

@@ -1,7 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { toast } from 'sonner';
 
-import { DEFAULT_DAYBOOK_SEARCH } from '@/features/daybook/search';
 import { IncomingForm } from '@/features/incoming/forms/incoming-form';
 import type { IncomingFormApi } from '@/features/incoming/forms/use-incoming-form';
 import { incomingDaybookEntryToFormValues } from '@/features/incoming/utils/incoming-daybook-entry-to-form-values';
@@ -25,7 +23,7 @@ const validQuantities = [
     size: '50kg',
     isExtra: false,
     qty: 10,
-    bagType: 'JUTE',
+    bagType: 'JUTE' as const,
     chamber: 'A',
     floor: '1',
     row: '1',
@@ -106,7 +104,7 @@ vi.mock('@/features/auth/store/use-store-admin-store', () => ({
 const handledSubmitRejections = new Set<string>();
 
 beforeAll(() => {
-  process.on('unhandledRejection', (reason) => {
+  process.on('unhandledRejection', (reason: unknown) => {
     if (reason instanceof Error && handledSubmitRejections.has(reason.message)) {
       handledSubmitRejections.delete(reason.message);
     }

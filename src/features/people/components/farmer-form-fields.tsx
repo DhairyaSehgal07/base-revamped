@@ -168,12 +168,13 @@ export function FarmerFormFields({
                       type="button"
                       variant="outline"
                       className="shrink-0"
-                      onClick={() =>
+                      onClick={() => {
+                        if (nextAccountNumber == null) return
                         form.setFieldValue(
                           "accountNumber",
                           nextAccountNumber.toString(),
                         )
-                      }
+                      }}
                     >
                       Use suggested (
                       <span className="tabular-nums">{nextAccountNumber}</span>)

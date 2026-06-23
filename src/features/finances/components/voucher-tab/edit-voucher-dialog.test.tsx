@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { toast } from 'sonner';
 
 import { EditVoucherDialog } from '@/features/finances/components/voucher-tab/edit-voucher-dialog';
 import type { Voucher } from '@/features/finances/components/voucher-tab/types';

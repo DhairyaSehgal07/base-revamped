@@ -66,8 +66,6 @@ function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
 }
 
-type IncomingFormSchema = ReturnType<typeof createIncomingFormSchema>
-
 export type IncomingFormProps = {
   mode: "create" | "edit"
   gatePassNo: number
