@@ -13,88 +13,69 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
-import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
-import {
-  shouldShowCustomMarka,
-  shouldShowStockFilter,
-} from "@/features/incoming/utils/incoming-preferences"
-import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
+import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
 
 import {
-  useIncomingGatePassReport,
-  type IncomingGatePassReportParams,
-} from "./api/use-incoming-gate-pass-report"
+  useOutgoingGatePassReport,
+  type OutgoingGatePassReportParams,
+} from "./api/use-outgoing-gate-pass-report"
 import {
-  getIncomingReportColumns,
-  type IncomingQuantityMode,
+  getOutgoingReportColumns,
+  type OutgoingQuantityMode,
 } from "./components/columns"
 import { DataTable } from "./components/data-table"
 import { ReportToolbar } from "./components/report-toolbar"
 import {
-  INCOMING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE,
-  INCOMING_REPORT_DOWNLOAD_EXCEL_MESSAGE,
-  openIncomingReportPreview,
-} from "./utils/preview-incoming-report-html"
+  OUTGOING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE,
+  OUTGOING_REPORT_DOWNLOAD_EXCEL_MESSAGE,
+  openOutgoingReportPreview,
+} from "./utils/preview-outgoing-report-html"
 import {
-  countIncomingReportSearchMatches,
-  createIncomingReportSearchIndex,
+  countOutgoingReportSearchMatches,
+  createOutgoingReportSearchIndex,
 } from "./utils/report-search"
 
-const DEFAULT_REPORT_PARAMS = {} satisfies IncomingGatePassReportParams
+const DEFAULT_REPORT_PARAMS = {} satisfies OutgoingGatePassReportParams
 
-const IncomingReportPage = () => {
+const OutgoingReportPage = () => {
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [isReportTableReady, setIsReportTableReady] = useState(false)
   const [quantityMode, setQuantityMode] =
-    useState<IncomingQuantityMode>("current")
+    useState<OutgoingQuantityMode>("issued")
   const [appliedParams, setAppliedParams] =
-    useState<IncomingGatePassReportParams>(DEFAULT_REPORT_PARAMS)
+    useState<OutgoingGatePassReportParams>(DEFAULT_REPORT_PARAMS)
   const [isExporting, setIsExporting] = useState(false)
   const reportTableRef =
-    useRef<TanStackTable<IncomingGatePassReportRecord> | null>(null)
+    useRef<TanStackTable<OutgoingGatePassReportRecord> | null>(null)
   const previewWindowRef = useRef<Window | null>(null)
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const coldStorageName = useColdStorageStore((s) => s.coldStorage?.name)
-  const stockFilterPreference = usePreferencesStore(
-    (state) => state.preferences?.stockFilter,
-  )
-  const customMarkaPreference = usePreferencesStore(
-    (state) => state.preferences?.customMarka,
-  )
-  const showStockFilter = shouldShowStockFilter(stockFilterPreference)
-  const showCustomMarka = shouldShowCustomMarka(customMarkaPreference)
   const { data, error, isFetching, isLoading, refetch } =
-    useIncomingGatePassReport(appliedParams)
+    useOutgoingGatePassReport(appliedParams)
 
   const reportRows = useMemo(
-    () => data?.data.incomingGatePasses ?? [],
-    [data?.data.incomingGatePasses],
+    () => data?.data.outgoingGatePasses ?? [],
+    [data?.data.outgoingGatePasses],
   )
   const searchIndex = useMemo(
-    () => createIncomingReportSearchIndex(reportRows),
+    () => createOutgoingReportSearchIndex(reportRows),
     [reportRows],
   )
   const visibleRowCount = useMemo(
     () =>
-      countIncomingReportSearchMatches(searchIndex, deferredSearchQuery),
+      countOutgoingReportSearchMatches(searchIndex, deferredSearchQuery),
     [deferredSearchQuery, searchIndex],
   )
   const tableColumns = useMemo(
-    () =>
-      getIncomingReportColumns(
-        reportRows,
-        quantityMode,
-        showCustomMarka,
-        showStockFilter,
-      ),
-    [quantityMode, reportRows, showCustomMarka, showStockFilter],
+    () => getOutgoingReportColumns(reportRows, quantityMode),
+    [quantityMode, reportRows],
   )
 
   const handleTableReady = useCallback(
-    (table: TanStackTable<IncomingGatePassReportRecord>) => {
+    (table: TanStackTable<OutgoingGatePassReportRecord>) => {
       reportTableRef.current = table
       setIsReportTableReady((ready) => ready || true)
     },
@@ -113,7 +94,7 @@ const IncomingReportPage = () => {
     if (!previewWindow || previewWindow.closed) return
 
     previewWindow.postMessage(
-      { type: INCOMING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE },
+      { type: OUTGOING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE },
       window.location.origin,
     )
   }, [])
@@ -134,14 +115,14 @@ const IncomingReportPage = () => {
     setIsExporting(true)
 
     try {
-      const { exportIncomingReportToExcel } = await import(
-        "./utils/export-incoming-report-excel"
+      const { exportOutgoingReportToExcel } = await import(
+        "./utils/export-outgoing-report-excel"
       )
-      await exportIncomingReportToExcel({
+      await exportOutgoingReportToExcel({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
-        reportTitle: "Incoming Report",
+        reportTitle: "Outgoing Report",
         dateFrom,
         dateTo,
       })
@@ -170,7 +151,7 @@ const IncomingReportPage = () => {
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
-      if (event.data?.type !== INCOMING_REPORT_DOWNLOAD_EXCEL_MESSAGE) return
+      if (event.data?.type !== OUTGOING_REPORT_DOWNLOAD_EXCEL_MESSAGE) return
 
       void handleExportExcel()
     }
@@ -193,11 +174,11 @@ const IncomingReportPage = () => {
     }
 
     try {
-      previewWindowRef.current = openIncomingReportPreview({
+      previewWindowRef.current = openOutgoingReportPreview({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
-        reportTitle: "Incoming Report",
+        reportTitle: "Outgoing Report",
         dateFrom,
         dateTo,
       })
@@ -212,7 +193,7 @@ const IncomingReportPage = () => {
   }, [coldStorageName, dateFrom, dateTo, quantityMode])
 
   const handleApply = useCallback(() => {
-    const next: IncomingGatePassReportParams = {}
+    const next: OutgoingGatePassReportParams = {}
     if (dateFrom) next.dateFrom = dateFrom
     if (dateTo) next.dateTo = dateTo
 
@@ -231,7 +212,7 @@ const IncomingReportPage = () => {
   }, [refetch])
 
   const handleQuantityModeChange = useCallback((value: string) => {
-    setQuantityMode(value as IncomingQuantityMode)
+    setQuantityMode(value as OutgoingQuantityMode)
   }, [])
 
   const reportTable = isReportTableReady ? reportTableRef.current : null
@@ -244,7 +225,7 @@ const IncomingReportPage = () => {
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1">
               <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Incoming report
+                Outgoing report
               </h1>
               <p className="text-sm text-muted-foreground">
                 {isLoading ? (
@@ -255,8 +236,8 @@ const IncomingReportPage = () => {
                       {visibleRowCount.toLocaleString("en-IN")}
                     </span>{" "}
                     {visibleRowCount === 1
-                      ? "incoming gate pass"
-                      : "incoming gate passes"}
+                      ? "outgoing gate pass"
+                      : "outgoing gate passes"}
                     {isSearchPending ? (
                       <span className="text-muted-foreground"> (updating…)</span>
                     ) : null}
@@ -307,7 +288,7 @@ const IncomingReportPage = () => {
         <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0 space-y-1">
             <h2 className="font-heading text-base font-semibold text-foreground">
-              Incoming gate passes
+              Outgoing gate passes
             </h2>
             <p className="text-sm text-muted-foreground">
               A simple table for the selected date range.
@@ -317,8 +298,8 @@ const IncomingReportPage = () => {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Tabs value={quantityMode} onValueChange={handleQuantityModeChange}>
               <TabsList aria-label="Quantity view">
-                <TabsTrigger value="current">Current Qty</TabsTrigger>
-                <TabsTrigger value="initial">Initial Qty</TabsTrigger>
+                <TabsTrigger value="issued">Issued Qty</TabsTrigger>
+                <TabsTrigger value="available">Available Qty</TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -333,7 +314,7 @@ const IncomingReportPage = () => {
           {isLoading ? (
             <div className="flex min-h-56 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Loading incoming report...
+              Loading outgoing report...
             </div>
           ) : data ? (
             <div className="min-w-0">
@@ -347,7 +328,7 @@ const IncomingReportPage = () => {
             </div>
           ) : (
             <div className="flex min-h-56 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Apply filters to load the incoming report.
+              Apply filters to load the outgoing report.
             </div>
           )}
         </div>
@@ -356,4 +337,4 @@ const IncomingReportPage = () => {
   )
 }
 
-export default IncomingReportPage
+export default OutgoingReportPage

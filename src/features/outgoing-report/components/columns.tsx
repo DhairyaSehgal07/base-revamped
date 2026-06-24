@@ -1,11 +1,19 @@
 import type { AggregationFn, ColumnDef, SortingFn } from "@tanstack/react-table"
 
-import type { IncomingBagSize } from "@/features/daybook/types"
-import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
+import { Badge } from "@/components/ui/badge"
+import type { DaybookLocation } from "@/features/daybook/types"
+import type {
+  OutgoingGatePassReportRecord,
+  OutgoingReportOrderDetail,
+} from "@/features/outgoing-report/api/types"
+import {
+  getOutgoingReportType,
+  getOutgoingReportVariety,
+} from "@/features/outgoing-report/utils/report-row-values"
 
 const numberFormatter = new Intl.NumberFormat("en-IN")
 
-export type IncomingQuantityMode = "current" | "initial"
+export type OutgoingQuantityMode = "issued" | "available"
 
 function parseReportNumber(value: unknown): number | null {
   if (typeof value === "number") {
@@ -28,7 +36,7 @@ function parseReportDateValue(value: unknown): number | null {
   return Number.isNaN(timestamp) ? null : timestamp
 }
 
-const reportNumericSortingFn: SortingFn<IncomingGatePassReportRecord> = (
+const reportNumericSortingFn: SortingFn<OutgoingGatePassReportRecord> = (
   rowA,
   rowB,
   columnId,
@@ -43,7 +51,7 @@ const reportNumericSortingFn: SortingFn<IncomingGatePassReportRecord> = (
   return a === b ? 0 : a > b ? 1 : -1
 }
 
-const reportDateSortingFn: SortingFn<IncomingGatePassReportRecord> = (
+const reportDateSortingFn: SortingFn<OutgoingGatePassReportRecord> = (
   rowA,
   rowB,
   columnId,
@@ -58,7 +66,7 @@ const reportDateSortingFn: SortingFn<IncomingGatePassReportRecord> = (
   return a === b ? 0 : a > b ? 1 : -1
 }
 
-export const incomingReportSortingFns = {
+export const outgoingReportSortingFns = {
   reportNumeric: reportNumericSortingFn,
   reportDate: reportDateSortingFn,
 }
@@ -87,9 +95,9 @@ const sortDate = {
   sortingFn: reportDateSortingFn,
   sortUndefined: "last" as const,
 }
-const reportEmptyAggregation: AggregationFn<IncomingGatePassReportRecord> =
+const reportEmptyAggregation: AggregationFn<OutgoingGatePassReportRecord> =
   () => null
-const reportSumAggregation: AggregationFn<IncomingGatePassReportRecord> = (
+const reportSumAggregation: AggregationFn<OutgoingGatePassReportRecord> = (
   columnId,
   leafRows,
 ) =>
@@ -103,50 +111,50 @@ const reportSumAggregation: AggregationFn<IncomingGatePassReportRecord> = (
 const aggregateNone = { aggregationFn: reportEmptyAggregation }
 const aggregateSum = { aggregationFn: reportSumAggregation }
 
-const getBagQuantity = (
-  bag: IncomingBagSize,
-  quantityMode: IncomingQuantityMode,
-) => (quantityMode === "current" ? bag.currentQuantity : bag.initialQuantity)
-
-const formatLocation = (location: IncomingBagSize["location"]) =>
-  [location.chamber, location.floor, location.row].filter(Boolean).join("-")
-
-const getBagSizeQuantity = (
-  row: IncomingGatePassReportRecord,
-  sizeName: string,
-  quantityMode: IncomingQuantityMode,
+const getOrderDetailQuantity = (
+  detail: OutgoingReportOrderDetail,
+  quantityMode: OutgoingQuantityMode,
 ) =>
-  row.bagSizes
-    .filter((bag) => bag.name === sizeName)
-    .reduce((total, bag) => total + getBagQuantity(bag, quantityMode), 0)
+  quantityMode === "issued" ? detail.quantityIssued : detail.quantityAvailable
 
-const renderBagSizeValue = (
-  bag: IncomingBagSize,
-  quantityMode: IncomingQuantityMode,
-) => {
-  const location = formatLocation(bag.location)
-  const paltaiLocation = bag.paltaiLocation
-    ? formatLocation(bag.paltaiLocation)
+const formatLocation = (location?: DaybookLocation) =>
+  location
+    ? [location.chamber, location.floor, location.row].filter(Boolean).join("-")
     : null
-  const quantity = getBagQuantity(bag, quantityMode)
+
+const getOrderSizeQuantity = (
+  row: OutgoingGatePassReportRecord,
+  sizeName: string,
+  quantityMode: OutgoingQuantityMode,
+) =>
+  row.orderDetails
+    .filter((detail) => detail.size === sizeName)
+    .reduce(
+      (total, detail) => total + getOrderDetailQuantity(detail, quantityMode),
+      0,
+    )
+
+const renderOrderDetailValue = (
+  detail: OutgoingReportOrderDetail,
+  quantityMode: OutgoingQuantityMode,
+) => {
+  const location = formatLocation(detail.location)
+  const quantity = getOrderDetailQuantity(detail, quantityMode)
 
   return (
     <div className="space-y-0.5 tabular-nums">
       <div className="font-semibold text-foreground">
         {formatQuantity(quantity)}
       </div>
-      <div className="text-muted-foreground">{bag.name}</div>
+      <div className="text-muted-foreground">{detail.size}</div>
       {location ? (
         <div className="text-muted-foreground">({location})</div>
-      ) : null}
-      {paltaiLocation ? (
-        <div className="text-muted-foreground">Paltai: ({paltaiLocation})</div>
       ) : null}
     </div>
   )
 }
 
-const baseColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
+const baseColumns: ColumnDef<OutgoingGatePassReportRecord>[] = [
   {
     id: "name",
     accessorFn: (row) => row.farmerStorageLinkId.name,
@@ -180,23 +188,34 @@ const baseColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
     meta: { filterLabel: "Gate pass number", numeric: true },
     ...sortNumeric,
     ...aggregateNone,
-    cell: ({ getValue }) => (
-      <span className="tabular-nums">{String(getValue())}</span>
-    ),
+    cell: ({ getValue, row }) => {
+      const value = getValue<number>()
+
+      return (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="tabular-nums">{String(value)}</span>
+          {row.original.isNull ? (
+            <Badge variant="secondary" className="text-xs">
+              Nulled
+            </Badge>
+          ) : null}
+        </div>
+      )
+    },
   },
   {
     accessorKey: "manualParchiNumber",
     header: "Manual Parchi No",
-    meta: { filterLabel: "Manual parchi number" },
-    ...sortText,
+    meta: { filterLabel: "Manual parchi number", numeric: true },
+    ...sortNumeric,
     ...aggregateNone,
     cell: ({ getValue }) => {
-      const value = getValue<string | undefined>()
+      const value = getValue<number | undefined>()
 
-      return value == null || value === "" ? (
+      return value == null ? (
         "-"
       ) : (
-        <span>{value}</span>
+        <span className="tabular-nums">{String(value)}</span>
       )
     },
   },
@@ -213,33 +232,50 @@ const baseColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
     cell: ({ getValue }) => formatDate(getValue<string>()),
   },
   {
-    accessorKey: "variety",
+    id: "type",
+    accessorFn: (row) => getOutgoingReportType(row),
+    header: "Type",
+    meta: { filterLabel: "Type" },
+    ...sortText,
+    ...aggregateNone,
+    cell: ({ getValue }) => getValue<string>() || "-",
+  },
+  {
+    id: "variety",
+    accessorFn: (row) => getOutgoingReportVariety(row),
     header: "Variety",
     meta: { filterLabel: "Variety" },
     ...sortText,
     ...aggregateNone,
+    cell: ({ getValue }) => getValue<string>() || "-",
+  },
+  {
+    accessorKey: "from",
+    header: "From",
+    meta: { filterLabel: "From" },
+    ...sortText,
+    ...aggregateNone,
+    cell: ({ getValue }) => getValue<string | undefined>() || "-",
+  },
+  {
+    accessorKey: "to",
+    header: "To",
+    meta: { filterLabel: "To" },
+    ...sortText,
+    ...aggregateNone,
+    cell: ({ getValue }) => getValue<string | undefined>() || "-",
+  },
+  {
+    accessorKey: "truckNumber",
+    header: "Truck No",
+    meta: { filterLabel: "Truck number", mono: true },
+    ...sortText,
+    ...aggregateNone,
+    cell: ({ getValue }) => getValue<string | undefined>() || "-",
   },
 ]
 
-const stockFilterColumn: ColumnDef<IncomingGatePassReportRecord> = {
-  accessorKey: "stockFilter",
-  header: "Stock filter",
-  meta: { filterLabel: "Stock filter" },
-  ...sortText,
-  ...aggregateNone,
-  cell: ({ getValue }) => getValue<string | undefined>() || "-",
-}
-
-const customMarkaColumn: ColumnDef<IncomingGatePassReportRecord> = {
-  accessorKey: "customMarka",
-  header: "Custom marka",
-  meta: { filterLabel: "Custom marka" },
-  ...sortText,
-  ...aggregateNone,
-  cell: ({ getValue }) => getValue<string | undefined>() || "-",
-}
-
-const totalBagsColumn: ColumnDef<IncomingGatePassReportRecord> = {
+const totalBagsColumn: ColumnDef<OutgoingGatePassReportRecord> = {
   accessorKey: "totalBags",
   header: () => (
     <span className="flex min-w-0 flex-col gap-0.5">
@@ -266,7 +302,7 @@ const totalBagsColumn: ColumnDef<IncomingGatePassReportRecord> = {
   },
 }
 
-const trailingColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
+const trailingColumns: ColumnDef<OutgoingGatePassReportRecord>[] = [
   {
     id: "createdBy",
     accessorFn: (row) => row.createdBy?.name ?? "-",
@@ -285,41 +321,37 @@ const trailingColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
   },
 ]
 
-const columnCache = new Map<string, ColumnDef<IncomingGatePassReportRecord>[]>()
+const columnCache = new Map<string, ColumnDef<OutgoingGatePassReportRecord>[]>()
 
-export function collectIncomingReportBagSizeNames(
-  rows: IncomingGatePassReportRecord[],
+export function collectOutgoingReportOrderSizeNames(
+  rows: OutgoingGatePassReportRecord[],
 ): string[] {
   const sizes = new Set<string>()
 
   for (const row of rows) {
-    for (const bag of row.bagSizes) {
-      sizes.add(bag.name)
+    for (const detail of row.orderDetails) {
+      sizes.add(detail.size)
     }
   }
 
   return Array.from(sizes)
 }
 
-function getIncomingReportColumnCacheKey(
+function getOutgoingReportColumnCacheKey(
   sizes: string[],
-  quantityMode: IncomingQuantityMode,
-  showCustomMarka: boolean,
-  showStockFilter: boolean,
+  quantityMode: OutgoingQuantityMode,
 ) {
-  return `${sizes.join("\0")}|${quantityMode}|cm:${showCustomMarka}|sf:${showStockFilter}`
+  return `${sizes.join("\0")}|${quantityMode}`
 }
 
-function buildIncomingReportColumns(
+function buildOutgoingReportColumns(
   sizes: string[],
-  quantityMode: IncomingQuantityMode,
-  showCustomMarka: boolean,
-  showStockFilter: boolean,
-): ColumnDef<IncomingGatePassReportRecord>[] {
-  const sizeColumns: ColumnDef<IncomingGatePassReportRecord>[] = sizes.map(
+  quantityMode: OutgoingQuantityMode,
+): ColumnDef<OutgoingGatePassReportRecord>[] {
+  const sizeColumns: ColumnDef<OutgoingGatePassReportRecord>[] = sizes.map(
     (sizeName) => ({
       id: `size-${sizeName}`,
-      accessorFn: (row) => getBagSizeQuantity(row, sizeName, quantityMode),
+      accessorFn: (row) => getOrderSizeQuantity(row, sizeName, quantityMode),
       header: sizeName,
       meta: {
         align: "right",
@@ -338,17 +370,19 @@ function buildIncomingReportColumns(
           )
         }
 
-        const bags = row.original.bagSizes.filter((bag) => bag.name === sizeName)
+        const details = row.original.orderDetails.filter(
+          (detail) => detail.size === sizeName,
+        )
 
-        if (!bags.length) return "-"
+        if (!details.length) return "-"
 
         return (
           <div className="space-y-3">
-            {bags.map((bag, index) => (
+            {details.map((detail, index) => (
               <div
-                key={`${bag.name}-${bag.location.chamber}-${bag.location.floor}-${bag.location.row}-${index}`}
+                key={`${detail.size}-${detail.location?.chamber ?? ""}-${detail.location?.floor ?? ""}-${detail.location?.row ?? ""}-${index}`}
               >
-                {renderBagSizeValue(bag, quantityMode)}
+                {renderOrderDetailValue(detail, quantityMode)}
               </div>
             ))}
           </div>
@@ -357,52 +391,29 @@ function buildIncomingReportColumns(
     }),
   )
 
-  const preferenceColumns: ColumnDef<IncomingGatePassReportRecord>[] = []
-
-  if (showStockFilter) {
-    preferenceColumns.push(stockFilterColumn)
-  }
-
-  if (showCustomMarka) {
-    preferenceColumns.push(customMarkaColumn)
-  }
-
   return [
     ...baseColumns,
-    ...preferenceColumns,
     totalBagsColumn,
     ...sizeColumns,
     ...trailingColumns,
   ]
 }
 
-export function getIncomingReportColumns(
-  rows: IncomingGatePassReportRecord[],
-  quantityMode: IncomingQuantityMode = "current",
-  showCustomMarka = false,
-  showStockFilter = false,
-): ColumnDef<IncomingGatePassReportRecord>[] {
-  const sizes = collectIncomingReportBagSizeNames(rows)
-  const cacheKey = getIncomingReportColumnCacheKey(
-    sizes,
-    quantityMode,
-    showCustomMarka,
-    showStockFilter,
-  )
+export function getOutgoingReportColumns(
+  rows: OutgoingGatePassReportRecord[],
+  quantityMode: OutgoingQuantityMode = "issued",
+): ColumnDef<OutgoingGatePassReportRecord>[] {
+  const sizes = collectOutgoingReportOrderSizeNames(rows)
+  const cacheKey = getOutgoingReportColumnCacheKey(sizes, quantityMode)
   const cached = columnCache.get(cacheKey)
 
   if (cached) return cached
 
-  const columns = buildIncomingReportColumns(
-    sizes,
-    quantityMode,
-    showCustomMarka,
-    showStockFilter,
-  )
+  const columns = buildOutgoingReportColumns(sizes, quantityMode)
   columnCache.set(cacheKey, columns)
 
   return columns
 }
 
-export const columns: ColumnDef<IncomingGatePassReportRecord>[] =
-  getIncomingReportColumns([])
+export const columns: ColumnDef<OutgoingGatePassReportRecord>[] =
+  getOutgoingReportColumns([])

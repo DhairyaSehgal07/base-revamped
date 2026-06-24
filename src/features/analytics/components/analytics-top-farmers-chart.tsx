@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/chart"
 import { formatQuantity } from "@/features/daybook/utils/format"
 import type { AnalyticsTopFarmersResponse } from "@/features/analytics/types"
-import { buildTopFarmersBarChart } from "@/features/analytics/utils/build-top-farmers-bar-chart"
+import {
+  buildTopFarmersBarChart,
+  type TopFarmerBarItem,
+} from "@/features/analytics/utils/build-top-farmers-bar-chart"
 import type { StockQuantityMode } from "@/features/people/utils/build-farmer-stock-summary"
 import { useIsMobile } from "@/hooks/use-mobile"
 
@@ -142,9 +145,20 @@ export function AnalyticsTopFarmersChart({
                   <ChartTooltipContent
                     indicator="line"
                     nameKey="key"
-                    formatter={(value) =>
-                      `${formatQuantity(Number(value))} bags`
-                    }
+                    formatter={(value, _name, item) => {
+                      const farmer = item.payload as TopFarmerBarItem
+
+                      return (
+                        <div className="flex w-full flex-col gap-0.5 text-xs">
+                          <span className="font-medium text-foreground">
+                            {farmer.label}
+                          </span>
+                          <span className="tabular-nums text-foreground">
+                            {formatQuantity(Number(value))} bags
+                          </span>
+                        </div>
+                      )
+                    }}
                   />
                 }
               />

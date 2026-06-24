@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ReportPlaceholder } from '@/features/reports/report-placeholder';
+import OutgoingReportPage from '@/features/outgoing-report';
 
 export const Route = createFileRoute('/_authenticated/reports/outgoing')({
-  component: () => <ReportPlaceholder title="Outgoing Reports" />,
+  component: OutgoingReportPage,
 });

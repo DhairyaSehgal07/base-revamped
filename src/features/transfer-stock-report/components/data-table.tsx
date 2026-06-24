@@ -58,34 +58,31 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
+import type { TransferStockReportRecord } from "@/features/transfer-stock-report/api/types"
 import {
-  getIncomingReportColumnIds,
-  getStoredIncomingReportColumnState,
-} from "@/features/incoming-report/utils/report-column-preferences"
+  getTransferStockReportColumnIds,
+  getStoredTransferStockReportColumnState,
+} from "@/features/transfer-stock-report/utils/report-column-preferences"
 import {
   advancedReportGlobalFilterFn,
   type AdvancedReportGlobalFilter,
   selectedValuesFilterFn,
-} from "@/features/incoming-report/utils/report-filter-fns"
+} from "@/features/transfer-stock-report/utils/report-filter-fns"
 import {
-  createIncomingReportSearchIndex,
-  filterIncomingReportSearchIndex,
-} from "@/features/incoming-report/utils/report-search"
+  createTransferStockReportSearchIndex,
+  filterTransferStockReportSearchIndex,
+} from "@/features/transfer-stock-report/utils/report-search"
 import {
-  getIncomingReportColumnWidth,
-  getIncomingReportTableMinWidth,
-} from "@/features/incoming-report/utils/report-column-layout"
+  getTransferStockReportColumnWidth,
+  getTransferStockReportTableMinWidth,
+} from "@/features/transfer-stock-report/utils/report-column-layout"
 import { cn } from "@/lib/utils"
 
+import { transferStockReportSortingFns } from "./columns"
 import {
-  incomingReportSortingFns,
-  type IncomingQuantityMode,
-} from "./columns"
-import {
-  getIncomingReportFooterContent,
+  getTransferStockReportFooterContent,
   ReportTotalLabel,
-  incomingReportFooterCellClassName,
+  transferStockReportFooterCellClassName,
 } from "./report-totals-footer"
 
 const coreRowModel = getCoreRowModel()
@@ -95,7 +92,7 @@ const expandedRowModel = getExpandedRowModel()
 const sortedRowModel = getSortedRowModel()
 const paginationRowModel = getPaginationRowModel()
 
-const defaultTableColumn: Partial<ColumnDef<IncomingGatePassReportRecord, unknown>> =
+const defaultTableColumn: Partial<ColumnDef<TransferStockReportRecord, unknown>> =
   {
     filterFn: selectedValuesFilterFn,
   }
@@ -161,7 +158,7 @@ function resolveColumnWidth(
   columnId: string,
   meta: ColumnMeta | undefined,
 ): string {
-  return meta?.columnWidth ?? getIncomingReportColumnWidth(columnId)
+  return meta?.columnWidth ?? getTransferStockReportColumnWidth(columnId)
 }
 
 const FIXED_CELL_CLASS = cn(
@@ -227,7 +224,7 @@ function getFooterClassName(meta: ColumnMeta | undefined) {
 
   return cn(
     FIXED_CELL_CLASS,
-    incomingReportFooterCellClassName,
+    transferStockReportFooterCellClassName,
     meta?.groupStart === true && "border-l-2 border-l-border/55",
     meta?.numeric === true && "tabular-nums",
     align === "right" && "text-right",
@@ -285,27 +282,25 @@ function DataTableColumnHeader<TData, TValue>({
 }
 
 interface DataTableProps {
-  columns: ColumnDef<IncomingGatePassReportRecord, unknown>[]
-  data: IncomingGatePassReportRecord[]
-  quantityMode: IncomingQuantityMode
+  columns: ColumnDef<TransferStockReportRecord, unknown>[]
+  data: TransferStockReportRecord[]
   quickSearch?: string
-  onTableReady?: (table: TanStackTable<IncomingGatePassReportRecord>) => void
+  onTableReady?: (table: TanStackTable<TransferStockReportRecord>) => void
 }
 
 export const DataTable = memo(function DataTable({
   columns,
   data,
-  quantityMode,
   quickSearch = "",
   onTableReady,
 }: DataTableProps) {
   const deferredQuickSearch = useDeferredValue(quickSearch)
   const searchIndex = useMemo(
-    () => createIncomingReportSearchIndex(data),
+    () => createTransferStockReportSearchIndex(data),
     [data],
   )
   const filteredData = useMemo(
-    () => filterIncomingReportSearchIndex(searchIndex, deferredQuickSearch),
+    () => filterTransferStockReportSearchIndex(searchIndex, deferredQuickSearch),
     [deferredQuickSearch, searchIndex],
   )
   const onTableReadyRef = useRef(onTableReady)
@@ -313,17 +308,17 @@ export const DataTable = memo(function DataTable({
   onTableReadyRef.current = onTableReady
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
     () => {
-      const columnIds = getIncomingReportColumnIds(
+      const columnIds = getTransferStockReportColumnIds(
         columns as ColumnDef<unknown, unknown>[],
       )
-      return getStoredIncomingReportColumnState(columnIds).columnVisibility
+      return getStoredTransferStockReportColumnState(columnIds).columnVisibility
     },
   )
   const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() => {
-    const columnIds = getIncomingReportColumnIds(
+    const columnIds = getTransferStockReportColumnIds(
       columns as ColumnDef<unknown, unknown>[],
     )
-    return getStoredIncomingReportColumnState(columnIds).columnOrder
+    return getStoredTransferStockReportColumnState(columnIds).columnOrder
   })
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -342,7 +337,7 @@ export const DataTable = memo(function DataTable({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const table = useReactTable<IncomingGatePassReportRecord>({
+  const table = useReactTable<TransferStockReportRecord>({
     data: filteredData,
     columns,
     defaultColumn: defaultTableColumn,
@@ -364,7 +359,7 @@ export const DataTable = memo(function DataTable({
     onExpandedChange: setExpanded,
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: setPagination,
-    sortingFns: incomingReportSortingFns,
+    sortingFns: transferStockReportSortingFns,
     sortDescFirst: false,
     enableSortingRemoval: true,
     paginateExpandedRows: false,
@@ -388,7 +383,7 @@ export const DataTable = memo(function DataTable({
     [visibleLeafColumns],
   )
   const tableMinWidth = useMemo(
-    () => getIncomingReportTableMinWidth(visibleColumnIds),
+    () => getTransferStockReportTableMinWidth(visibleColumnIds),
     [visibleColumnIds],
   )
   const footerContentsByColumnId = useMemo(() => {
@@ -400,13 +395,13 @@ export const DataTable = memo(function DataTable({
         columnIndex === 0 ? (
           <ReportTotalLabel />
         ) : (
-          getIncomingReportFooterContent(column.id, footerRows, quantityMode)
+          getTransferStockReportFooterContent(column.id, footerRows)
         ),
       )
     })
 
     return contents
-  }, [footerRows, quantityMode, visibleLeafColumns])
+  }, [footerRows, visibleLeafColumns])
   const totalRowCount = footerRows.length
   const { pageIndex, pageSize } = pagination
   const pageCount = Math.max(Math.ceil(totalRowCount / pageSize), 1)
@@ -626,7 +621,7 @@ export const DataTable = memo(function DataTable({
                   colSpan={columns.length}
                   className="h-32 text-center text-sm text-muted-foreground"
                 >
-                  No incoming gate passes found.
+                  No transfer stock gate passes found.
                 </TableCell>
               </TableRow>
             )}
@@ -735,7 +730,7 @@ export const DataTable = memo(function DataTable({
               {pageItems.map((item, itemIndex) =>
                 typeof item === "number" ? (
                   <PaginationItem
-                    key={`incoming-report-page-${item}`}
+                    key={`transfer-stock-report-page-${item}`}
                     className="hidden sm:list-item"
                   >
                     <PaginationLink
@@ -754,7 +749,7 @@ export const DataTable = memo(function DataTable({
                   </PaginationItem>
                 ) : (
                   <PaginationItem
-                    key={`incoming-report-${item}-${itemIndex}`}
+                    key={`transfer-stock-report-${item}-${itemIndex}`}
                     className="hidden sm:list-item"
                   >
                     <PaginationEllipsis />

@@ -11,90 +11,65 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
-import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
-import {
-  shouldShowCustomMarka,
-  shouldShowStockFilter,
-} from "@/features/incoming/utils/incoming-preferences"
-import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
+import type { TransferStockReportRecord } from "@/features/transfer-stock-report/api/types"
 
 import {
-  useIncomingGatePassReport,
-  type IncomingGatePassReportParams,
-} from "./api/use-incoming-gate-pass-report"
-import {
-  getIncomingReportColumns,
-  type IncomingQuantityMode,
-} from "./components/columns"
+  useTransferStockReport,
+  type TransferStockReportParams,
+} from "./api/use-transfer-stock-report"
+import { getTransferStockReportColumns } from "./components/columns"
 import { DataTable } from "./components/data-table"
 import { ReportToolbar } from "./components/report-toolbar"
 import {
-  INCOMING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE,
-  INCOMING_REPORT_DOWNLOAD_EXCEL_MESSAGE,
-  openIncomingReportPreview,
-} from "./utils/preview-incoming-report-html"
+  TRANSFER_STOCK_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE,
+  TRANSFER_STOCK_REPORT_DOWNLOAD_EXCEL_MESSAGE,
+  openTransferStockReportPreview,
+} from "./utils/preview-transfer-stock-report-html"
 import {
-  countIncomingReportSearchMatches,
-  createIncomingReportSearchIndex,
+  countTransferStockReportSearchMatches,
+  createTransferStockReportSearchIndex,
 } from "./utils/report-search"
 
-const DEFAULT_REPORT_PARAMS = {} satisfies IncomingGatePassReportParams
+const DEFAULT_REPORT_PARAMS = {} satisfies TransferStockReportParams
 
-const IncomingReportPage = () => {
+const TransferStockReportPage = () => {
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [isReportTableReady, setIsReportTableReady] = useState(false)
-  const [quantityMode, setQuantityMode] =
-    useState<IncomingQuantityMode>("current")
   const [appliedParams, setAppliedParams] =
-    useState<IncomingGatePassReportParams>(DEFAULT_REPORT_PARAMS)
+    useState<TransferStockReportParams>(DEFAULT_REPORT_PARAMS)
   const [isExporting, setIsExporting] = useState(false)
   const reportTableRef =
-    useRef<TanStackTable<IncomingGatePassReportRecord> | null>(null)
+    useRef<TanStackTable<TransferStockReportRecord> | null>(null)
   const previewWindowRef = useRef<Window | null>(null)
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const coldStorageName = useColdStorageStore((s) => s.coldStorage?.name)
-  const stockFilterPreference = usePreferencesStore(
-    (state) => state.preferences?.stockFilter,
-  )
-  const customMarkaPreference = usePreferencesStore(
-    (state) => state.preferences?.customMarka,
-  )
-  const showStockFilter = shouldShowStockFilter(stockFilterPreference)
-  const showCustomMarka = shouldShowCustomMarka(customMarkaPreference)
   const { data, error, isFetching, isLoading, refetch } =
-    useIncomingGatePassReport(appliedParams)
+    useTransferStockReport(appliedParams)
 
   const reportRows = useMemo(
-    () => data?.data.incomingGatePasses ?? [],
-    [data?.data.incomingGatePasses],
+    () => data?.data.transferStockGatePasses ?? [],
+    [data?.data.transferStockGatePasses],
   )
   const searchIndex = useMemo(
-    () => createIncomingReportSearchIndex(reportRows),
+    () => createTransferStockReportSearchIndex(reportRows),
     [reportRows],
   )
   const visibleRowCount = useMemo(
     () =>
-      countIncomingReportSearchMatches(searchIndex, deferredSearchQuery),
+      countTransferStockReportSearchMatches(searchIndex, deferredSearchQuery),
     [deferredSearchQuery, searchIndex],
   )
   const tableColumns = useMemo(
-    () =>
-      getIncomingReportColumns(
-        reportRows,
-        quantityMode,
-        showCustomMarka,
-        showStockFilter,
-      ),
-    [quantityMode, reportRows, showCustomMarka, showStockFilter],
+    () => getTransferStockReportColumns(reportRows),
+    [reportRows],
   )
 
   const handleTableReady = useCallback(
-    (table: TanStackTable<IncomingGatePassReportRecord>) => {
+    (table: TanStackTable<TransferStockReportRecord>) => {
       reportTableRef.current = table
       setIsReportTableReady((ready) => ready || true)
     },
@@ -113,7 +88,7 @@ const IncomingReportPage = () => {
     if (!previewWindow || previewWindow.closed) return
 
     previewWindow.postMessage(
-      { type: INCOMING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE },
+      { type: TRANSFER_STOCK_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE },
       window.location.origin,
     )
   }, [])
@@ -134,14 +109,13 @@ const IncomingReportPage = () => {
     setIsExporting(true)
 
     try {
-      const { exportIncomingReportToExcel } = await import(
-        "./utils/export-incoming-report-excel"
+      const { exportTransferStockReportToExcel } = await import(
+        "./utils/export-transfer-stock-report-excel"
       )
-      await exportIncomingReportToExcel({
+      await exportTransferStockReportToExcel({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
-        quantityMode,
-        reportTitle: "Incoming Report",
+        reportTitle: "Transfer Stock Report",
         dateFrom,
         dateTo,
       })
@@ -159,18 +133,13 @@ const IncomingReportPage = () => {
       setIsExporting(false)
       notifyPreviewDownloadComplete()
     }
-  }, [
-    coldStorageName,
-    dateFrom,
-    dateTo,
-    notifyPreviewDownloadComplete,
-    quantityMode,
-  ])
+  }, [coldStorageName, dateFrom, dateTo, notifyPreviewDownloadComplete])
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
-      if (event.data?.type !== INCOMING_REPORT_DOWNLOAD_EXCEL_MESSAGE) return
+      if (event.data?.type !== TRANSFER_STOCK_REPORT_DOWNLOAD_EXCEL_MESSAGE)
+        return
 
       void handleExportExcel()
     }
@@ -193,11 +162,10 @@ const IncomingReportPage = () => {
     }
 
     try {
-      previewWindowRef.current = openIncomingReportPreview({
+      previewWindowRef.current = openTransferStockReportPreview({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
-        quantityMode,
-        reportTitle: "Incoming Report",
+        reportTitle: "Transfer Stock Report",
         dateFrom,
         dateTo,
       })
@@ -209,10 +177,10 @@ const IncomingReportPage = () => {
         { position: "bottom-right" },
       )
     }
-  }, [coldStorageName, dateFrom, dateTo, quantityMode])
+  }, [coldStorageName, dateFrom, dateTo])
 
   const handleApply = useCallback(() => {
-    const next: IncomingGatePassReportParams = {}
+    const next: TransferStockReportParams = {}
     if (dateFrom) next.dateFrom = dateFrom
     if (dateTo) next.dateTo = dateTo
 
@@ -230,10 +198,6 @@ const IncomingReportPage = () => {
     void refetch()
   }, [refetch])
 
-  const handleQuantityModeChange = useCallback((value: string) => {
-    setQuantityMode(value as IncomingQuantityMode)
-  }, [])
-
   const reportTable = isReportTableReady ? reportTableRef.current : null
   const isSearchPending = searchQuery !== deferredSearchQuery
 
@@ -244,7 +208,7 @@ const IncomingReportPage = () => {
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 space-y-1">
               <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Incoming report
+                Transfer stock report
               </h1>
               <p className="text-sm text-muted-foreground">
                 {isLoading ? (
@@ -255,8 +219,8 @@ const IncomingReportPage = () => {
                       {visibleRowCount.toLocaleString("en-IN")}
                     </span>{" "}
                     {visibleRowCount === 1
-                      ? "incoming gate pass"
-                      : "incoming gate passes"}
+                      ? "transfer gate pass"
+                      : "transfer gate passes"}
                     {isSearchPending ? (
                       <span className="text-muted-foreground"> (updating…)</span>
                     ) : null}
@@ -307,47 +271,37 @@ const IncomingReportPage = () => {
         <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="min-w-0 space-y-1">
             <h2 className="font-heading text-base font-semibold text-foreground">
-              Incoming gate passes
+              Transfer stock gate passes
             </h2>
             <p className="text-sm text-muted-foreground">
               A simple table for the selected date range.
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Tabs value={quantityMode} onValueChange={handleQuantityModeChange}>
-              <TabsList aria-label="Quantity view">
-                <TabsTrigger value="current">Current Qty</TabsTrigger>
-                <TabsTrigger value="initial">Initial Qty</TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <Badge variant="outline" className="w-fit gap-1.5">
-              <span className="tabular-nums">{visibleRowCount}</span>
-              rows
-            </Badge>
-          </div>
+          <Badge variant="outline" className="w-fit gap-1.5">
+            <span className="tabular-nums">{visibleRowCount}</span>
+            rows
+          </Badge>
         </div>
 
         <div className="relative">
           {isLoading ? (
             <div className="flex min-h-56 items-center justify-center gap-2 p-6 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" />
-              Loading incoming report...
+              Loading transfer stock report...
             </div>
           ) : data ? (
             <div className="min-w-0">
               <DataTable
                 columns={tableColumns}
                 data={reportRows}
-                quantityMode={quantityMode}
                 quickSearch={searchQuery}
                 onTableReady={handleTableReady}
               />
             </div>
           ) : (
             <div className="flex min-h-56 items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Apply filters to load the incoming report.
+              Apply filters to load the transfer stock report.
             </div>
           )}
         </div>
@@ -356,4 +310,4 @@ const IncomingReportPage = () => {
   )
 }
 
-export default IncomingReportPage
+export default TransferStockReportPage

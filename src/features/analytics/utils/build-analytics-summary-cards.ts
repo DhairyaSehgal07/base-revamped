@@ -150,7 +150,8 @@ export function buildAnalyticsSummaryCards(
     totalInventory: {
       label: `Total inventory (${modeLabel})`,
       value: totalCount.toLocaleString("en-IN"),
-      subtext: "Bags in storage",
+      subtext:
+        quantityMode === "outgoing" ? "Bags dispatched" : "Bags in storage",
       highlight: quantityMode === "current",
     },
     topVariety: {

@@ -42,7 +42,7 @@ const routeTitles: Record<string, string> = {
   '/settings/preferences': 'Preferences',
   '/settings/profile': 'Profile',
   '/reports/incoming': 'Incoming Report',
-  '/reports/outgoing': 'Outgoing Reports',
+  '/reports/outgoing': 'Outgoing Report',
   '/reports/transfer-stock': 'Transfer Stock Reports',
 };
 
