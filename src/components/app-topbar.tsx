@@ -41,6 +41,9 @@ const routeTitles: Record<string, string> = {
   '/settings/': 'Settings',
   '/settings/preferences': 'Preferences',
   '/settings/profile': 'Profile',
+  '/reports/incoming': 'Incoming Report',
+  '/reports/outgoing': 'Outgoing Reports',
+  '/reports/transfer-stock': 'Transfer Stock Reports',
 };
 
 function resolvePageTitle(

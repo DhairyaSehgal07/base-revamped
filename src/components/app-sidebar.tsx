@@ -3,10 +3,13 @@ import type { LucideIcon } from 'lucide-react';
 import {
   BarChart3,
   BookOpen,
+  ChevronRight,
+  FileBarChart,
   Settings,
   Users,
   Wallet,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +20,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { useColdStorageStore } from '@/features/auth/store/use-cold-storage-store';
@@ -30,14 +36,30 @@ type NavItem = {
   disabled?: boolean;
 };
 
-// Updated navigation items
 const coreNavItems: NavItem[] = [
   { name: 'Daybook', icon: BookOpen, to: '/daybook' },
   { name: 'People', icon: Users, to: '/people' },
   { name: 'Analytics', icon: BarChart3, to: '/analytics' },
   { name: 'Finances', icon: Wallet, to: '/finances' },
-  { name: 'Settings', icon: Settings, to: '/settings' },
 ];
+
+const reportNavItems = [
+  { name: 'Incoming', to: '/reports/incoming' },
+  { name: 'Outgoing', to: '/reports/outgoing' },
+  { name: 'Transfer Stock', to: '/reports/transfer-stock' },
+] as const;
+
+const settingsNavItem: NavItem = {
+  name: 'Settings',
+  icon: Settings,
+  to: '/settings',
+};
+
+const REPORTS_ROUTE_PREFIXES = [
+  '/reports/incoming',
+  '/reports/outgoing',
+  '/reports/transfer-stock',
+] as const;
 
 const DAYBOOK_ACTIVE_ROUTE_PREFIXES = [
   '/daybook',
@@ -52,8 +74,18 @@ function isDaybookNavActive(pathname: string) {
   );
 }
 
+function isReportsNavActive(pathname: string) {
+  return REPORTS_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function isSettingsNavActive(pathname: string) {
   return pathname === '/settings' || pathname.startsWith('/settings/');
+}
+
+function isReportSubItemActive(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 function isPeopleNavActive(pathname: string) {
@@ -68,6 +100,50 @@ function isNavItemActive(item: NavItem, pathname: string) {
   return pathname === item.to;
 }
 
+function ReportsNavMenu({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(() => isReportsNavActive(pathname));
+  const reportsActive = isReportsNavActive(pathname);
+
+  useEffect(() => {
+    if (reportsActive) {
+      setOpen(true);
+    }
+  }, [reportsActive]);
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        tooltip="Reports"
+        isActive={reportsActive}
+        data-state={open ? 'open' : 'closed'}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <FileBarChart />
+        <span>Reports</span>
+        <ChevronRight
+          className={`ml-auto size-4 shrink-0 transition-transform duration-200${open ? ' rotate-90' : ''}`}
+        />
+      </SidebarMenuButton>
+      {open ? (
+        <SidebarMenuSub>
+          {reportNavItems.map((item) => (
+            <SidebarMenuSubItem key={item.to}>
+              <SidebarMenuSubButton
+                asChild
+                isActive={isReportSubItemActive(pathname, item.to)}
+              >
+                <Link to={item.to}>
+                  <span>{item.name}</span>
+                </Link>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          ))}
+        </SidebarMenuSub>
+      ) : null}
+    </SidebarMenuItem>
+  );
+}
+
 function NavMain() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const showFinances = usePreferencesStore(
@@ -76,6 +152,7 @@ function NavMain() {
   const visibleNavItems = coreNavItems.filter(
     (item) => item.to !== '/finances' || showFinances,
   );
+  const SettingsIcon = settingsNavItem.icon;
 
   return (
     <SidebarGroup>
@@ -114,6 +191,19 @@ function NavMain() {
               </SidebarMenuItem>
             );
           })}
+          <ReportsNavMenu pathname={pathname} />
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isNavItemActive(settingsNavItem, pathname)}
+              tooltip={settingsNavItem.name}
+            >
+              <Link to={settingsNavItem.to!}>
+                <SettingsIcon />
+                <span>{settingsNavItem.name}</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

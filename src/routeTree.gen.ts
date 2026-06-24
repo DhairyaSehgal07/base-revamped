@@ -21,6 +21,9 @@ import { Route as AuthenticatedIncomingIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedFinancesIndexRouteImport } from './routes/_authenticated/finances.index'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings.profile'
 import { Route as AuthenticatedSettingsPreferencesRouteImport } from './routes/_authenticated/settings.preferences'
+import { Route as AuthenticatedReportsTransferStockRouteImport } from './routes/_authenticated/reports.transfer-stock'
+import { Route as AuthenticatedReportsOutgoingRouteImport } from './routes/_authenticated/reports.outgoing'
+import { Route as AuthenticatedReportsIncomingRouteImport } from './routes/_authenticated/reports.incoming'
 import { Route as AuthenticatedPeopleIdRouteImport } from './routes/_authenticated/people.$id'
 import { Route as AuthenticatedOutgoingEditHistoryRouteImport } from './routes/_authenticated/outgoing.edit-history'
 import { Route as AuthenticatedOutgoingIdRouteImport } from './routes/_authenticated/outgoing.$id'
@@ -97,6 +100,24 @@ const AuthenticatedSettingsPreferencesRoute =
     path: '/settings/preferences',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedReportsTransferStockRoute =
+  AuthenticatedReportsTransferStockRouteImport.update({
+    id: '/reports/transfer-stock',
+    path: '/reports/transfer-stock',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReportsOutgoingRoute =
+  AuthenticatedReportsOutgoingRouteImport.update({
+    id: '/reports/outgoing',
+    path: '/reports/outgoing',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedReportsIncomingRoute =
+  AuthenticatedReportsIncomingRouteImport.update({
+    id: '/reports/incoming',
+    path: '/reports/incoming',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedPeopleIdRoute = AuthenticatedPeopleIdRouteImport.update({
   id: '/people/$id',
   path: '/people/$id',
@@ -152,6 +173,9 @@ export interface FileRoutesByFullPath {
   '/outgoing/$id': typeof AuthenticatedOutgoingIdRoute
   '/outgoing/edit-history': typeof AuthenticatedOutgoingEditHistoryRoute
   '/people/$id': typeof AuthenticatedPeopleIdRouteWithChildren
+  '/reports/incoming': typeof AuthenticatedReportsIncomingRoute
+  '/reports/outgoing': typeof AuthenticatedReportsOutgoingRoute
+  '/reports/transfer-stock': typeof AuthenticatedReportsTransferStockRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/finances/': typeof AuthenticatedFinancesIndexRoute
@@ -172,6 +196,9 @@ export interface FileRoutesByTo {
   '/incoming/edit-history': typeof AuthenticatedIncomingEditHistoryRoute
   '/outgoing/$id': typeof AuthenticatedOutgoingIdRoute
   '/outgoing/edit-history': typeof AuthenticatedOutgoingEditHistoryRoute
+  '/reports/incoming': typeof AuthenticatedReportsIncomingRoute
+  '/reports/outgoing': typeof AuthenticatedReportsOutgoingRoute
+  '/reports/transfer-stock': typeof AuthenticatedReportsTransferStockRoute
   '/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/finances': typeof AuthenticatedFinancesIndexRoute
@@ -195,6 +222,9 @@ export interface FileRoutesById {
   '/_authenticated/outgoing/$id': typeof AuthenticatedOutgoingIdRoute
   '/_authenticated/outgoing/edit-history': typeof AuthenticatedOutgoingEditHistoryRoute
   '/_authenticated/people/$id': typeof AuthenticatedPeopleIdRouteWithChildren
+  '/_authenticated/reports/incoming': typeof AuthenticatedReportsIncomingRoute
+  '/_authenticated/reports/outgoing': typeof AuthenticatedReportsOutgoingRoute
+  '/_authenticated/reports/transfer-stock': typeof AuthenticatedReportsTransferStockRoute
   '/_authenticated/settings/preferences': typeof AuthenticatedSettingsPreferencesRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/finances/': typeof AuthenticatedFinancesIndexRoute
@@ -218,6 +248,9 @@ export interface FileRouteTypes {
     | '/outgoing/$id'
     | '/outgoing/edit-history'
     | '/people/$id'
+    | '/reports/incoming'
+    | '/reports/outgoing'
+    | '/reports/transfer-stock'
     | '/settings/preferences'
     | '/settings/profile'
     | '/finances/'
@@ -238,6 +271,9 @@ export interface FileRouteTypes {
     | '/incoming/edit-history'
     | '/outgoing/$id'
     | '/outgoing/edit-history'
+    | '/reports/incoming'
+    | '/reports/outgoing'
+    | '/reports/transfer-stock'
     | '/settings/preferences'
     | '/settings/profile'
     | '/finances'
@@ -260,6 +296,9 @@ export interface FileRouteTypes {
     | '/_authenticated/outgoing/$id'
     | '/_authenticated/outgoing/edit-history'
     | '/_authenticated/people/$id'
+    | '/_authenticated/reports/incoming'
+    | '/_authenticated/reports/outgoing'
+    | '/_authenticated/reports/transfer-stock'
     | '/_authenticated/settings/preferences'
     | '/_authenticated/settings/profile'
     | '/_authenticated/finances/'
@@ -364,6 +403,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsPreferencesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/reports/transfer-stock': {
+      id: '/_authenticated/reports/transfer-stock'
+      path: '/reports/transfer-stock'
+      fullPath: '/reports/transfer-stock'
+      preLoaderRoute: typeof AuthenticatedReportsTransferStockRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reports/outgoing': {
+      id: '/_authenticated/reports/outgoing'
+      path: '/reports/outgoing'
+      fullPath: '/reports/outgoing'
+      preLoaderRoute: typeof AuthenticatedReportsOutgoingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reports/incoming': {
+      id: '/_authenticated/reports/incoming'
+      path: '/reports/incoming'
+      fullPath: '/reports/incoming'
+      preLoaderRoute: typeof AuthenticatedReportsIncomingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/people/$id': {
       id: '/_authenticated/people/$id'
       path: '/people/$id'
@@ -446,6 +506,9 @@ interface AuthenticatedRouteChildren {
   AuthenticatedOutgoingIdRoute: typeof AuthenticatedOutgoingIdRoute
   AuthenticatedOutgoingEditHistoryRoute: typeof AuthenticatedOutgoingEditHistoryRoute
   AuthenticatedPeopleIdRoute: typeof AuthenticatedPeopleIdRouteWithChildren
+  AuthenticatedReportsIncomingRoute: typeof AuthenticatedReportsIncomingRoute
+  AuthenticatedReportsOutgoingRoute: typeof AuthenticatedReportsOutgoingRoute
+  AuthenticatedReportsTransferStockRoute: typeof AuthenticatedReportsTransferStockRoute
   AuthenticatedSettingsPreferencesRoute: typeof AuthenticatedSettingsPreferencesRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedFinancesIndexRoute: typeof AuthenticatedFinancesIndexRoute
@@ -465,6 +528,10 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedOutgoingIdRoute: AuthenticatedOutgoingIdRoute,
   AuthenticatedOutgoingEditHistoryRoute: AuthenticatedOutgoingEditHistoryRoute,
   AuthenticatedPeopleIdRoute: AuthenticatedPeopleIdRouteWithChildren,
+  AuthenticatedReportsIncomingRoute: AuthenticatedReportsIncomingRoute,
+  AuthenticatedReportsOutgoingRoute: AuthenticatedReportsOutgoingRoute,
+  AuthenticatedReportsTransferStockRoute:
+    AuthenticatedReportsTransferStockRoute,
   AuthenticatedSettingsPreferencesRoute: AuthenticatedSettingsPreferencesRoute,
   AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
   AuthenticatedFinancesIndexRoute: AuthenticatedFinancesIndexRoute,
