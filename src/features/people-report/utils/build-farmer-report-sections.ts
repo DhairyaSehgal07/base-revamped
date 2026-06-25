@@ -20,6 +20,16 @@ export type FarmerReportTableRow = {
   sizeTotals?: Record<string, number>
 }
 
+export function getFarmerReportRowBagTotal(row: FarmerReportTableRow): number {
+  if (row.kind === "opening-balance") {
+    if (!row.sizeTotals) return 0
+
+    return Object.values(row.sizeTotals).reduce((sum, value) => sum + value, 0)
+  }
+
+  return row.rowBags
+}
+
 export type FarmerReportSectionMode = "incoming" | "outgoing"
 
 export type FarmerReportSections = {

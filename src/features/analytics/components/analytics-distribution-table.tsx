@@ -29,9 +29,9 @@ export function AnalyticsDistributionTable({
   labelColumn,
   className,
 }: AnalyticsDistributionTableProps) {
-  const { items, total } = distribution
+  const { tableItems, total } = distribution
 
-  if (items.length === 0) {
+  if (tableItems.length === 0) {
     return null
   }
 
@@ -60,7 +60,7 @@ export function AnalyticsDistributionTable({
           </TableHeader>
 
           <TableBody>
-            {items.map((item) => (
+            {tableItems.map((item) => (
               <TableRow key={item.key}>
                 <TableCell className="px-3 py-2.5">
                   <div className="flex min-w-0 items-center gap-2">

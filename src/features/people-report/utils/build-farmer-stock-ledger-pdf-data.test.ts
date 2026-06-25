@@ -230,6 +230,11 @@ describe("buildFarmerStockLedgerPdfData", () => {
     expect(
       result.incomingLedger
         .filter((row): row is PdfLedgerLeafRow => row.kind === "leaf")
+        .map((row) => row.rowBags),
+    ).toEqual(["100", "50"])
+    expect(
+      result.incomingLedger
+        .filter((row): row is PdfLedgerLeafRow => row.kind === "leaf")
         .map((row) => row.total),
     ).toEqual(["100", "150"])
     expect(result.incomingClosingBalance).toBe(150)

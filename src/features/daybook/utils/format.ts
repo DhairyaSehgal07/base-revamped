@@ -33,8 +33,10 @@ export function formatCompactLocation(location: DaybookLocation): string {
   return `${location.chamber}/${location.floor}/${location.row}`
 }
 
-export function formatManualParchi(value: string | number | undefined): string {
-  if (value === undefined || value === "") return "—"
+export function formatManualParchi(
+  value: string | number | null | undefined
+): string {
+  if (value == null || value === "") return "—"
   return String(value)
 }
 
@@ -56,20 +58,50 @@ export function formatQuantity(value: number): string {
   return value.toLocaleString("en-IN")
 }
 
-export function formatIncomingLotNo(
-  entry: IncomingDaybookEntry,
+type LotNoSource = {
+  gatePassNo: number
+  accountNumber: number
+  customMarka?: string | null
+}
+
+export function formatLotNo(
+  source: LotNoSource,
   preferences: Pick<Preferences, "customMarka" | "markaType"> | null | undefined,
   totalBags: number
 ): string {
   if (preferences?.customMarka) {
-    const custom = entry.customMarka?.trim()
+    const custom = source.customMarka?.trim()
     return custom || "—"
   }
 
   const identifier =
     preferences?.markaType === "AccountNumber"
-      ? entry.farmerStorageLinkId.accountNumber
-      : entry.gatePassNo
+      ? source.accountNumber
+      : source.gatePassNo
 
   return `${identifier}/${totalBags}`
+}
+
+export function formatIncomingLotNo(
+  entry: IncomingDaybookEntry,
+  preferences: Pick<Preferences, "customMarka" | "markaType"> | null | undefined,
+  totalBags: number
+): string {
+  return formatLotNo(
+    {
+      gatePassNo: entry.gatePassNo,
+      accountNumber: entry.farmerStorageLinkId.accountNumber,
+      customMarka: entry.customMarka,
+    },
+    preferences,
+    totalBags
+  )
+}
+
+export function formatStorageGatePassLotNo(
+  pass: LotNoSource,
+  preferences: Pick<Preferences, "customMarka" | "markaType"> | null | undefined,
+  totalBags: number
+): string {
+  return formatLotNo(pass, preferences, totalBags)
 }

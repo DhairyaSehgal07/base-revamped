@@ -60,6 +60,7 @@ describe("incomingGatePassToStorageGatePass", () => {
     expect(mapped).toMatchObject({
       _id: "674c8a1b2d3e4f5678901234",
       farmerStorageLinkId: FARMER_LINK_ID,
+      accountNumber: 101,
       gatePassNo: 12,
       manualParchiNumber: "P-4521",
       variety: "Kufri Jyoti",
@@ -120,5 +121,64 @@ describe("passMatchesGatePassSearch", () => {
     expect(passMatchesGatePassSearch(pass, "p-4521")).toBe(true)
     expect(passMatchesGatePassSearch(pass, "12")).toBe(true)
     expect(passMatchesGatePassSearch(pass, "999")).toBe(false)
+  })
+
+  it("matches marka using manual parchi when available", () => {
+    const pass = incomingGatePassToStorageGatePass(makeRecord(), FARMER_LINK_ID)
+
+    expect(
+      passMatchesGatePassSearch(pass, "p-4521/120", {
+        customMarka: false,
+        markaType: "GatePass",
+      })
+    ).toBe(true)
+    expect(
+      passMatchesGatePassSearch(pass, "120", {
+        customMarka: false,
+        markaType: "GatePass",
+      })
+    ).toBe(true)
+  })
+
+  it("falls back to gate pass number in marka when manual parchi is missing", () => {
+    const pass = incomingGatePassToStorageGatePass(
+      makeRecord({ manualParchiNumber: undefined }),
+      FARMER_LINK_ID
+    )
+
+    expect(
+      passMatchesGatePassSearch(pass, "12/120", {
+        customMarka: false,
+        markaType: "GatePass",
+      })
+    ).toBe(true)
+  })
+
+  it("matches custom marka when custom marka preference is enabled", () => {
+    const pass = incomingGatePassToStorageGatePass(
+      makeRecord({ customMarka: "TS-42" }),
+      FARMER_LINK_ID
+    )
+
+    expect(
+      passMatchesGatePassSearch(pass, "ts-42", {
+        customMarka: true,
+        markaType: "GatePass",
+      })
+    ).toBe(true)
+  })
+
+  it("falls back to computed marka when custom marka preference is on but pass has none", () => {
+    const pass = incomingGatePassToStorageGatePass(
+      makeRecord({ customMarka: undefined, manualParchiNumber: undefined }),
+      FARMER_LINK_ID
+    )
+
+    expect(
+      passMatchesGatePassSearch(pass, "12/120", {
+        customMarka: true,
+        markaType: "GatePass",
+      })
+    ).toBe(true)
   })
 })

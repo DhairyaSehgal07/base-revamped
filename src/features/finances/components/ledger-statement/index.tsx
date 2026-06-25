@@ -9,44 +9,93 @@ import { useLedgerStatement } from "@/features/finances/hooks/use-ledger-stateme
 import {
   formatPeriodRangeLabel,
 } from "@/features/finances/hooks/use-report-date-range"
-import type { PeriodFilter } from "@/features/finances/shared/constants"
+import {
+  buildLedgerStatementBackTarget,
+  type LedgerStatementSearch,
+} from "@/features/finances/search"
 import { PERIOD_LABELS } from "@/features/finances/shared/constants"
 import { formatCurrency } from "@/features/finances/shared/format-currency"
 
 type LedgerStatementPageProps = {
   ledgerId: string
-  period: PeriodFilter
+  search: LedgerStatementSearch
+}
+
+function LedgerStatementBackButton({
+  search,
+  farmerStorageLinkId,
+}: {
+  search: LedgerStatementSearch
+  farmerStorageLinkId?: string | null
+}) {
+  const backTarget = buildLedgerStatementBackTarget(
+    search,
+    farmerStorageLinkId,
+    search.period,
+  )
+
+  return (
+    <Button variant="outline" size="sm" className="w-fit" asChild>
+      {backTarget.kind === "people" ? (
+        <Link
+          to={backTarget.to}
+          params={backTarget.params}
+          search={backTarget.search}
+        >
+          <ArrowLeft className="size-4" />
+          {backTarget.label}
+        </Link>
+      ) : (
+        <Link to={backTarget.to} search={backTarget.search}>
+          <ArrowLeft className="size-4" />
+          {backTarget.label}
+        </Link>
+      )}
+    </Button>
+  )
 }
 
 export function LedgerStatementPage({
   ledgerId,
-  period,
+  search,
 }: LedgerStatementPageProps) {
+  const { period } = search
   const { report, isLoading, isError, error } = useLedgerStatement(
     ledgerId,
     period
   )
 
   if (isLoading) {
-    return <ReportStateCard variant="loading" message="Loading ledger statement…" />
+    return (
+      <div className="flex flex-col gap-4">
+        <LedgerStatementBackButton search={search} />
+        <ReportStateCard variant="loading" message="Loading ledger statement…" />
+      </div>
+    )
   }
 
   if (isError) {
     return (
-      <ReportStateCard
-        variant="error"
-        message={error instanceof Error ? error.message : "Failed to load ledger statement"}
-      />
+      <div className="flex flex-col gap-4">
+        <LedgerStatementBackButton search={search} />
+        <ReportStateCard
+          variant="error"
+          message={error instanceof Error ? error.message : "Failed to load ledger statement"}
+        />
+      </div>
     )
   }
 
   if (!report) {
     return (
-      <ReportStateCard
-        variant="empty"
-        title="Ledger not found"
-        message="The selected ledger could not be loaded."
-      />
+      <div className="flex flex-col gap-4">
+        <LedgerStatementBackButton search={search} />
+        <ReportStateCard
+          variant="empty"
+          title="Ledger not found"
+          message="The selected ledger could not be loaded."
+        />
+      </div>
     )
   }
 
@@ -54,12 +103,10 @@ export function LedgerStatementPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <Button variant="outline" size="sm" className="w-fit" asChild>
-        <Link to="/finances" search={{ tab: "ledgers", period }}>
-          <ArrowLeft className="size-4" />
-          Back to Ledgers
-        </Link>
-      </Button>
+      <LedgerStatementBackButton
+        search={search}
+        farmerStorageLinkId={report.ledger.farmerStorageLinkId}
+      />
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b border-border bg-primary px-4 py-4 text-primary-foreground sm:px-6">

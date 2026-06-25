@@ -36,9 +36,11 @@ export function incomingGatePassToStorageGatePass(
   return {
     _id: record._id,
     farmerStorageLinkId,
+    accountNumber: record.farmerStorageLinkId.accountNumber,
     gatePassNo: record.gatePassNo,
     manualGatePassNumber: parseManualGatePassNumber(record.manualParchiNumber),
     manualParchiNumber: record.manualParchiNumber ?? null,
+    customMarka: record.customMarka ?? null,
     date: record.date,
     variety: record.variety,
     storageCategory: record.type ?? "",

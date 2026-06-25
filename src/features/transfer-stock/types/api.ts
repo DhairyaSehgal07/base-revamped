@@ -19,6 +19,9 @@ export type CreateTransferStockPayload = {
   customMarka?: string
   remarks?: string
   truckNumber?: string
+  amount?: number
+  isBuyPotato?: boolean
+  isSellPotato?: boolean
 }
 
 export type TransferStockRecordItem = CreateTransferStockItemPayload & {

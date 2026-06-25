@@ -9,11 +9,13 @@ import type { BuildFarmerStockLedgerPdfDataInput } from "@/features/people-repor
 type FarmerStockLedgerPdfButtonProps = {
   getPdfBuildInput: () => BuildFarmerStockLedgerPdfDataInput | null
   disabled?: boolean
+  variant?: "default" | "outline"
 }
 
 export function FarmerStockLedgerPdfButton({
   getPdfBuildInput,
   disabled = false,
+  variant = "default",
 }: FarmerStockLedgerPdfButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false)
   const coldStorageName = useColdStorageStore((state) => state.coldStorage?.name)
@@ -64,19 +66,20 @@ export function FarmerStockLedgerPdfButton({
     <Button
       type="button"
       size="sm"
-      className="shrink-0"
+      variant={variant}
+      className="min-w-0 shrink-0 gap-1.5"
       onClick={() => void handleOpenPdf()}
       disabled={disabled || isGenerating || !coldStorageName}
     >
       {isGenerating ? (
         <>
-          <Loader2 className="mr-2 size-4 animate-spin" />
-          Generating…
+          <Loader2 className="size-4 shrink-0 animate-spin" />
+          <span className="truncate">Generating…</span>
         </>
       ) : (
         <>
-          <FileDown className="mr-2 size-4" />
-          PDF
+          <FileDown className="size-4 shrink-0" />
+          <span className="truncate">PDF</span>
         </>
       )}
     </Button>

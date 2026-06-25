@@ -26,6 +26,7 @@ const passes: StorageGatePass[] = [
   {
     _id: PASS_A,
     farmerStorageLinkId: FARMER_ID,
+    accountNumber: 101,
     gatePassNo: 12,
     date: "2026-06-01T00:00:00.000Z",
     variety: "Jyoti",
@@ -36,6 +37,7 @@ const passes: StorageGatePass[] = [
   {
     _id: PASS_B,
     farmerStorageLinkId: FARMER_ID,
+    accountNumber: 101,
     gatePassNo: 13,
     date: "2026-06-02T00:00:00.000Z",
     variety: "Kufri",

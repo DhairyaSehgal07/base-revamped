@@ -1,3 +1,6 @@
+import type { Preferences } from "@/features/auth/types"
+import { sumBagQuantities } from "@/features/daybook/utils/format"
+import { sortSizeNamesByPreferenceOrder } from "@/features/incoming/utils/incoming-preferences"
 import type {
   DatePassGroup,
   LocationFilters,
@@ -7,7 +10,11 @@ import type {
   TransferStockItem,
   VoucherSort,
 } from "@/features/transfer-stock/types/storage-gate-pass"
-import { sortSizeNamesByPreferenceOrder } from "@/features/incoming/utils/incoming-preferences"
+
+export type LotNoPreferences =
+  | Pick<Preferences, "customMarka" | "markaType">
+  | null
+  | undefined
 
 /** Unit separator — size names may contain `|`. */
 const KEY_SEP = "\u001f"
@@ -16,11 +23,53 @@ export type StorageGatePassFilterParams = {
   variety?: string
   search?: string
   location?: LocationFilters
+  preferences?: LotNoPreferences
+}
+
+export function getStorageGatePassLotNo(
+  pass: StorageGatePass,
+  preferences: LotNoPreferences
+): string {
+  if (preferences?.customMarka) {
+    const custom = pass.customMarka?.trim()
+    if (custom) return custom
+  }
+
+  const totalBags = sumBagQuantities(pass.bagSizes, "initialQuantity")
+  if (totalBags <= 0) return "—"
+
+  const manualParchi = pass.manualParchiNumber?.trim()
+  const identifier = manualParchi || String(pass.gatePassNo)
+  return `${identifier}/${totalBags}`
+}
+
+function getLotNoSearchTerms(
+  pass: StorageGatePass,
+  preferences: LotNoPreferences
+): string[] {
+  const lotNo = getStorageGatePassLotNo(pass, preferences)
+  const terms: string[] = []
+
+  if (lotNo !== "—") {
+    terms.push(lotNo)
+    const slashIndex = lotNo.indexOf("/")
+    if (slashIndex !== -1) {
+      terms.push(lotNo.slice(0, slashIndex))
+      terms.push(lotNo.slice(slashIndex + 1))
+    }
+  }
+
+  const customMarka = pass.customMarka?.trim()
+  if (customMarka) {
+    terms.push(customMarka)
+  }
+
+  return terms
 }
 
 export function filterStorageGatePasses(
   passes: StorageGatePass[],
-  { variety, search, location }: StorageGatePassFilterParams
+  { variety, search, location, preferences }: StorageGatePassFilterParams
 ): StorageGatePass[] {
   let list = passes
   if (variety?.trim()) {
@@ -28,7 +77,9 @@ export function filterStorageGatePasses(
     list = list.filter((p) => p.variety?.trim() === v)
   }
   if (search?.trim()) {
-    list = list.filter((p) => passMatchesGatePassSearch(p, search))
+    list = list.filter((p) =>
+      passMatchesGatePassSearch(p, search, preferences)
+    )
   }
   if (location) {
     list = list.filter((p) => passMatchesLocationFilters(p, location))
@@ -123,7 +174,8 @@ export function getUniqueLocationValues(passes: StorageGatePass[]): {
 
 export function passMatchesGatePassSearch(
   pass: StorageGatePass,
-  search: string
+  search: string,
+  preferences: LotNoPreferences = null
 ): boolean {
   const q = search.trim().toLowerCase()
   if (!q) return true
@@ -133,10 +185,14 @@ export function passMatchesGatePassSearch(
       ? String(pass.manualGatePassNumber)
       : ""
   const parchi = pass.manualParchiNumber?.trim().toLowerCase() ?? ""
+  const lotMatch = getLotNoSearchTerms(pass, preferences).some((term) =>
+    term.toLowerCase().includes(q)
+  )
   return (
     gate.includes(q) ||
     manual.includes(q) ||
-    parchi.includes(q)
+    parchi.includes(q) ||
+    lotMatch
   )
 }
 

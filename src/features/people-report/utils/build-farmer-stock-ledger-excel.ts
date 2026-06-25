@@ -1,3 +1,4 @@
+import { format } from "date-fns"
 import type ExcelJS from "exceljs"
 
 import type {
@@ -6,83 +7,50 @@ import type {
   PdfLedgerLeafRow,
   PdfLedgerSizeValue,
 } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import type { LedgerExportColumn } from "@/features/people-report/utils/export-cell-value"
 import type { StockSummaryMatrix } from "@/features/people/utils/build-farmer-stock-summary"
-import type { ExcelPreviewRow, ExcelPreviewStockSummary } from "@/lib/excel-preview-tab"
 import {
-  EXCEL_DATA_ROW_HEIGHT,
-  EXCEL_HEADER_ROW_HEIGHT,
-  EXCEL_SUBTITLE_ROW_HEIGHT,
-  EXCEL_TITLE_ROW_HEIGHT,
-  applyExcelRowHeight,
-  configureWorksheetForMicrosoftExcel,
-} from "@/lib/excel-worksheet-compat"
+  COLDOP_BRANDING,
+  EXPORT_INTEGER_NUM_FMT,
+  EXPORT_THEME_COLORS,
+} from "@/lib/export-report-theme"
+import type { ExcelPreviewRow, ExcelPreviewStockSummary } from "@/lib/excel-preview-tab"
 import { loadExcelJS } from "@/lib/load-exceljs"
 
-const COLORS = {
-  titleBg: "FFFFFFFF",
-  titleFg: "FF1A4731",
-  subtitleBg: "FFFFFFFF",
-  subtitleFg: "FF1F2937",
-  dateBg: "FFFFFFFF",
-  dateFg: "FF6B7280",
-  headerBg: "FF2D7A50",
-  headerFg: "FFFFFFFF",
-  rowEven: "FFEFF8F3",
-  rowOdd: "FFFFFFFF",
-  totalRowBg: "FFDCEFE4",
-  totalRowFg: "FF1A4731",
-  borderColor: "FFB8DEC9",
-  sectionBg: "FFEFF8F3",
-  sectionFg: "FF1A4731",
-  bodyFg: "FF1F2937",
-} as const
+const COLORS = EXPORT_THEME_COLORS
 
-const FONTS = {
-  title: { name: "Calibri", size: 20, bold: true },
-  subtitle: { name: "Calibri", size: 13, bold: false },
-  date: { name: "Calibri", size: 10, bold: false, italic: true },
-  colHeader: { name: "Calibri", size: 10, bold: true },
-  body: { name: "Calibri", size: 10, bold: false },
-  section: { name: "Calibri", size: 10, bold: true },
-} as const
-
-const THIN_BORDER = {
-  style: "thin" as ExcelJS.BorderStyle,
-  color: { argb: COLORS.borderColor },
-}
-
-const CELL_BORDER: Partial<ExcelJS.Borders> = {
-  top: THIN_BORDER,
-  bottom: THIN_BORDER,
-  left: THIN_BORDER,
-  right: THIN_BORDER,
+const THIN_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: "thin", color: { argb: COLORS.border } },
+  left: { style: "thin", color: { argb: COLORS.border } },
+  bottom: { style: "thin", color: { argb: COLORS.border } },
+  right: { style: "thin", color: { argb: COLORS.border } },
 }
 
 const FILLS = {
-  rowEven: {
+  zebra: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: COLORS.rowEven },
+    fgColor: { argb: COLORS.zebraFill },
   } satisfies ExcelJS.Fill,
-  rowOdd: {
+  group: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: COLORS.rowOdd },
+    fgColor: { argb: COLORS.primaryMutedFill },
   } satisfies ExcelJS.Fill,
   section: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: COLORS.sectionBg },
+    fgColor: { argb: COLORS.primarySoftFill },
   } satisfies ExcelJS.Fill,
   header: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: COLORS.headerBg },
+    fgColor: { argb: COLORS.mutedFill },
   } satisfies ExcelJS.Fill,
   total: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: COLORS.totalRowBg },
+    fgColor: { argb: COLORS.primarySoftFill },
   } satisfies ExcelJS.Fill,
 }
 
@@ -97,34 +65,40 @@ const ALIGN_RIGHT = {
   vertical: "middle",
 } satisfies Partial<ExcelJS.Alignment>
 
-const FONT_BODY = {
-  ...FONTS.body,
-  color: { argb: COLORS.bodyFg },
-} satisfies Partial<ExcelJS.Font>
+function bodyFont(bold = false, colorArgb = COLORS.foreground): Partial<ExcelJS.Font> {
+  return {
+    name: "Calibri",
+    size: 10,
+    bold,
+    color: { argb: colorArgb },
+  }
+}
 
-const FONT_BODY_BOLD = {
-  ...FONTS.body,
-  bold: true,
-  color: { argb: COLORS.bodyFg },
-} satisfies Partial<ExcelJS.Font>
+function headerFont(): Partial<ExcelJS.Font> {
+  return {
+    name: "Calibri",
+    size: 10,
+    bold: true,
+    color: { argb: COLORS.primary },
+  }
+}
 
-const FONT_SECTION = {
-  ...FONTS.section,
-  color: { argb: COLORS.sectionFg },
-} satisfies Partial<ExcelJS.Font>
+function titleFont(size: number): Partial<ExcelJS.Font> {
+  return {
+    name: "Calibri",
+    size,
+    bold: true,
+    color: { argb: COLORS.primary },
+  }
+}
 
-const FONT_HEADER = {
-  ...FONTS.colHeader,
-  color: { argb: COLORS.headerFg },
-} satisfies Partial<ExcelJS.Font>
-
-const FONT_TOTAL = {
-  ...FONTS.body,
-  bold: true,
-  color: { argb: COLORS.totalRowFg },
-} satisfies Partial<ExcelJS.Font>
-
-const SMART_NUMBER_FORMAT = "#,##0.##"
+function metadataFont(): Partial<ExcelJS.Font> {
+  return {
+    name: "Calibri",
+    size: 10,
+    color: { argb: COLORS.mutedForeground },
+  }
+}
 
 export type LedgerColumnLayout = {
   headers: string[]
@@ -175,20 +149,48 @@ class ColumnWidthTracker {
   }
 }
 
+export function getLedgerColumnLayoutFromExportColumns(
+  exportColumns: LedgerExportColumn[],
+): LedgerColumnLayout {
+  const headers = exportColumns.map((column) => column.header)
+  const sizeColumnStartIndex = exportColumns.findIndex((column) =>
+    column.id.startsWith("size-"),
+  )
+  const totalColumnIndex = exportColumns.findIndex(
+    (column) => column.id === "totalBags",
+  )
+  const remarksColumnIndex = exportColumns.findIndex(
+    (column) => column.id === "remarks",
+  )
+
+  return {
+    headers,
+    leadingColumnCount:
+      sizeColumnStartIndex >= 0 ? sizeColumnStartIndex : headers.length,
+    sizeColumnStartIndex:
+      sizeColumnStartIndex >= 0 ? sizeColumnStartIndex : headers.length,
+    totalColumnIndex:
+      totalColumnIndex >= 0 ? totalColumnIndex : Math.max(headers.length - 2, 0),
+    remarksColumnIndex:
+      remarksColumnIndex >= 0 ? remarksColumnIndex : headers.length - 1,
+  }
+}
+
 export function getLedgerColumnLayout(
   sizeColumns: string[],
   showStockFilter: boolean,
   showCustomMarka: boolean,
 ): LedgerColumnLayout {
-  const headers = ["Date", "Gate Pass No", "Variety"]
+  const headers = ["Date", "Gate Pass No", "Manual Parchi No", "Variety"]
 
   if (showStockFilter) headers.push("Filter")
   if (showCustomMarka) headers.push("Marka")
 
   const sizeColumnStartIndex = headers.length
-  headers.push(...sizeColumns, "Total Bags", "Remarks")
+  headers.push(...sizeColumns, "Total Bags", "Cumulative Total", "Remarks")
 
-  const totalColumnIndex = sizeColumnStartIndex + sizeColumns.length
+  const rowBagsColumnIndex = sizeColumnStartIndex + sizeColumns.length
+  const totalColumnIndex = rowBagsColumnIndex + 1
   const remarksColumnIndex = totalColumnIndex + 1
 
   return {
@@ -198,6 +200,56 @@ export function getLedgerColumnLayout(
     totalColumnIndex,
     remarksColumnIndex,
   }
+}
+
+export function buildLegacyExportColumns(
+  reportData: FarmerStockLedgerPdfData,
+): LedgerExportColumn[] {
+  const columns: LedgerExportColumn[] = [
+    { id: "date", header: "Date" },
+    { id: "gatePassNo", header: "Gate Pass No" },
+    { id: "manualParchiNumber", header: "Manual Parchi No" },
+    { id: "variety", header: "Variety" },
+  ]
+
+  if (reportData.showStockFilter) {
+    columns.push({ id: "stockFilter", header: "Filter" })
+  }
+
+  if (reportData.showCustomMarka) {
+    columns.push({ id: "customMarka", header: "Marka" })
+  }
+
+  for (const size of reportData.sizeColumns) {
+    columns.push({ id: `size-${size}`, header: size })
+  }
+
+  columns.push({ id: "rowBags", header: "Total Bags" })
+  columns.push({ id: "totalBags", header: "Cumulative Total" })
+  columns.push({ id: "remarks", header: "Remarks" })
+
+  return columns
+}
+
+export function getExportLayout(reportData: FarmerStockLedgerPdfData): {
+  exportColumns: LedgerExportColumn[]
+  layout: LedgerColumnLayout
+} {
+  const exportColumns =
+    reportData.exportColumns.length > 0
+      ? reportData.exportColumns
+      : buildLegacyExportColumns(reportData)
+
+  const layout =
+    reportData.exportColumns.length > 0
+      ? getLedgerColumnLayoutFromExportColumns(exportColumns)
+      : getLedgerColumnLayout(
+          reportData.sizeColumns,
+          reportData.showStockFilter,
+          reportData.showCustomMarka,
+        )
+
+  return { exportColumns, layout }
 }
 
 function getDayOrdinal(day: number): string {
@@ -257,10 +309,6 @@ function coerceToNumber(value: string | number): string | number {
   return value
 }
 
-function applyFill(cell: ExcelJS.Cell, fill: ExcelJS.Fill) {
-  cell.fill = fill
-}
-
 function createSectionTitleRow(title: string, columnCount: number): ExcelBodyRow {
   return {
     values: [title, ...Array(columnCount - 1).fill("")],
@@ -270,25 +318,51 @@ function createSectionTitleRow(title: string, columnCount: number): ExcelBodyRow
   }
 }
 
+function columnIndexToLetter(index: number): string {
+  let letter = ""
+  let current = index
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26
+    letter = String.fromCharCode(65 + remainder) + letter
+    current = Math.floor((current - 1) / 26)
+  }
+
+  return letter
+}
+
 function createTotalsRowValues(
-  layout: LedgerColumnLayout,
+  exportColumns: LedgerExportColumn[],
   footerLabel: string,
   footerSizeTotals: Record<string, number>,
   closingBalance: number,
+  rowBagsTotal: number,
 ): Array<string | number> {
-  const values: Array<string | number> = Array(layout.headers.length).fill("")
+  const values: Array<string | number> = Array(exportColumns.length).fill("")
 
-  values[0] = footerLabel
-
-  layout.headers.forEach((header, index) => {
-    if (index < layout.sizeColumnStartIndex || index >= layout.totalColumnIndex) {
+  exportColumns.forEach((column, index) => {
+    if (index === 0) {
+      values[index] = footerLabel
       return
     }
-    const value = footerSizeTotals[header] ?? 0
-    values[index] = value !== 0 ? value : "—"
+
+    if (column.id.startsWith("size-")) {
+      const size = column.id.replace(/^size-/, "")
+      const value = footerSizeTotals[size] ?? 0
+      values[index] = value !== 0 ? value : "—"
+      return
+    }
+
+    if (column.id === "rowBags") {
+      values[index] = rowBagsTotal > 0 ? rowBagsTotal : "—"
+      return
+    }
+
+    if (column.id === "totalBags") {
+      values[index] = closingBalance
+    }
   })
 
-  values[layout.totalColumnIndex] = closingBalance
   return values
 }
 
@@ -301,37 +375,82 @@ function createTotalsBodyRow(values: Array<string | number>): ExcelBodyRow {
   }
 }
 
+export function getGroupCellValue(
+  item: Extract<PdfLedgerItem, { kind: "group" }>,
+  column: LedgerExportColumn,
+  columnIndex: number,
+): string | number {
+  if (columnIndex === 0) {
+    return `${"  ".repeat(item.depth)}${item.label} (${item.childCount})`
+  }
+
+  if (column.id.startsWith("size-")) {
+    const size = column.id.replace(/^size-/, "")
+    const sizeValue = item.sizes[size] ?? 0
+    return sizeValue > 0 ? sizeValue : "—"
+  }
+
+  if (column.id === "rowBags") {
+    return item.rowBagsTotal > 0 ? item.rowBagsTotal : "—"
+  }
+
+  return ""
+}
+
+export function getLeafCellValue(
+  leaf: PdfLedgerLeafRow,
+  column: LedgerExportColumn,
+  columnIndex: number,
+): string | number {
+  if (columnIndex === 0) {
+    return `${"  ".repeat(leaf.depth)}${leaf.date}`
+  }
+
+  switch (column.id) {
+    case "gatePassNo":
+      return leaf.gatePass
+    case "manualParchiNumber":
+      return leaf.manualParchi
+    case "variety":
+      return leaf.suppressedGroupColumns.includes("variety") ? "" : leaf.variety
+    case "stockFilter":
+      return leaf.suppressedGroupColumns.includes("stockFilter")
+        ? ""
+        : leaf.stockFilter
+    case "customMarka":
+      return leaf.customMarka
+    case "rowBags":
+      return leaf.rowBags
+    case "totalBags":
+      return leaf.total
+    case "remarks":
+      return leaf.remarks
+    default:
+      if (column.id.startsWith("size-")) {
+        return formatPdfSizeValue(leaf.sizes[column.id.replace(/^size-/, "")])
+      }
+      return ""
+  }
+}
+
 export function ledgerItemsToBodyRows(
   items: PdfLedgerItem[],
   layout: LedgerColumnLayout,
-  showStockFilter: boolean,
-  showCustomMarka: boolean,
+  exportColumns: LedgerExportColumn[],
 ): ExcelBodyRow[] {
-  const sizeHeaders = layout.headers.slice(
-    layout.sizeColumnStartIndex,
-    layout.totalColumnIndex,
-  )
-
   return items.map((item) => {
     if (item.kind === "group") {
-      const values: Array<string | number> = Array(layout.headers.length).fill("")
-      const boldByColumn = Array(layout.headers.length).fill(false)
+      const values: Array<string | number> = []
+      const boldByColumn: boolean[] = []
 
-      values[0] = `${"  ".repeat(item.depth)}${item.label} (${item.childCount})`
-      boldByColumn[0] = true
-
-      layout.headers.forEach((header, index) => {
-        if (index < layout.sizeColumnStartIndex || index > layout.totalColumnIndex) {
-          return
-        }
-        if (index === layout.totalColumnIndex) {
-          values[index] = item.rowBagsTotal > 0 ? item.rowBagsTotal : "—"
-          boldByColumn[index] = true
-          return
-        }
-        const sizeValue = item.sizes[header] ?? 0
-        values[index] = sizeValue > 0 ? sizeValue : "—"
-        boldByColumn[index] = true
+      exportColumns.forEach((column, index) => {
+        const value = getGroupCellValue(item, column, index)
+        values.push(coerceToNumber(value))
+        boldByColumn.push(
+          index === 0 ||
+            column.id.startsWith("size-") ||
+            column.id === "rowBags",
+        )
       })
 
       return {
@@ -345,31 +464,16 @@ export function ledgerItemsToBodyRows(
     const values: Array<string | number> = []
     const boldByColumn: boolean[] = []
 
-    const pushCell = (value: string | number, bold = false) => {
+    exportColumns.forEach((column, index) => {
+      const value = getLeafCellValue(leaf, column, index)
       values.push(coerceToNumber(value))
-      boldByColumn.push(bold)
-    }
-
-    pushCell(`${"  ".repeat(leaf.depth)}${leaf.date}`, leaf.isOpeningBalance)
-    pushCell(leaf.gatePass)
-    pushCell(leaf.suppressedGroupColumns.includes("variety") ? "" : leaf.variety, true)
-
-    if (showStockFilter) {
-      pushCell(
-        leaf.suppressedGroupColumns.includes("stockFilter") ? "" : leaf.stockFilter,
+      boldByColumn.push(
+        leaf.isOpeningBalance ||
+          column.id === "variety" ||
+          column.id === "rowBags" ||
+          column.id === "totalBags",
       )
-    }
-
-    if (showCustomMarka) {
-      pushCell(leaf.customMarka)
-    }
-
-    for (const size of sizeHeaders) {
-      pushCell(formatPdfSizeValue(leaf.sizes[size]))
-    }
-
-    pushCell(leaf.total, true)
-    pushCell(leaf.remarks)
+    })
 
     return {
       values,
@@ -379,42 +483,11 @@ export function ledgerItemsToBodyRows(
   })
 }
 
-function addMergedHeaderRow(
-  worksheet: ExcelJS.Worksheet,
-  rowIndex: number,
-  columnCount: number,
-  value: string,
-  options: {
-    height: number
-    font: Partial<ExcelJS.Font>
-    fillArgb: string
-    alignment?: Partial<ExcelJS.Alignment>
-  },
-) {
-  const row = worksheet.getRow(rowIndex)
-  row.height = options.height
-  worksheet.mergeCells(rowIndex, 1, rowIndex, columnCount)
-  const cell = row.getCell(1)
-  cell.value = value
-  cell.font = options.font as ExcelJS.Font
-  applyFill(cell, {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: options.fillArgb },
-  })
-  cell.alignment = {
-    horizontal: "left",
-    vertical: "middle",
-    wrapText: true,
-    ...options.alignment,
-  }
-}
-
 function styleHeaderCells(row: ExcelJS.Row) {
   row.eachCell((cell) => {
-    applyFill(cell, FILLS.header)
-    cell.border = CELL_BORDER
-    cell.font = FONT_HEADER
+    cell.fill = FILLS.header
+    cell.border = THIN_BORDER
+    cell.font = headerFont() as ExcelJS.Font
     cell.alignment = ALIGN_LEFT
   })
 }
@@ -423,33 +496,46 @@ function styleBodyRow(
   excelRow: ExcelJS.Row,
   dataRow: ExcelBodyRow,
   columnCount: number,
+  dataRowCounter: number,
 ) {
   const hasStackedSizeCell = rowHasStackedSizeCell(dataRow.values)
-  excelRow.height = hasStackedSizeCell ? 32 : EXCEL_DATA_ROW_HEIGHT
+  excelRow.height = hasStackedSizeCell ? 32 : 18
 
   const rowFill = dataRow.isSectionTitle
     ? FILLS.section
     : dataRow.isGroupedOrAggregatedRow
-      ? FILLS.rowEven
-      : FILLS.rowOdd
+      ? FILLS.group
+      : dataRowCounter % 2 === 1
+        ? FILLS.zebra
+        : undefined
 
   for (let columnNumber = 1; columnNumber <= columnCount; columnNumber++) {
     const cell = excelRow.getCell(columnNumber)
-    applyFill(cell, rowFill)
-    cell.border = CELL_BORDER
+    if (rowFill) {
+      cell.fill = rowFill
+    }
+    cell.border = THIN_BORDER
 
     const isBold =
       dataRow.isSectionTitle || dataRow.boldByColumn[columnNumber - 1] === true
-    cell.font = dataRow.isSectionTitle
-      ? FONT_SECTION
-      : isBold
-        ? FONT_BODY_BOLD
-        : FONT_BODY
+    const isGroupLabel =
+      dataRow.isGroupedOrAggregatedRow &&
+      !dataRow.isSectionTitle &&
+      !dataRow.isTotalsRow &&
+      columnNumber === 1
+
+    cell.font = (dataRow.isSectionTitle
+      ? bodyFont(true, COLORS.primary)
+      : isGroupLabel
+        ? bodyFont(true, COLORS.primary)
+        : isBold
+          ? bodyFont(true)
+          : bodyFont()) as ExcelJS.Font
 
     const cellValue = dataRow.values[columnNumber - 1]
     if (typeof cellValue === "number") {
       cell.alignment = ALIGN_RIGHT
-      cell.numFmt = SMART_NUMBER_FORMAT
+      cell.numFmt = EXPORT_INTEGER_NUM_FMT
     } else {
       cell.alignment = ALIGN_LEFT
     }
@@ -465,13 +551,20 @@ function addStyledBodyRows(
 ) {
   if (dataRows.length === 0) return
 
+  let dataRowCounter = 0
   const excelRows = worksheet.addRows(dataRows.map((row) => row.values))
 
   for (let index = 0; index < dataRows.length; index++) {
     const dataRow = dataRows[index]
     widthTracker.observeRow(dataRow.values)
-    styleBodyRow(excelRows[index], dataRow, columnCount)
+    styleBodyRow(excelRows[index], dataRow, columnCount, dataRowCounter)
     previewRows.push(dataRow)
+
+    if (!dataRow.isGroupedOrAggregatedRow || dataRow.isTotalsRow) {
+      if (!dataRow.isSectionTitle && !dataRow.isTotalsRow) {
+        dataRowCounter += 1
+      }
+    }
   }
 }
 
@@ -483,12 +576,12 @@ function addBodyRow(
 ) {
   const excelRow = worksheet.addRow(dataRow.values)
   widthTracker.observeRow(dataRow.values)
-  styleBodyRow(excelRow, dataRow, columnCount)
+  styleBodyRow(excelRow, dataRow, columnCount, 0)
 }
 
 function addColumnHeaderRow(worksheet: ExcelJS.Worksheet, headers: string[]) {
   const row = worksheet.addRow(headers)
-  applyExcelRowHeight(row, EXCEL_HEADER_ROW_HEIGHT)
+  row.height = 22
   styleHeaderCells(row)
   return row
 }
@@ -499,18 +592,18 @@ function addTotalsRow(
   columnCount: number,
 ) {
   const exRow = worksheet.addRow(values)
-  applyExcelRowHeight(exRow, EXCEL_DATA_ROW_HEIGHT)
+  exRow.height = 22
 
   for (let colNumber = 1; colNumber <= columnCount; colNumber++) {
     const rawVal = values[colNumber - 1]
     const cell = exRow.getCell(colNumber)
-    applyFill(cell, FILLS.total)
-    cell.border = CELL_BORDER
-    cell.font = FONT_TOTAL
+    cell.fill = FILLS.total
+    cell.border = THIN_BORDER
+    cell.font = bodyFont(true, COLORS.primary) as ExcelJS.Font
     const isNumeric = typeof rawVal === "number"
     cell.alignment = isNumeric ? ALIGN_RIGHT : ALIGN_LEFT
     if (isNumeric) {
-      cell.numFmt = SMART_NUMBER_FORMAT
+      cell.numFmt = EXPORT_INTEGER_NUM_FMT
     }
   }
 }
@@ -534,7 +627,7 @@ function addStockSummaryRows(
   ].slice(0, columnCount)
 
   const headerRow = worksheet.addRow(paddedHeaders)
-  applyExcelRowHeight(headerRow, EXCEL_HEADER_ROW_HEIGHT)
+  headerRow.height = 22
   styleHeaderCells(headerRow)
 
   for (const summaryRow of matrix.rows) {
@@ -590,19 +683,23 @@ export type BuildFarmerStockLedgerExcelPackageInput = {
   generatedAt?: Date
 }
 
+export type FarmerStockLedgerPreviewData = {
+  title: string
+  subtitle: string
+  dateLabel: string
+  exportedRowCount: number
+  fileName: string
+  headers: string[]
+  rows: ExcelPreviewRow[]
+  metaLines: string[]
+  filterSummaryLines: string[]
+  stockSummary?: ExcelPreviewStockSummary
+}
+
 export type FarmerStockLedgerExcelPackage = {
   buffer: ArrayBuffer
   fileName: string
-  preview: {
-    title: string
-    subtitle: string
-    dateLabel: string
-    exportedRowCount: number
-    headers: string[]
-    rows: ExcelPreviewRow[]
-    metaLines?: string[]
-    stockSummary?: ExcelPreviewStockSummary
-  }
+  preview: FarmerStockLedgerPreviewData
 }
 
 export function hasFarmerStockLedgerExportRows(
@@ -613,50 +710,53 @@ export function hasFarmerStockLedgerExportRows(
   )
 }
 
-export async function buildFarmerStockLedgerExcelPackage({
+function sanitizeColdStorageName(coldStorageName: string): string {
+  return (
+    coldStorageName
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, "")
+      .replace(/\s+/g, " ") || "Cold Storage"
+  )
+}
+
+export function buildFarmerStockLedgerPreviewData({
   reportData,
   coldStorageName,
   coldStorageAddress,
   filterSummaryLines,
   generatedAt = new Date(),
-}: BuildFarmerStockLedgerExcelPackageInput): Promise<FarmerStockLedgerExcelPackage> {
+}: BuildFarmerStockLedgerExcelPackageInput): FarmerStockLedgerPreviewData {
   if (!hasFarmerStockLedgerExportRows(reportData)) {
     throw new Error("No rows to export. Adjust filters or load report data.")
   }
 
-  const ExcelJS = await loadExcelJS()
-  const layout = getLedgerColumnLayout(
-    reportData.sizeColumns,
-    reportData.showStockFilter,
-    reportData.showCustomMarka,
-  )
+  const { exportColumns, layout } = getExportLayout(reportData)
   const columnCount = layout.headers.length
-  const widthTracker = new ColumnWidthTracker(layout.headers)
 
   const incomingBody = ledgerItemsToBodyRows(
     reportData.incomingLedger,
     layout,
-    reportData.showStockFilter,
-    reportData.showCustomMarka,
+    exportColumns,
   )
   const outgoingBody = ledgerItemsToBodyRows(
     reportData.outgoingLedger,
     layout,
-    reportData.showStockFilter,
-    reportData.showCustomMarka,
+    exportColumns,
   )
 
   const incomingTotals = createTotalsRowValues(
-    layout,
+    exportColumns,
     "Total",
     reportData.incomingFooterSizes,
     reportData.incomingClosingBalance,
+    reportData.stats.incomingBags,
   )
   const outgoingTotals = createTotalsRowValues(
-    layout,
+    exportColumns,
     "Closing Balance",
     reportData.outgoingFooterSizes,
     reportData.outgoingClosingBalance,
+    reportData.stats.outgoingBags,
   )
 
   const incomingSection = createSectionTitleRow("Incoming Details", columnCount)
@@ -664,14 +764,9 @@ export async function buildFarmerStockLedgerExcelPackage({
   const incomingTotalsRow = createTotalsBodyRow(incomingTotals)
   const outgoingTotalsRow = createTotalsBodyRow(outgoingTotals)
 
-  const safeName =
-    coldStorageName
-      .trim()
-      .replace(/[\\/:*?"<>|]/g, "")
-      .replace(/\s+/g, " ") || "Cold Storage"
-
+  const safeName = sanitizeColdStorageName(coldStorageName)
   const dateLabel = getExportDateLabel(generatedAt)
-  const fileName = `${safeName} Farmer Stock Ledger ${dateLabel}.xlsx`
+  const fileName = `farmer-stock-ledger_${format(generatedAt, "yyyy-MM-dd")}.xlsx`
 
   const metaLines = [
     `Farmer: ${reportData.farmer.name}`,
@@ -680,63 +775,188 @@ export async function buildFarmerStockLedgerExcelPackage({
       : null,
     `Mobile: ${reportData.farmer.mobileNumber}`,
     coldStorageAddress?.trim() ? coldStorageAddress.trim() : null,
-    ...filterSummaryLines,
   ].filter((line): line is string => Boolean(line))
 
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = safeName
-  const worksheet = workbook.addWorksheet("Farmer Stock Ledger")
-  configureWorksheetForMicrosoftExcel(worksheet)
-
-  addMergedHeaderRow(worksheet, 1, columnCount, safeName, {
-    height: EXCEL_TITLE_ROW_HEIGHT,
-    font: { ...FONTS.title, color: { argb: COLORS.titleFg } },
-    fillArgb: COLORS.titleBg,
-  })
-
-  addMergedHeaderRow(worksheet, 2, columnCount, "Farmer Stock Ledger", {
-    height: EXCEL_SUBTITLE_ROW_HEIGHT,
-    font: { ...FONTS.subtitle, color: { argb: COLORS.subtitleFg } },
-    fillArgb: COLORS.subtitleBg,
-  })
-
-  addMergedHeaderRow(
-    worksheet,
-    3,
-    columnCount,
-    `Generated on: ${dateLabel}`,
-    {
-      height: 20,
-      font: { ...FONTS.date, color: { argb: COLORS.dateFg } },
-      fillArgb: COLORS.dateBg,
-    },
-  )
-
-  if (metaLines.length > 0) {
-    addMergedHeaderRow(worksheet, 4, columnCount, metaLines.join("  |  "), {
-      height: metaLines.length > 1 ? 28 : 20,
-      font: { ...FONTS.date, color: { argb: COLORS.dateFg } },
-      fillArgb: COLORS.dateBg,
-    })
+  const stockSummary: ExcelPreviewStockSummary = {
+    headers: ["Varieties", ...reportData.sizeColumns, "Total"],
+    rows: reportData.stockSummary.rows.map((row) => {
+      const values: Array<string | number> = [row.variety]
+      for (const size of reportData.sizeColumns) {
+        values.push(row.bySize[size] ?? 0)
+      }
+      values.push(row.total)
+      return values
+    }),
+    footer: [
+      "Bag Total",
+      ...reportData.sizeColumns.map(
+        (size) => reportData.stockSummary.footerBySize[size] ?? 0,
+      ),
+      reportData.stockSummary.grandTotal,
+    ],
   }
 
-  const poweredByRowIndex = metaLines.length > 0 ? 5 : 4
-  addMergedHeaderRow(worksheet, poweredByRowIndex, columnCount, "Powered by Coldop", {
-    height: 18,
-    font: {
-      name: "Calibri",
-      size: 9,
-      italic: true,
-      color: { argb: "FF9CA3AF" },
-    },
-    fillArgb: COLORS.titleBg,
+  const previewRows: ExcelPreviewRow[] = [
+    incomingSection,
+    ...incomingBody,
+    incomingTotalsRow,
+    outgoingSection,
+    ...outgoingBody,
+    outgoingTotalsRow,
+  ]
+
+  return {
+    title: safeName,
+    subtitle: "Farmer Stock Ledger",
+    dateLabel,
+    exportedRowCount: incomingBody.length + outgoingBody.length,
+    fileName,
+    headers: layout.headers,
+    rows: previewRows,
+    metaLines,
+    filterSummaryLines,
+    stockSummary,
+  }
+}
+
+function applyBrandingToCell(cell: ExcelJS.Cell) {
+  cell.value = {
+    richText: [
+      {
+        font: {
+          name: "Calibri",
+          size: 9,
+          color: { argb: COLORS.mutedForeground },
+        },
+        text: COLDOP_BRANDING.label,
+      },
+      {
+        font: {
+          name: "Calibri",
+          size: 9,
+          bold: true,
+          color: { argb: COLORS.primary },
+        },
+        text: COLDOP_BRANDING.name,
+      },
+    ],
+  }
+}
+
+export async function buildFarmerStockLedgerExcelPackage({
+  reportData,
+  coldStorageName,
+  coldStorageAddress,
+  filterSummaryLines,
+  generatedAt = new Date(),
+}: BuildFarmerStockLedgerExcelPackageInput): Promise<FarmerStockLedgerExcelPackage> {
+  const preview = buildFarmerStockLedgerPreviewData({
+    reportData,
+    coldStorageName,
+    coldStorageAddress,
+    filterSummaryLines,
+    generatedAt,
   })
 
-  worksheet.addRow([])
+  const ExcelJS = await loadExcelJS()
+  const { exportColumns, layout } = getExportLayout(reportData)
+  const columnCount = layout.headers.length
+  const lastColumnLetter = columnIndexToLetter(columnCount)
+  const widthTracker = new ColumnWidthTracker(layout.headers)
+
+  const incomingBody = ledgerItemsToBodyRows(
+    reportData.incomingLedger,
+    layout,
+    exportColumns,
+  )
+  const outgoingBody = ledgerItemsToBodyRows(
+    reportData.outgoingLedger,
+    layout,
+    exportColumns,
+  )
+
+  const incomingTotals = createTotalsRowValues(
+    exportColumns,
+    "Total",
+    reportData.incomingFooterSizes,
+    reportData.incomingClosingBalance,
+    reportData.stats.incomingBags,
+  )
+  const outgoingTotals = createTotalsRowValues(
+    exportColumns,
+    "Closing Balance",
+    reportData.outgoingFooterSizes,
+    reportData.outgoingClosingBalance,
+    reportData.stats.outgoingBags,
+  )
+
+  const incomingSection = createSectionTitleRow("Incoming Details", columnCount)
+  const outgoingSection = createSectionTitleRow("Outgoing Details", columnCount)
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = preview.title
+  workbook.company = COLDOP_BRANDING.name
+  workbook.created = generatedAt
+
+  const worksheet = workbook.addWorksheet("Farmer Stock Ledger", {
+    views: [{ showGridLines: false }],
+  })
+
+  worksheet.mergeCells(`A1:${lastColumnLetter}1`)
+  const titleRow = worksheet.getRow(1)
+  titleRow.height = 28
+  titleRow.getCell(1).value = preview.title
+  titleRow.getCell(1).font = titleFont(16) as ExcelJS.Font
+
+  worksheet.mergeCells(`A2:${lastColumnLetter}2`)
+  const reportRow = worksheet.getRow(2)
+  reportRow.height = 22
+  reportRow.getCell(1).value = preview.subtitle
+  reportRow.getCell(1).font = titleFont(13) as ExcelJS.Font
+
+  const metadataText = [
+    `Generated: ${format(generatedAt, "do MMM yyyy, h:mm a")}`,
+    `${preview.exportedRowCount.toLocaleString("en-IN")} ${
+      preview.exportedRowCount === 1 ? "ledger row" : "ledger rows"
+    }`,
+    ...preview.metaLines,
+  ].join("  |  ")
+
+  worksheet.mergeCells(`A3:${lastColumnLetter}3`)
+  const metadataRow = worksheet.getRow(3)
+  metadataRow.height = 18
+  metadataRow.getCell(1).value = metadataText
+  metadataRow.getCell(1).font = metadataFont() as ExcelJS.Font
+  metadataRow.getCell(1).alignment = {
+    vertical: "middle",
+    horizontal: "left",
+    wrapText: true,
+  }
+
+  worksheet.mergeCells(`A4:${lastColumnLetter}4`)
+  const filterRow = worksheet.getRow(4)
+  filterRow.height = filterSummaryLines.length > 0 ? 36 : 14
+  filterRow.getCell(1).value =
+    filterSummaryLines.length > 0
+      ? filterSummaryLines.join("\n")
+      : "Filters: none applied"
+  filterRow.getCell(1).font = metadataFont() as ExcelJS.Font
+  filterRow.getCell(1).alignment = {
+    vertical: "top",
+    horizontal: "left",
+    wrapText: true,
+  }
+
+  worksheet.mergeCells(`A5:${lastColumnLetter}5`)
+  const brandingRow = worksheet.getRow(5)
+  brandingRow.height = 16
+  applyBrandingToCell(brandingRow.getCell(1))
+
+  worksheet.getRow(6).height = 8
 
   const previewRows: ExcelPreviewRow[] = []
 
-  const stockSummary = addStockSummaryRows(
+  addStockSummaryRows(
     worksheet,
     reportData.stockSummary,
     reportData.sizeColumns,
@@ -758,7 +978,6 @@ export async function buildFarmerStockLedgerExcelPackage({
   )
 
   addTotalsRow(worksheet, incomingTotals, columnCount)
-  previewRows.push(incomingTotalsRow)
 
   worksheet.addRow([])
 
@@ -776,30 +995,35 @@ export async function buildFarmerStockLedgerExcelPackage({
   )
 
   addTotalsRow(worksheet, outgoingTotals, columnCount)
-  previewRows.push(outgoingTotalsRow)
 
   worksheet.columns = layout.headers.map((header, index) => ({
     key: header,
     width: widthTracker.finalize()[index],
   }))
 
-  const buffer = (await workbook.xlsx.writeBuffer({
-    useSharedStrings: true,
-  })) as ArrayBuffer
-  const exportedRowCount = incomingBody.length + outgoingBody.length
+  worksheet.pageSetup = {
+    paperSize: 9,
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: {
+      left: 0.4,
+      right: 0.4,
+      top: 0.5,
+      bottom: 0.5,
+      header: 0.2,
+      footer: 0.2,
+    },
+  }
+
+  worksheet.headerFooter.oddFooter = `&C${COLDOP_BRANDING.label}&"Calibri,Bold"${COLDOP_BRANDING.name}`
+
+  const buffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer
 
   return {
     buffer,
-    fileName,
-    preview: {
-      title: safeName,
-      subtitle: "Farmer Stock Ledger",
-      dateLabel,
-      exportedRowCount,
-      headers: layout.headers,
-      rows: previewRows,
-      metaLines,
-      stockSummary,
-    },
+    fileName: preview.fileName,
+    preview,
   }
 }

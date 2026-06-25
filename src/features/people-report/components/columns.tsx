@@ -5,8 +5,11 @@ import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
 import { isIncomingDaybookEntry } from "@/features/daybook/types"
-import { formatDaybookDate, formatQuantity } from "@/features/daybook/utils/format"
-import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import { formatDaybookDate, formatManualParchi, formatQuantity } from "@/features/daybook/utils/format"
+import {
+  getFarmerReportRowBagTotal,
+  type FarmerReportTableRow,
+} from "@/features/people-report/utils/build-farmer-report-sections"
 import {
   collectUniqueBagSizes,
   getGatePassSizeQuantity,
@@ -142,6 +145,7 @@ function buildFarmerReportColumnsForSizes(
       id: "date",
       accessorFn: (row) => getRowDateSortValue(row),
       header: "Date",
+      meta: { filterLabel: "Date" },
       sortingFn: farmerReportNumericSortingFn,
       sortUndefined: "first",
       aggregationFn: noGroupAggregation,
@@ -166,7 +170,7 @@ function buildFarmerReportColumnsForSizes(
       id: "gatePassNo",
       accessorFn: (row) => row.entry?.gatePassNo ?? null,
       header: "Gate Pass No",
-      meta: { mono: true, numeric: true },
+      meta: { mono: true, numeric: true, filterLabel: "Gate pass number" },
       sortingFn: farmerReportNumericSortingFn,
       sortUndefined: "first",
       aggregationFn: noGroupAggregation,
@@ -177,7 +181,42 @@ function buildFarmerReportColumnsForSizes(
         }
 
         return (
-          <span className="font-mono tabular-nums">#{row.original.entry.gatePassNo}</span>
+          <span className="font-mono tabular-nums">
+            #{row.original.entry.gatePassNo.toLocaleString("en-IN")}
+          </span>
+        )
+      },
+    },
+    {
+      id: "manualParchiNumber",
+      accessorFn: (row) => {
+        if (!row.entry) return null
+        const manualParchi = formatManualParchi(row.entry.manualParchiNumber)
+        return manualParchi === "—" ? null : manualParchi
+      },
+      header: "Manual Parchi No",
+      meta: { mono: true, compact: true, filterLabel: "Manual parchi number" },
+      sortingFn: "text",
+      sortUndefined: "last",
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
+      cell: ({ row }) => {
+        if (isOpeningBalanceRow(row.original) || !row.original.entry) {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        const manualParchi = formatManualParchi(
+          row.original.entry.manualParchiNumber,
+        )
+
+        if (manualParchi === "—") {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        return (
+          <span className="font-mono tabular-nums" title={manualParchi}>
+            {manualParchi}
+          </span>
         )
       },
     },
@@ -186,7 +225,7 @@ function buildFarmerReportColumnsForSizes(
       accessorFn: (row) =>
         row.entry ? getGatePassVariety(row.entry) : "—",
       header: "Variety",
-      meta: { groupable: true },
+      meta: { groupable: true, filterLabel: "Variety" },
       enableGrouping: true,
       getGroupingValue: getRowVarietyGroupingValue,
       sortingFn: "text",
@@ -215,7 +254,7 @@ function buildFarmerReportColumnsForSizes(
           ? row.entry.stockFilter?.trim() || "—"
           : "—",
       header: "Filter",
-      meta: { groupable: true },
+      meta: { groupable: true, filterLabel: "Stock filter" },
       enableGrouping: true,
       getGroupingValue: getRowStockFilterGroupingValue,
       sortingFn: "text",
@@ -247,7 +286,7 @@ function buildFarmerReportColumnsForSizes(
           ? row.entry.customMarka?.trim() || "—"
           : "—",
       header: "Marka",
-      meta: { compact: true },
+      meta: { compact: true, filterLabel: "Custom marka" },
       sortingFn: "text",
       aggregationFn: noGroupAggregation,
       aggregatedCell: emptyGroupedAggregatedCell,
@@ -278,6 +317,7 @@ function buildFarmerReportColumnsForSizes(
         align: "right",
         numeric: true,
         groupStart: index === 0,
+        filterLabel: size,
       },
       sortingFn: farmerReportNumericSortingFn,
       sortUndefined: "last",
@@ -300,18 +340,40 @@ function buildFarmerReportColumnsForSizes(
 
   const trailingColumns: ColumnDef<FarmerReportTableRow>[] = [
     {
+      id: "rowBags",
+      accessorFn: (row) => getFarmerReportRowBagTotal(row),
+      header: "Total Bags",
+      meta: { align: "right", numeric: true, filterLabel: "Total bags" },
+      sortingFn: farmerReportNumericSortingFn,
+      aggregationFn: "sum",
+      aggregatedCell: ({ getValue }) => {
+        const value = Number(getValue())
+        if (!Number.isFinite(value) || value <= 0) {
+          return <span className="text-muted-foreground">—</span>
+        }
+
+        return (
+          <span className="tabular-nums font-medium">
+            {formatQuantity(value)}
+          </span>
+        )
+      },
+      cell: ({ row }) => (
+        <RunningTotalCell value={getFarmerReportRowBagTotal(row.original)} />
+      ),
+    },
+    {
       id: "totalBags",
       accessorFn: (row) => row.runningTotal,
-      header: "Total Bags",
-      meta: { align: "right", numeric: true },
+      header: "Cumulative Total",
+      meta: {
+        align: "right",
+        numeric: true,
+        filterLabel: "Cumulative total",
+      },
       sortingFn: farmerReportNumericSortingFn,
-      aggregationFn: (_, leafRows) =>
-        leafRows.reduce((total, row) => total + row.original.rowBags, 0),
-      aggregatedCell: ({ getValue }) => (
-        <span className="tabular-nums font-medium">
-          {formatQuantity(Number(getValue()))}
-        </span>
-      ),
+      aggregationFn: noGroupAggregation,
+      aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => (
         <RunningTotalCell value={row.original.runningTotal} />
       ),
@@ -320,7 +382,7 @@ function buildFarmerReportColumnsForSizes(
       id: "remarks",
       accessorFn: (row) => row.entry?.remarks?.trim() || "—",
       header: "Remarks",
-      meta: { wrap: true },
+      meta: { wrap: true, filterLabel: "Remarks" },
       sortingFn: "text",
       aggregationFn: noGroupAggregation,
       aggregatedCell: emptyGroupedAggregatedCell,
@@ -347,7 +409,7 @@ export function getFarmerReportColumnsForSizes(
   showCustomMarka = false,
   showStockFilter = false,
 ): ColumnDef<FarmerReportTableRow>[] {
-  const cacheKey = `${orderedSizes.join("\0")}|cm:${showCustomMarka}|sf:${showStockFilter}`
+  const cacheKey = `${orderedSizes.join("\0")}|cm:${showCustomMarka}|sf:${showStockFilter}|rb:1`
   const cached = columnCache.get(cacheKey)
   if (cached) return cached
 

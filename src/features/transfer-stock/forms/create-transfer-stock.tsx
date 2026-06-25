@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { getRouteApi, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import {
   Card,
@@ -42,6 +42,8 @@ import { getLinkDisplayName } from "@/features/people/utils/get-link-display-fie
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import { shouldShowCustomMarka } from "@/features/incoming/utils/incoming-preferences"
+
+const transferRouteApi = getRouteApi("/_authenticated/transfer/")
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
@@ -99,6 +101,8 @@ function TransferStockReviewSheet({
 
 const CreateTransferStock = () => {
   const navigate = useNavigate()
+  const { farmerLinkId, potatoAction } = transferRouteApi.useSearch()
+  const prefillDoneRef = useRef(false)
   const { mutateAsync: createTransferStock } = useCreateTransferStock()
   const preferences = usePreferencesStore((state) => state.preferences)
 
@@ -140,11 +144,11 @@ const CreateTransferStock = () => {
 
   const sortedFromFarmers = useMemo(
     () => filterAndSortOptions(fromFarmerSearch, farmerOptions),
-    [fromFarmerSearch, farmerOptions]
+    [fromFarmerSearch, farmerOptions],
   )
   const sortedToFarmers = useMemo(
     () => filterAndSortOptions(toFarmerSearch, farmerOptions),
-    [toFarmerSearch, farmerOptions]
+    [toFarmerSearch, farmerOptions],
   )
 
   const resetComboboxState = () => {
@@ -159,12 +163,38 @@ const CreateTransferStock = () => {
     onOpenReview: () => setReviewOpen(true),
     onSubmitConfirmed: async (values, items) => {
       try {
-        const payload = buildCreateTransferStockPayload(values, items)
+        let payloadOptions: Parameters<typeof buildCreateTransferStockPayload>[2]
+
+        if (potatoAction && farmerLinkId) {
+          const farmerLink = farmerStorageLinks.find(
+            (link) => link._id === farmerLinkId,
+          )
+          const costPerBag = farmerLink?.costPerBag
+
+          if (!costPerBag || costPerBag <= 0) {
+            toast.error(
+              "Farmer has no valid cost per bag. Update the farmer account before submitting.",
+              { position: "bottom-right" },
+            )
+            throw new Error("Missing cost per bag for potato transfer.")
+          }
+
+          payloadOptions = {
+            potatoAction,
+            costPerBag,
+          }
+        }
+
+        const payload = buildCreateTransferStockPayload(
+          values,
+          items,
+          payloadOptions,
+        )
         const created = await createTransferStock(payload)
 
         toast.success(
           `Transfer #${created.gatePassNo.toLocaleString("en-IN")} created`,
-          { position: "bottom-right" }
+          { position: "bottom-right" },
         )
         setReviewOpen(false)
         form.reset()
@@ -175,12 +205,42 @@ const CreateTransferStock = () => {
           error instanceof Error
             ? error.message
             : "Failed to create transfer stock gate pass",
-          { position: "bottom-right" }
+          { position: "bottom-right" },
         )
         throw error
       }
     },
   })
+
+  useEffect(() => {
+    if (
+      prefillDoneRef.current ||
+      isFarmersLoading ||
+      !farmerLinkId ||
+      !potatoAction
+    ) {
+      return
+    }
+
+    const linkExists = farmerStorageLinks.some((link) => link._id === farmerLinkId)
+    if (!linkExists) {
+      return
+    }
+
+    if (potatoAction === "buy") {
+      form.setFieldValue("fromFarmerStorageLinkId", farmerLinkId)
+    } else {
+      form.setFieldValue("toFarmerStorageLinkId", farmerLinkId)
+    }
+
+    prefillDoneRef.current = true
+  }, [
+    farmerLinkId,
+    potatoAction,
+    isFarmersLoading,
+    farmerStorageLinks,
+    form,
+  ])
 
   const getFarmerLabel = (farmerStorageLinkId: string) =>
     farmerOptions.find((option) => option.id === farmerStorageLinkId)
@@ -202,6 +262,11 @@ const CreateTransferStock = () => {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
       <DaybookBackButton />
+      {potatoAction ? (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Transfer stock for {potatoAction === "buy" ? "Buy Potato" : "Sell Potato"}
+        </div>
+      ) : null}
       <Card className="w-full shadow-sm">
       <CardHeader className="border-b bg-muted/30 pb-6">
         <CardTitle className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">

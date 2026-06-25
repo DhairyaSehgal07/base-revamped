@@ -3,15 +3,23 @@ import {
   type Cell,
   type Column,
   type ColumnDef,
+  type ColumnFiltersState,
+  type ColumnOrderState,
+  type ExpandedState,
   flexRender,
   getCoreRowModel,
   getExpandedRowModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
   getGroupedRowModel,
   getSortedRowModel,
   type GroupingState,
   type OnChangeFn,
   type Row,
   type SortingState,
+  type Table as TanStackTable,
+  type VisibilityState,
   useReactTable,
 } from "@tanstack/react-table"
 import { ChevronRight } from "lucide-react"
@@ -28,6 +36,12 @@ import type {
   FarmerReportSectionMode,
   FarmerReportTableRow,
 } from "@/features/people-report/utils/build-farmer-report-sections"
+import { getStoredFarmerReportColumnState } from "@/features/people-report/utils/report-column-preferences"
+import {
+  advancedReportGlobalFilterFn,
+  type AdvancedReportGlobalFilter,
+  selectedValuesFilterFn,
+} from "@/features/people-report/utils/report-filter-fns"
 import { cn } from "@/lib/utils"
 
 import { farmerReportSortingFns } from "./columns"
@@ -41,19 +55,58 @@ import {
   TABLE_GRID_CLASS,
 } from "./table-styles"
 
-interface DataTableProps {
-  columns: ColumnDef<FarmerReportTableRow>[]
-  data: FarmerReportTableRow[]
-  grouping: GroupingState
-  sorting: SortingState
-  onSortingChange: OnChangeFn<SortingState>
-  sectionMode?: FarmerReportSectionMode
-  flush?: boolean
-}
-
 export const FARMER_REPORT_DEFAULT_SORTING: SortingState = [
   { id: "date", desc: false },
 ]
+
+export type FarmerReportViewState = {
+  columnFilters: ColumnFiltersState
+  columnVisibility: VisibilityState
+  columnOrder: ColumnOrderState
+  grouping: GroupingState
+  globalFilter: AdvancedReportGlobalFilter
+  expanded: ExpandedState
+}
+
+export function createDefaultFarmerReportViewState(
+  columnIds: string[] = [],
+): FarmerReportViewState {
+  const stored = getStoredFarmerReportColumnState(columnIds)
+
+  return {
+    columnFilters: [],
+    columnVisibility: stored.columnVisibility,
+    columnOrder: stored.columnOrder,
+    grouping: [],
+    globalFilter: { logic: "AND", conditions: [] },
+    expanded: {},
+  }
+}
+
+const defaultTableColumn: Partial<ColumnDef<FarmerReportTableRow, unknown>> = {
+  filterFn: selectedValuesFilterFn,
+}
+
+const tableFilterFns = {
+  selectedValues: selectedValuesFilterFn,
+} as const
+
+interface DataTableProps {
+  columns: ColumnDef<FarmerReportTableRow>[]
+  data: FarmerReportTableRow[]
+  sorting: SortingState
+  onSortingChange: OnChangeFn<SortingState>
+  viewState: FarmerReportViewState
+  onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
+  onColumnVisibilityChange: OnChangeFn<VisibilityState>
+  onColumnOrderChange: OnChangeFn<ColumnOrderState>
+  onGroupingChange: OnChangeFn<GroupingState>
+  onGlobalFilterChange: OnChangeFn<AdvancedReportGlobalFilter>
+  onExpandedChange: OnChangeFn<ExpandedState>
+  sectionMode?: FarmerReportSectionMode
+  flush?: boolean
+  onTableReady?: (table: TanStackTable<FarmerReportTableRow>) => void
+}
 
 function renderGroupedCell(
   row: Row<FarmerReportTableRow>,
@@ -203,26 +256,30 @@ function renderPinnedTableRow(
 export function DataTable({
   columns,
   data,
-  grouping,
   sorting,
   onSortingChange,
+  viewState,
+  onColumnFiltersChange,
+  onColumnVisibilityChange,
+  onColumnOrderChange,
+  onGroupingChange,
+  onGlobalFilterChange,
+  onExpandedChange,
   sectionMode = "incoming",
   flush = false,
+  onTableReady,
 }: DataTableProps) {
-  const [expanded, setExpanded] = React.useState<true | Record<string, boolean>>(
-    true,
-  )
   const [isHeaderScrolled, setIsHeaderScrolled] = React.useState(false)
   const [isFooterElevated, setIsFooterElevated] = React.useState(false)
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const scrollRafRef = React.useRef<number | null>(null)
   const isHeaderScrolledRef = React.useRef(false)
   const isFooterElevatedRef = React.useRef(false)
+  const onTableReadyRef = React.useRef(onTableReady)
 
-  React.useEffect(() => {
-    setExpanded(grouping.length > 0 ? true : {})
-  }, [grouping])
+  onTableReadyRef.current = onTableReady
 
+  const { grouping, expanded } = viewState
   const isGroupingActive = grouping.length > 0
 
   const pinnedRows = React.useMemo(
@@ -244,14 +301,29 @@ export function DataTable({
   const table = useReactTable({
     data: groupableData,
     columns,
+    defaultColumn: defaultTableColumn,
+    filterFns: tableFilterFns,
+    globalFilterFn: advancedReportGlobalFilterFn,
     state: {
       sorting,
-      grouping,
-      expanded,
+      grouping: viewState.grouping,
+      expanded: viewState.expanded,
+      columnFilters: viewState.columnFilters,
+      columnVisibility: viewState.columnVisibility,
+      columnOrder: viewState.columnOrder,
+      globalFilter: viewState.globalFilter,
     },
     onSortingChange,
-    onExpandedChange: setExpanded,
+    onColumnFiltersChange,
+    onColumnVisibilityChange,
+    onColumnOrderChange,
+    onGroupingChange,
+    onGlobalFilterChange,
+    onExpandedChange,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     getSortedRowModel: getSortedRowModel(),
     getGroupedRowModel: getGroupedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
@@ -264,6 +336,12 @@ export function DataTable({
   const pinnedTable = useReactTable({
     data: pinnedRows,
     columns,
+    state: {
+      columnVisibility: viewState.columnVisibility,
+      columnOrder: viewState.columnOrder,
+    },
+    onColumnVisibilityChange,
+    onColumnOrderChange,
     getCoreRowModel: getCoreRowModel(),
   })
 
@@ -309,6 +387,10 @@ export function DataTable({
   React.useEffect(() => {
     handleTableScroll()
   }, [handleTableScroll, rows.length, columns.length])
+
+  React.useEffect(() => {
+    onTableReadyRef.current?.(table)
+  }, [table])
 
   return (
     <div

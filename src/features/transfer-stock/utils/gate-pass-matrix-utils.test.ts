@@ -14,6 +14,7 @@ import {
 const samplePass: StorageGatePass = {
   _id: "pass-1",
   farmerStorageLinkId: "link-1",
+  accountNumber: 101,
   gatePassNo: 100,
   manualGatePassNumber: 50,
   date: "2026-03-04T00:00:00.000Z",
@@ -107,6 +108,7 @@ describe("filterStorageGatePasses", () => {
       variety: "K. Jyoti",
       search: "100",
       location: { chamber: "4", floor: "", row: "" },
+      preferences: { customMarka: false, markaType: "GatePass" },
     })
     expect(result).toHaveLength(1)
 
@@ -114,6 +116,23 @@ describe("filterStorageGatePasses", () => {
       variety: "Other",
     })
     expect(noMatch).toHaveLength(0)
+  })
+
+  it("filters by marka using manual parchi or gate pass fallback", () => {
+    const result = filterStorageGatePasses([samplePass], {
+      search: "100/50",
+      preferences: { customMarka: false, markaType: "GatePass" },
+    })
+    expect(result).toHaveLength(1)
+
+    const withManualParchi = filterStorageGatePasses(
+      [{ ...samplePass, manualParchiNumber: "P-99" }],
+      {
+        search: "p-99/50",
+        preferences: { customMarka: false, markaType: "GatePass" },
+      }
+    )
+    expect(withManualParchi).toHaveLength(1)
   })
 })
 

@@ -79,4 +79,26 @@ describe("buildCreateTransferStockPayload", () => {
     const payload = buildCreateTransferStockPayload(values, items)
     expect(payload).not.toHaveProperty("truckNumber")
   })
+
+  it("includes amount and isBuyPotato when potato options are provided", () => {
+    const payload = buildCreateTransferStockPayload(values, items, {
+      potatoAction: "buy",
+      costPerBag: 25,
+    })
+
+    expect(payload.amount).toBe(250)
+    expect(payload.isBuyPotato).toBe(true)
+    expect(payload.isSellPotato).toBeUndefined()
+  })
+
+  it("includes amount and isSellPotato when potato options are provided", () => {
+    const payload = buildCreateTransferStockPayload(values, items, {
+      potatoAction: "sell",
+      costPerBag: 30,
+    })
+
+    expect(payload.amount).toBe(300)
+    expect(payload.isSellPotato).toBe(true)
+    expect(payload.isBuyPotato).toBeUndefined()
+  })
 })

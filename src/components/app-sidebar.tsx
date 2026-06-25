@@ -43,8 +43,10 @@ const coreNavItems: NavItem[] = [
   { name: 'Finances', icon: Wallet, to: '/finances' },
 ];
 
+const defaultReportRoute = '/reports/incoming' as const;
+
 const reportNavItems = [
-  { name: 'Incoming', to: '/reports/incoming' },
+  { name: 'Incoming', to: defaultReportRoute },
   { name: 'Outgoing', to: '/reports/outgoing' },
   { name: 'Transfer Stock', to: '/reports/transfer-stock' },
 ] as const;
@@ -113,16 +115,23 @@ function ReportsNavMenu({ pathname }: { pathname: string }) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
+        asChild
         tooltip="Reports"
         isActive={reportsActive}
         data-state={open ? 'open' : 'closed'}
-        onClick={() => setOpen((current) => !current)}
       >
-        <FileBarChart />
-        <span>Reports</span>
-        <ChevronRight
-          className={`ml-auto size-4 shrink-0 transition-transform duration-200${open ? ' rotate-90' : ''}`}
-        />
+        <Link to={defaultReportRoute} onClick={() => setOpen(true)}>
+          <FileBarChart />
+          <span>Reports</span>
+          <ChevronRight
+            className={`ml-auto size-4 shrink-0 transition-transform duration-200${open ? ' rotate-90' : ''}`}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setOpen((current) => !current);
+            }}
+          />
+        </Link>
       </SidebarMenuButton>
       {open ? (
         <SidebarMenuSub>

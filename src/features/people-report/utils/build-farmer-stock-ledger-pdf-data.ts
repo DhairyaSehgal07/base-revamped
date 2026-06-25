@@ -1,9 +1,9 @@
-import type { GroupingState, SortingState } from "@tanstack/react-table"
+import type { GroupingState, SortingState, Table } from "@tanstack/react-table"
 
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
-import { isIncomingDaybookEntry } from "@/features/daybook/types"
-import { formatDaybookDate, formatQuantity } from "@/features/daybook/utils/format"
+import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "@/features/daybook/types"
+import { formatDaybookDate, formatManualParchi, formatQuantity } from "@/features/daybook/utils/format"
 import type { FarmerGatePassSummaries } from "@/features/people/api/use-farmer-gate-passes"
 import type { PersonDetailSearch } from "@/features/people/search"
 import { personDetailSearchToFarmerDisplay } from "@/features/people/utils/person-detail-search"
@@ -11,14 +11,18 @@ import {
   buildFarmerStockSummary,
   type StockSummaryMatrix,
 } from "@/features/people/utils/build-farmer-stock-summary"
-import type { FarmerReportSections } from "@/features/people-report/utils/build-farmer-report-sections"
-import { splitFarmerReportEntries } from "@/features/people-report/utils/build-farmer-report-sections"
-import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
-import { buildPdfGroupedLedgerItems } from "@/features/people-report/utils/build-farmer-report-pdf-grouped-ledger"
+import {
+  getFarmerReportRowBagTotal,
+  type FarmerReportSections,
+  type FarmerReportTableRow,
+} from "@/features/people-report/utils/build-farmer-report-sections"
+import { buildPdfGroupedLedgerItems, buildPdfGroupedLedgerItemsFromTable } from "@/features/people-report/utils/build-farmer-report-pdf-grouped-ledger"
+import type { LedgerExportColumn } from "@/features/people-report/utils/export-cell-value"
 import { getFarmerReportColumnsForSizes } from "@/features/people-report/components/columns"
 import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import {
   collectUniqueBagSizes,
+  getGatePassTotalBags,
   getGatePassSizeQuantityLines,
   getGatePassVariety,
   orderBagSizes,
@@ -32,10 +36,12 @@ export type PdfLedgerSizeValue =
 export type PdfLedgerRow = {
   date: string
   gatePass: string
+  manualParchi: string
   variety: string
   stockFilter: string
   customMarka: string
   sizes: Record<string, PdfLedgerSizeValue | null>
+  rowBags: string
   total: string
   remarks: string
   isOpeningBalance?: boolean
@@ -85,6 +91,7 @@ export type FarmerStockLedgerPdfData = {
   incomingClosingBalance: number
   outgoingClosingBalance: number
   generatedAt: string
+  exportColumns: LedgerExportColumn[]
 }
 
 function computeIncomingFooterSizes(
@@ -136,6 +143,10 @@ export type BuildFarmerStockLedgerPdfDataInput = {
   sorting?: SortingState
   incomingSorting?: SortingState
   outgoingSorting?: SortingState
+  visibleColumnIds?: string[]
+  exportColumns?: LedgerExportColumn[]
+  incomingTable?: Table<FarmerReportTableRow> | null
+  outgoingTable?: Table<FarmerReportTableRow> | null
   generatedAt?: Date
 }
 
@@ -199,6 +210,29 @@ function getRowCustomMarka(row: FarmerReportTableRow): string {
   return row.entry.customMarka?.trim() || "—"
 }
 
+function computeExportStats(entries: DaybookEntry[]): FarmerStockLedgerPdfData["stats"] {
+  const incoming = entries.filter(isIncomingDaybookEntry)
+  const outgoing = entries.filter(
+    (entry) => isOutgoingDaybookEntry(entry) && entry.isNull !== true,
+  )
+
+  const sumBags = (rows: DaybookEntry[]) =>
+    rows.reduce((total, entry) => total + getGatePassTotalBags(entry), 0)
+
+  return {
+    incomingGatePassCount: incoming.length,
+    incomingBags: sumBags(incoming),
+    incomingInternalBags: sumBags(
+      incoming.filter((entry) => entry.type === "Incoming-transfer"),
+    ),
+    outgoingGatePassCount: outgoing.length,
+    outgoingBags: sumBags(outgoing),
+    outgoingInternalBags: sumBags(
+      outgoing.filter((entry) => entry.type === "Outgoing-transfer"),
+    ),
+  }
+}
+
 export function mapFarmerReportRowToPdfLedger(
   row: FarmerReportTableRow,
   sizeColumns: string[],
@@ -211,10 +245,12 @@ export function mapFarmerReportRowToPdfLedger(
     return {
       date: "Opening Balance",
       gatePass: "—",
+      manualParchi: "—",
       variety: "—",
       stockFilter: "—",
       customMarka: "—",
       sizes,
+      rowBags: formatQuantity(getFarmerReportRowBagTotal(row)),
       total: formatQuantity(row.runningTotal),
       remarks: "—",
       isOpeningBalance: true,
@@ -225,10 +261,12 @@ export function mapFarmerReportRowToPdfLedger(
   return {
     date: formatDaybookDate(entry.date || entry.createdAt),
     gatePass: `#${entry.gatePassNo}`,
+    manualParchi: formatManualParchi(entry.manualParchiNumber),
     variety: getGatePassVariety(entry),
     stockFilter: getRowStockFilter(row),
     customMarka: getRowCustomMarka(row),
     sizes,
+    rowBags: formatQuantity(getFarmerReportRowBagTotal(row)),
     total: formatQuantity(row.runningTotal),
     remarks: entry.remarks?.trim() || "—",
   }
@@ -237,7 +275,7 @@ export function mapFarmerReportRowToPdfLedger(
 export function buildFarmerStockLedgerPdfData({
   entries,
   sections,
-  summaries,
+  summaries: _summaries,
   commodities,
   search,
   showStockFilter = false,
@@ -246,6 +284,10 @@ export function buildFarmerStockLedgerPdfData({
   sorting = FARMER_REPORT_DEFAULT_SORTING,
   incomingSorting,
   outgoingSorting,
+  visibleColumnIds,
+  exportColumns = [],
+  incomingTable,
+  outgoingTable,
   generatedAt = new Date(),
 }: BuildFarmerStockLedgerPdfDataInput): FarmerStockLedgerPdfData {
   const incomingPasses = entries.filter(isIncomingDaybookEntry)
@@ -256,37 +298,61 @@ export function buildFarmerStockLedgerPdfData({
     quantityMode: "current",
   })
 
-  const sizeColumns = orderBagSizes(
+  const allSizeColumns = orderBagSizes(
     collectUniqueBagSizes(entries),
     commodities,
   )
 
+  const exportShowStockFilter =
+    showStockFilter &&
+    (!visibleColumnIds || visibleColumnIds.includes("stockFilter"))
+  const exportShowCustomMarka =
+    showCustomMarka &&
+    (!visibleColumnIds || visibleColumnIds.includes("customMarka"))
+  const sizeColumns = visibleColumnIds
+    ? allSizeColumns.filter((size) =>
+        visibleColumnIds.includes(`size-${size}`),
+      )
+    : allSizeColumns
+
   const columns = getFarmerReportColumnsForSizes(
     sizeColumns,
-    showCustomMarka,
-    showStockFilter,
+    exportShowCustomMarka,
+    exportShowStockFilter,
   )
 
   const resolvedIncomingSorting = incomingSorting ?? sorting
   const resolvedOutgoingSorting = outgoingSorting ?? sorting
 
-  const incomingResult = buildPdfGroupedLedgerItems({
-    rows: sections.incoming,
-    columns,
-    grouping,
-    sorting: resolvedIncomingSorting,
-    sizeColumns,
-  })
+  const incomingResult = incomingTable
+    ? buildPdfGroupedLedgerItemsFromTable(
+        incomingTable,
+        sizeColumns,
+        sections.incoming,
+      )
+    : buildPdfGroupedLedgerItems({
+        rows: sections.incoming,
+        columns,
+        grouping,
+        sorting: resolvedIncomingSorting,
+        sizeColumns,
+      })
 
-  const outgoingResult = buildPdfGroupedLedgerItems({
-    rows: sections.outgoing,
-    columns,
-    grouping,
-    sorting: resolvedOutgoingSorting,
-    sizeColumns,
-  })
+  const outgoingResult = outgoingTable
+    ? buildPdfGroupedLedgerItemsFromTable(
+        outgoingTable,
+        sizeColumns,
+        sections.outgoing,
+      )
+    : buildPdfGroupedLedgerItems({
+        rows: sections.outgoing,
+        columns,
+        grouping,
+        sorting: resolvedOutgoingSorting,
+        sizeColumns,
+      })
 
-  const { incoming, outgoing } = splitFarmerReportEntries(entries)
+  const stats = computeExportStats(entries)
 
   const incomingClosingBalance =
     sections.incoming.length > 0
@@ -300,16 +366,9 @@ export function buildFarmerStockLedgerPdfData({
 
   return {
     farmer: personDetailSearchToFarmerDisplay(search),
-    stats: {
-      incomingGatePassCount: incoming.length,
-      incomingBags: summaries.totalIncomingBags,
-      incomingInternalBags: summaries.totalInternallyTransferredIncomingBags,
-      outgoingGatePassCount: outgoing.length,
-      outgoingBags: summaries.totalOutgoingBags,
-      outgoingInternalBags: summaries.totalInternallyTransferredOutgoingBags,
-    },
-    showStockFilter,
-    showCustomMarka,
+    stats,
+    showStockFilter: exportShowStockFilter,
+    showCustomMarka: exportShowCustomMarka,
     stockSummary,
     sizeColumns,
     incomingLedger: incomingResult.items,
@@ -328,5 +387,6 @@ export function buildFarmerStockLedgerPdfData({
     incomingClosingBalance,
     outgoingClosingBalance,
     generatedAt: formatGeneratedAt(generatedAt),
+    exportColumns,
   }
 }

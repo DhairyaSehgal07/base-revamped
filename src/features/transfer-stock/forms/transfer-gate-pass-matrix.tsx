@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useState } from "react"
+import { Fragment, useCallback, useMemo, useState } from "react"
 import { ClipboardList, MapPin } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,6 +37,8 @@ import {
   slotUnavailableButtonClasses,
   type BagSlotDetail,
 } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { getStorageGatePassLotNo } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
 import { cn } from "@/lib/utils"
 
 /** Checkbox + R. Voucher columns before size lanes. */
@@ -63,7 +65,7 @@ function stickyCheckboxHeadClass() {
 }
 
 function stickyVoucherHeadClass() {
-  return "sticky left-12 z-20 min-w-[5.5rem] border-r border-border bg-muted/50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]"
+  return "sticky left-12 z-20 w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem] border-r border-border bg-muted/50 px-2 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]"
 }
 
 function stickyCheckboxCellClass() {
@@ -71,7 +73,54 @@ function stickyCheckboxCellClass() {
 }
 
 function stickyVoucherCellClass() {
-  return "sticky left-12 z-10 min-w-[5.5rem] border-r border-border bg-background shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)] even:bg-muted/15"
+  return "sticky left-12 z-10 w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem] border-r border-border bg-background px-2 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)] even:bg-muted/15"
+}
+
+function LotNoDisplay({ lotNo }: { lotNo: string }) {
+  if (lotNo === "—") return null
+
+  const slashIndex = lotNo.indexOf("/")
+  if (slashIndex === -1) {
+    return (
+      <span className="truncate font-mono text-xs font-medium tabular-nums text-foreground">
+        {lotNo}
+      </span>
+    )
+  }
+
+  const identifier = lotNo.slice(0, slashIndex)
+  const total = lotNo.slice(slashIndex + 1)
+  const identifierNum = Number(identifier)
+  const totalNum = Number(total)
+
+  return (
+    <span className="font-mono text-xs font-medium tabular-nums text-foreground">
+      {Number.isNaN(identifierNum)
+        ? identifier
+        : identifierNum.toLocaleString("en-IN")}
+      <span className="font-normal text-muted-foreground">
+        {" / "}
+        {Number.isNaN(totalNum) ? total : totalNum.toLocaleString("en-IN")}
+      </span>
+    </span>
+  )
+}
+
+function GatePassVoucherCell({ pass }: { pass: StorageGatePass }) {
+  const preferences = usePreferencesStore((state) => state.preferences)
+  const marka = useMemo(
+    () => getStorageGatePassLotNo(pass, preferences),
+    [pass, preferences]
+  )
+
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="font-mono text-sm font-semibold tabular-nums text-primary">
+        #{pass.gatePassNo.toLocaleString("en-IN")}
+      </span>
+      {marka !== "—" ? <LotNoDisplay lotNo={marka} /> : null}
+    </div>
+  )
 }
 
 function EmptySeat() {
@@ -305,7 +354,7 @@ export function TransferGatePassMatrix({
               </TableHead>
               <TableHead
                 className={cn(
-                  "h-10 px-3 text-muted-foreground",
+                  "h-10 text-muted-foreground",
                   stickyVoucherHeadClass()
                 )}
               >
@@ -361,13 +410,11 @@ export function TransferGatePassMatrix({
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "overflow-visible px-3 py-2.5 align-top",
+                        "overflow-visible py-2.5 align-top",
                         stickyVoucherCellClass()
                       )}
                     >
-                      <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                        #{pass.gatePassNo}
-                      </span>
+                      <GatePassVoucherCell pass={pass} />
                     </TableCell>
                     {visibleSizes.map((sizeName, index) => (
                       <TableCell

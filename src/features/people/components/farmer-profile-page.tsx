@@ -1,9 +1,14 @@
 import { useCallback, useMemo, useState } from "react"
-import { getRouteApi, Link } from "@tanstack/react-router"
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { useLedgers } from "@/features/finances/api/use-ledgers"
+import { DEFAULT_FINANCES_PERIOD } from "@/features/finances/shared/constants"
 import { EditFarmerDialog } from "@/features/people/components/edit-farmer-dialog"
+import { FarmerFinancesDialog } from "@/features/people/components/farmer-finances/farmer-finances-dialog"
 import { FarmerGatePassesSection } from "@/features/people/components/farmer-gate-passes-section"
 import {
   FarmerProfileCard,
@@ -31,9 +36,15 @@ type FarmerProfilePageProps = {
 
 export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
   const navigate = peopleDetailRouteApi.useNavigate()
+  const appNavigate = useNavigate()
   const [editOpen, setEditOpen] = useState(false)
+  const [financesOpen, setFinancesOpen] = useState(false)
   const [bagTotals, setBagTotals] = useState(EMPTY_BAG_TOTALS)
   const [isLoadingTotals, setIsLoadingTotals] = useState(true)
+
+  const showFinances = usePreferencesStore(
+    (s) => s.preferences?.showFinances ?? true,
+  )
 
   const editLink = useMemo(
     () => personDetailSearchToFarmerLink(linkId, search),
@@ -45,6 +56,11 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
     typeof search.accountNumber === "number"
       ? `Account #${search.accountNumber}`
       : "Account"
+
+  const { ledgers: farmerLedgers, isLoading: isLoadingFarmerLedger } = useLedgers({
+    farmerStorageLinkId: linkId,
+  })
+  const farmerLedger = farmerLedgers[0] ?? null
 
   const handleSummariesChange = useCallback(
     (totals: FarmerBagTotals, isLoading: boolean) => {
@@ -74,6 +90,28 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
     })
   }
 
+  const handleFinancialLedgerClick = () => {
+    if (!farmerLedger) {
+      toast.error("No financial ledger found for this farmer.")
+      return
+    }
+
+    void appNavigate({
+      to: "/finances/ledgers/$id",
+      params: { id: farmerLedger.id },
+      search: {
+        period: DEFAULT_FINANCES_PERIOD,
+        from: "people",
+        farmerId: linkId,
+        name: search.name,
+        mobileNumber: search.mobileNumber,
+        accountNumber: search.accountNumber,
+        address: search.address,
+        costPerBag: search.costPerBag,
+      },
+    })
+  }
+
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <div className="flex items-center gap-3">
@@ -93,8 +131,12 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
         address={search.address}
         bagTotals={bagTotals}
         isLoadingTotals={isLoadingTotals}
+        showFinances={showFinances}
         onEditClick={editLink ? () => setEditOpen(true) : undefined}
+        onFinancesClick={() => setFinancesOpen(true)}
         onStockLedgerClick={handleStockLedgerClick}
+        onFinancialLedgerClick={handleFinancialLedgerClick}
+        isFinancialLedgerDisabled={isLoadingFarmerLedger || !farmerLedger}
       />
 
       {editLink ? (
@@ -103,6 +145,15 @@ export function FarmerProfilePage({ linkId, search }: FarmerProfilePageProps) {
           onOpenChange={setEditOpen}
           link={editLink}
           onSuccess={handleEditSuccess}
+        />
+      ) : null}
+
+      {showFinances ? (
+        <FarmerFinancesDialog
+          open={financesOpen}
+          onOpenChange={setFinancesOpen}
+          farmerName={displayName}
+          linkId={linkId}
         />
       ) : null}
 

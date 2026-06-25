@@ -13,7 +13,10 @@ export type DistributionItem = {
 }
 
 export type AnalyticsDistribution = {
+  /** Grouped slices for the pie chart (small slices rolled into Others). */
   items: DistributionItem[]
+  /** Full per-label breakdown for the summary table. */
+  tableItems: DistributionItem[]
   total: number
   chartConfig: ChartConfig
 }
@@ -76,6 +79,25 @@ function clubSmallSlices(
   return [...main, { label: OTHERS_LABEL, bags: othersBags }]
 }
 
+function toDistributionItem(
+  entry: { label: string; bags: number },
+  index: number,
+  total: number,
+  key: string,
+): DistributionItem {
+  const colorIndex = (index % CHART_COLOR_COUNT) + 1
+
+  return {
+    key,
+    label: entry.label,
+    bags: entry.bags,
+    share: (entry.bags / total) * 100,
+    fill: `var(--chart-${colorIndex})`,
+    shortLabel:
+      entry.label.length > 16 ? `${entry.label.slice(0, 14).trim()}…` : entry.label,
+  }
+}
+
 function toDistributionItems(
   entries: Array<{ label: string; bags: number }>,
 ): AnalyticsDistribution {
@@ -83,7 +105,7 @@ function toDistributionItems(
   const total = filtered.reduce((sum, entry) => sum + entry.bags, 0)
 
   if (total <= 0) {
-    return { items: [], total: 0, chartConfig: {} }
+    return { items: [], tableItems: [], total: 0, chartConfig: {} }
   }
 
   const sorted = [...filtered].sort((a, b) => {
@@ -93,25 +115,31 @@ function toDistributionItems(
   })
 
   const grouped = clubSmallSlices(sorted, total)
-
   const { config, keys } = buildChartConfig(grouped.map((entry) => entry.label))
 
-  const items: DistributionItem[] = grouped.map((entry, index) => {
-    const key = keys[index]
-    const colorIndex = (index % CHART_COLOR_COUNT) + 1
+  const items: DistributionItem[] = grouped.map((entry, index) =>
+    toDistributionItem(entry, index, total, keys[index]),
+  )
+
+  const chartItemByLabel = new Map(items.map((item) => [item.label, item]))
+  const othersFill = chartItemByLabel.get(OTHERS_LABEL)?.fill
+
+  const tableLabels = sorted.map((entry) => entry.label)
+  const { keys: tableKeys } = buildChartConfig(tableLabels)
+
+  const tableItems: DistributionItem[] = sorted.map((entry, index) => {
+    const fill =
+      chartItemByLabel.get(entry.label)?.fill ??
+      othersFill ??
+      `var(--chart-${(index % CHART_COLOR_COUNT) + 1})`
 
     return {
-      key,
-      label: entry.label,
-      bags: entry.bags,
-      share: (entry.bags / total) * 100,
-      fill: `var(--chart-${colorIndex})`,
-      shortLabel:
-        entry.label.length > 16 ? `${entry.label.slice(0, 14).trim()}…` : entry.label,
+      ...toDistributionItem(entry, index, total, tableKeys[index]),
+      fill,
     }
   })
 
-  return { items, total, chartConfig: config }
+  return { items, tableItems, total, chartConfig: config }
 }
 
 export function buildVarietyDistribution(

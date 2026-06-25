@@ -229,10 +229,11 @@ const RAW_MOCK_STORAGE_GATE_PASSES = [
 function normalizePass(
   raw: (typeof RAW_MOCK_STORAGE_GATE_PASSES)[number]
 ): StorageGatePass {
-  const link = raw.farmerStorageLinkId as { _id: string }
+  const link = raw.farmerStorageLinkId as { _id: string; accountNumber: number }
   return {
     _id: raw._id,
     farmerStorageLinkId: link._id,
+    accountNumber: link.accountNumber,
     gatePassNo: raw.gatePassNo,
     manualGatePassNumber: raw.manualGatePassNumber,
     date: raw.date,

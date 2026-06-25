@@ -13,9 +13,13 @@ import {
 import type {
   FarmerStockLedgerPdfData,
   PdfLedgerItem,
-  PdfLedgerLeafRow,
-  PdfLedgerSizeValue,
 } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data";
+import {
+  getExportLayout,
+  getGroupCellValue,
+  getLeafCellValue,
+} from "@/features/people-report/utils/build-farmer-stock-ledger-excel";
+import type { LedgerExportColumn } from "@/features/people-report/utils/export-cell-value";
 import type { StockSummaryMatrix } from "@/features/people/utils/build-farmer-stock-summary";
 
 Font.register({
@@ -515,32 +519,173 @@ function getSummarySizeWidth(sizeCount: number): string {
   return `${remaining / sizeCount}%`;
 }
 
-function getLedgerLayout(
-  sizeCount: number,
-  showStockFilter: boolean,
-  showCustomMarka: boolean,
-) {
-  const date = 9;
-  const gatePass = 7;
-  const variety = 11;
-  const stockFilter = showStockFilter ? 8 : 0;
-  const customMarka = showCustomMarka ? 8 : 0;
-  const total = 7;
-  const remarks = 9;
-  const fixed = date + gatePass + variety + stockFilter + customMarka + total + remarks;
-  const sizeWidth = sizeCount > 0 ? (100 - fixed) / sizeCount : 0;
+const LEDGER_COLUMN_WIDTH_WEIGHTS: Record<string, number> = {
+  date: 9,
+  gatePassNo: 6,
+  manualParchiNumber: 6,
+  variety: 10,
+  stockFilter: 8,
+  customMarka: 8,
+  rowBags: 7,
+  totalBags: 8,
+  remarks: 9,
+};
 
-  return {
-    date: `${date}%`,
-    gatePass: `${gatePass}%`,
-    variety: `${variety}%`,
-    stockFilter: showStockFilter ? `${stockFilter}%` : null,
-    customMarka: showCustomMarka ? `${customMarka}%` : null,
-    size: `${sizeWidth}%`,
-    total: `${total}%`,
-    remarks: `${remarks}%`,
-    leading: `${date + gatePass + variety + stockFilter + customMarka}%`,
-  };
+function getDynamicColumnWidths(
+  exportColumns: LedgerExportColumn[],
+): Record<string, string> {
+  const sizeColumns = exportColumns.filter((column) =>
+    column.id.startsWith("size-"),
+  );
+  const fixedWidth = exportColumns
+    .filter((column) => !column.id.startsWith("size-"))
+    .reduce(
+      (sum, column) => sum + (LEDGER_COLUMN_WIDTH_WEIGHTS[column.id] ?? 8),
+      0,
+    );
+  const sizeWidth =
+    sizeColumns.length > 0 ? (100 - fixedWidth) / sizeColumns.length : 0;
+
+  return Object.fromEntries(
+    exportColumns.map((column) => [
+      column.id,
+      column.id.startsWith("size-")
+        ? `${sizeWidth}%`
+        : `${LEDGER_COLUMN_WIDTH_WEIGHTS[column.id] ?? 8}%`,
+    ]),
+  );
+}
+
+function formatLedgerCellDisplay(value: string | number): string {
+  if (value === "" || value === "—") return "—";
+  if (typeof value === "number") return value.toLocaleString("en-IN");
+  return value;
+}
+
+function renderLedgerDataCell(
+  value: string | number,
+  column: LedgerExportColumn,
+  columnIndex: number,
+  columnWidths: Record<string, string>,
+  options: {
+    isGroup?: boolean;
+    isOpeningBalance?: boolean;
+    depthPadding?: number;
+  } = {},
+) {
+  const width = columnWidths[column.id] ?? "8%";
+  const isNumeric =
+    column.id.startsWith("size-") ||
+    column.id === "rowBags" ||
+    column.id === "totalBags";
+  const depthPadding =
+    columnIndex === 0 && options.depthPadding ? options.depthPadding : 0;
+
+  if (typeof value === "string" && value.includes("\n")) {
+    const [main, sub] = value.split("\n");
+    return (
+      <View
+        key={column.id}
+        style={{
+          width,
+          alignItems: isNumeric ? "center" : "flex-start",
+          paddingLeft: depthPadding,
+        }}
+      >
+        <View style={styles.stackedCell}>
+          <Text style={styles.tableCellBold}>{main}</Text>
+          <Text style={styles.subText}>{sub}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const display = formatLedgerCellDisplay(value);
+  const textStyle =
+    columnIndex === 0 && options.isGroup
+      ? styles.groupLabel
+      : columnIndex === 0 && options.isOpeningBalance
+        ? styles.tableCellAccent
+        : column.id === "gatePassNo" || column.id === "manualParchiNumber"
+          ? styles.tableCellMono
+          : column.id === "variety" ||
+              column.id === "rowBags" ||
+              column.id === "totalBags"
+            ? styles.tableCellBold
+            : display === "—"
+              ? styles.tableCellMuted
+              : styles.tableCellData;
+
+  return (
+    <View
+      key={column.id}
+      style={{
+        width,
+        alignItems: isNumeric ? "center" : "flex-start",
+        paddingLeft: depthPadding,
+        paddingRight: column.id === "remarks" ? 6 : 0,
+      }}
+    >
+      <Text style={textStyle}>{display}</Text>
+    </View>
+  );
+}
+
+function renderLedgerHeaderCell(
+  column: LedgerExportColumn,
+  columnWidths: Record<string, string>,
+) {
+  const width = columnWidths[column.id] ?? "8%";
+  const isNumeric =
+    column.id.startsWith("size-") ||
+    column.id === "rowBags" ||
+    column.id === "totalBags";
+  const isGatePass = column.id === "gatePassNo";
+  const isManualParchi = column.id === "manualParchiNumber";
+  const isRowBags = column.id === "rowBags";
+  const isCumulativeTotal = column.id === "totalBags";
+
+  return (
+    <View
+      key={column.id}
+      style={{
+        width,
+        alignItems: isNumeric ? "center" : "flex-start",
+        paddingLeft: column.id === "date" ? 6 : 0,
+        paddingRight: column.id === "remarks" ? 6 : 0,
+      }}
+    >
+      {isGatePass ? (
+        <>
+          <Text style={styles.tableCellHeader}>Gate</Text>
+          <Text style={styles.tableCellHeader}>Pass</Text>
+        </>
+      ) : isManualParchi ? (
+        <>
+          <Text style={styles.tableCellHeader}>Manual</Text>
+          <Text style={styles.tableCellHeader}>Parchi</Text>
+        </>
+      ) : isRowBags ? (
+        <View style={styles.stackedHeaderCell}>
+          <Text style={styles.tableCellHeaderCenter}>Total</Text>
+          <Text style={styles.tableCellHeaderCenter}>Bags</Text>
+        </View>
+      ) : isCumulativeTotal ? (
+        <View style={styles.stackedHeaderCell}>
+          <Text style={styles.tableCellHeaderCenter}>Cumulative</Text>
+          <Text style={styles.tableCellHeaderCenter}>Total</Text>
+        </View>
+      ) : (
+        <Text
+          style={
+            isNumeric ? styles.tableCellHeaderCenter : styles.tableCellHeader
+          }
+        >
+          {column.header}
+        </Text>
+      )}
+    </View>
+  );
 }
 
 function renderSummaryValue(val: number) {
@@ -622,127 +767,30 @@ function SummaryTable({
   );
 }
 
-function renderSizeCell(value: PdfLedgerSizeValue | null | undefined) {
-  if (!value) {
-    return <Text style={styles.tableCellMuted}>—</Text>;
-  }
-
-  if (value.type === "stacked") {
-    return (
-      <View style={styles.stackedCell}>
-        <Text style={styles.tableCellBold}>{value.main}</Text>
-        <Text style={styles.subText}>{value.sub}</Text>
-      </View>
-    );
-  }
-
-  return <Text style={styles.tableCellData}>{value.value}</Text>;
-}
-
-function renderGroupRow(row: Extract<PdfLedgerItem, { kind: "group" }>) {
-  const depthPadding = 8 + row.depth * 10;
-
-  return (
-    <View
-      style={{
-        width: "100%",
-        paddingLeft: depthPadding,
-        borderLeftWidth: 2,
-        borderLeftColor: "#d4d4d8",
-      }}
-    >
-      <Text style={styles.groupLabel}>{row.label}</Text>
-    </View>
-  );
-}
-
-function renderSuppressedCell() {
-  return <Text style={styles.tableCellMuted}> </Text>;
-}
-
-function renderLeafRow(
-  row: PdfLedgerLeafRow,
-  layout: ReturnType<typeof getLedgerLayout>,
-  sizeColumns: string[],
-  showStockFilter: boolean,
-  showCustomMarka: boolean,
-) {
-  const depthPadding = 6 + row.depth * 8;
-  const suppressVariety = row.suppressedGroupColumns.includes("variety");
-  const suppressStockFilter = row.suppressedGroupColumns.includes("stockFilter");
-
-  return (
-    <>
-      <View style={{ width: layout.date, paddingLeft: depthPadding }}>
-        <Text
-          style={
-            row.isOpeningBalance ? styles.tableCellAccent : styles.tableCellData
-          }
-        >
-          {row.date}
-        </Text>
-      </View>
-      <View style={{ width: layout.gatePass }}>
-        <Text style={styles.tableCellMono}>{row.gatePass}</Text>
-      </View>
-      <View style={{ width: layout.variety }}>
-        {suppressVariety ? (
-          renderSuppressedCell()
-        ) : (
-          <Text style={styles.tableCellBold}>{row.variety}</Text>
-        )}
-      </View>
-      {showStockFilter ? (
-        <View style={{ width: layout.stockFilter! }}>
-          {suppressStockFilter ? (
-            renderSuppressedCell()
-          ) : (
-            <Text style={styles.tableCellData}>{row.stockFilter}</Text>
-          )}
-        </View>
-      ) : null}
-      {showCustomMarka ? (
-        <View style={{ width: layout.customMarka! }}>
-          <Text style={styles.tableCellData}>{row.customMarka}</Text>
-        </View>
-      ) : null}
-      {sizeColumns.map((size) => (
-        <View key={size} style={{ width: layout.size, alignItems: "center" }}>
-          {renderSizeCell(row.sizes[size])}
-        </View>
-      ))}
-      <View style={{ width: layout.total, alignItems: "center" }}>
-        <Text style={styles.tableCellBold}>{row.total}</Text>
-      </View>
-      <View style={{ width: layout.remarks, paddingRight: 6 }}>
-        <Text style={styles.tableCellData}>{row.remarks}</Text>
-      </View>
-    </>
-  );
-}
+type LedgerExportContext = Pick<
+  FarmerStockLedgerPdfData,
+  "exportColumns" | "sizeColumns" | "showStockFilter" | "showCustomMarka"
+>;
 
 function LedgerTable({
   data,
-  sizeColumns,
+  ledgerExport,
   footerLabel,
   footerSizeTotals,
   closingBalance,
-  showStockFilter,
-  showCustomMarka,
+  rowBagsTotal,
 }: {
   data: PdfLedgerItem[];
-  sizeColumns: string[];
+  ledgerExport: LedgerExportContext;
   footerLabel: string;
   footerSizeTotals: Record<string, number>;
   closingBalance: number;
-  showStockFilter: boolean;
-  showCustomMarka: boolean;
+  rowBagsTotal: number;
 }) {
-  const layout = getLedgerLayout(
-    sizeColumns.length,
-    showStockFilter,
-    showCustomMarka,
+  const { exportColumns } = getExportLayout(
+    ledgerExport as FarmerStockLedgerPdfData,
   );
+  const columnWidths = getDynamicColumnWidths(exportColumns);
 
   const getRowStyle = (row: PdfLedgerItem, index: number) => {
     if (row.kind === "group") {
@@ -771,74 +819,58 @@ function LedgerTable({
   return (
     <View style={styles.table}>
       <View style={styles.tableHeaderRow}>
-        <View style={{ width: layout.date, paddingLeft: 6 }}>
-          <Text style={styles.tableCellHeader}>Date</Text>
-        </View>
-        <View style={{ width: layout.gatePass }}>
-          <Text style={styles.tableCellHeader}>Gate</Text>
-          <Text style={styles.tableCellHeader}>Pass</Text>
-        </View>
-        <View style={{ width: layout.variety }}>
-          <Text style={styles.tableCellHeader}>Variety</Text>
-        </View>
-        {showStockFilter ? (
-          <View style={{ width: layout.stockFilter! }}>
-            <Text style={styles.tableCellHeader}>Filter</Text>
-          </View>
-        ) : null}
-        {showCustomMarka ? (
-          <View style={{ width: layout.customMarka! }}>
-            <Text style={styles.tableCellHeader}>Marka</Text>
-          </View>
-        ) : null}
-        {sizeColumns.map((size) => (
-          <View key={size} style={{ width: layout.size, alignItems: "center" }}>
-            <Text style={styles.tableCellHeaderCenter}>{size}</Text>
-          </View>
-        ))}
-        <View style={{ width: layout.total, alignItems: "center" }}>
-          <View style={styles.stackedHeaderCell}>
-            <Text style={styles.tableCellHeaderCenter}>Total</Text>
-            <Text style={styles.tableCellHeaderCenter}>Bags</Text>
-          </View>
-        </View>
-        <View style={{ width: layout.remarks, paddingRight: 6 }}>
-          <Text style={styles.tableCellHeader}>Remarks</Text>
-        </View>
+        {exportColumns.map((column) =>
+          renderLedgerHeaderCell(column, columnWidths),
+        )}
       </View>
 
       {data.map((row, index) => (
         <View key={getRowKey(row, index)} style={getRowStyle(row, index)}>
-          {row.kind === "group"
-            ? renderGroupRow(row)
-            : renderLeafRow(row, layout, sizeColumns, showStockFilter, showCustomMarka)}
+          {exportColumns.map((column, columnIndex) => {
+            const depthPadding =
+              row.kind === "group"
+                ? 8 + row.depth * 10
+                : 6 + row.depth * 8;
+            const value =
+              row.kind === "group"
+                ? getGroupCellValue(row, column, columnIndex)
+                : getLeafCellValue(row, column, columnIndex);
+
+            return renderLedgerDataCell(value, column, columnIndex, columnWidths, {
+              isGroup: row.kind === "group",
+              isOpeningBalance:
+                row.kind === "leaf" ? row.isOpeningBalance : false,
+              depthPadding,
+            });
+          })}
         </View>
       ))}
 
       {data.length > 0 ? (
         <View style={[styles.totalsRow, styles.highlightFooterRow]}>
-          <View style={{ width: layout.leading, paddingLeft: 9 }}>
-            <Text style={styles.totalsLabel}>{footerLabel}</Text>
-          </View>
-          {sizeColumns.map((size) => {
-            const value = footerSizeTotals[size] ?? 0
-            return (
-              <View
-                key={size}
-                style={{ width: layout.size, alignItems: "center" }}
-              >
-                <Text style={styles.totalsSizeValue}>
-                  {value !== 0 ? value.toLocaleString("en-IN") : "—"}
-                </Text>
-              </View>
-            )
+          {exportColumns.map((column, columnIndex) => {
+            let value: string | number = "";
+
+            if (columnIndex === 0) {
+              value = footerLabel;
+            } else if (column.id.startsWith("size-")) {
+              const size = column.id.replace(/^size-/, "");
+              const sizeTotal = footerSizeTotals[size] ?? 0;
+              value = sizeTotal !== 0 ? sizeTotal : "—";
+            } else if (column.id === "rowBags") {
+              value = rowBagsTotal > 0 ? rowBagsTotal : "—";
+            } else if (column.id === "totalBags") {
+              value = closingBalance;
+            }
+
+            return renderLedgerDataCell(
+              value,
+              column,
+              columnIndex,
+              columnWidths,
+              { isGroup: columnIndex === 0 },
+            );
           })}
-          <View style={{ width: layout.total, alignItems: "center" }}>
-            <Text style={styles.totalsValue}>
-              {closingBalance.toLocaleString("en-IN")}
-            </Text>
-          </View>
-          <View style={{ width: layout.remarks }} />
         </View>
       ) : null}
     </View>
@@ -899,6 +931,7 @@ function FarmerStockLedgerPage({
   stats,
   stockSummary,
   sizeColumns,
+  exportColumns,
   incomingLedger,
   outgoingLedger,
   incomingFooterSizes,
@@ -910,6 +943,12 @@ function FarmerStockLedgerPage({
   generatedAt,
 }: FarmerStockLedgerReportProps) {
   const farmerAddressLines = farmer.address.split("\n").join("\n");
+  const ledgerExport: LedgerExportContext = {
+    exportColumns,
+    sizeColumns,
+    showStockFilter,
+    showCustomMarka,
+  };
 
   return (
     <Page size="A4" orientation="landscape" style={styles.page}>
@@ -1000,12 +1039,11 @@ function FarmerStockLedgerPage({
       <View style={styles.ledgerTableSection}>
         <LedgerTable
           data={incomingLedger}
-          sizeColumns={sizeColumns}
+          ledgerExport={ledgerExport}
           footerLabel="Total"
           footerSizeTotals={incomingFooterSizes}
           closingBalance={incomingClosingBalance}
-          showStockFilter={showStockFilter}
-          showCustomMarka={showCustomMarka}
+          rowBagsTotal={stats.incomingBags}
         />
       </View>
 
@@ -1016,12 +1054,11 @@ function FarmerStockLedgerPage({
       </View>
       <LedgerTable
         data={outgoingLedger}
-        sizeColumns={sizeColumns}
+        ledgerExport={ledgerExport}
         footerLabel="Closing Balance"
         footerSizeTotals={outgoingFooterSizes}
         closingBalance={outgoingClosingBalance}
-        showStockFilter={showStockFilter}
-        showCustomMarka={showCustomMarka}
+        rowBagsTotal={stats.outgoingBags}
       />
 
       <View style={styles.footer} fixed>

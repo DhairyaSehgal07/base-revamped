@@ -43,10 +43,12 @@ type FarmerProfileCardProps = {
   address?: string
   bagTotals?: FarmerBagTotals
   isLoadingTotals?: boolean
+  showFinances?: boolean
   onEditClick?: () => void
   onFinancesClick?: () => void
   onStockLedgerClick?: () => void
   onFinancialLedgerClick?: () => void
+  isFinancialLedgerDisabled?: boolean
 }
 
 const bagCountFormatter = new Intl.NumberFormat("en-IN")
@@ -114,18 +116,25 @@ export function FarmerProfileCard({
   address,
   bagTotals = PLACEHOLDER_BAG_TOTALS,
   isLoadingTotals = false,
+  showFinances = true,
   onEditClick,
   onFinancesClick,
   onStockLedgerClick,
   onFinancialLedgerClick,
+  isFinancialLedgerDisabled = false,
 }: FarmerProfileCardProps) {
   const actions = [
-    { label: "Finances", icon: Wallet, onClick: onFinancesClick },
-    {
-      label: "View Financial Ledger",
-      icon: BookOpen,
-      onClick: onFinancialLedgerClick,
-    },
+    ...(showFinances
+      ? [
+          { label: "Finances", icon: Wallet, onClick: onFinancesClick },
+          {
+            label: "View Financial Ledger",
+            icon: BookOpen,
+            onClick: onFinancialLedgerClick,
+            disabled: isFinancialLedgerDisabled,
+          },
+        ]
+      : []),
     { label: "View Stock Ledger", icon: Boxes, onClick: onStockLedgerClick },
   ]
 
@@ -200,6 +209,7 @@ export function FarmerProfileCard({
               variant="outline"
               size="sm"
               className="gap-1.5"
+              disabled={action.disabled}
               onClick={action.onClick}
             >
               <Icon className="text-primary" aria-hidden />

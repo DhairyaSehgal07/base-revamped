@@ -56,7 +56,8 @@ export function useTransferGatePassMatrix({
   })
   const [gatePassSearch, setGatePassSearch] = useState("")
 
-  const commodities = usePreferencesStore((state) => state.preferences?.commodities ?? [])
+  const preferences = usePreferencesStore((state) => state.preferences)
+  const commodities = preferences?.commodities ?? []
 
   const preferredSizeOrder = useMemo(
     () => getPreferredBagSizeOrderForTransfer(commodities, varietyFilter),
@@ -79,8 +80,9 @@ export function useTransferGatePassMatrix({
         variety: varietyFilter,
         search: gatePassSearch,
         location: locationFilters,
+        preferences,
       }),
-    [allPasses, varietyFilter, gatePassSearch, locationFilters]
+    [allPasses, varietyFilter, gatePassSearch, locationFilters, preferences]
   )
 
   const tableSizes = useMemo(

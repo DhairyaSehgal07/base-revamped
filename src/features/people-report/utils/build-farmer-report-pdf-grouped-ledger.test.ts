@@ -337,6 +337,8 @@ describe("buildPdfGroupedLedgerItems", () => {
     expect(groupRow).toMatchObject({
       rowBagsTotal: 140,
     })
+    expect(leafRows[0]?.rowBags).toBe("100")
+    expect(leafRows[1]?.rowBags).toBe("40")
     expect(leafRows[0]?.total).toBe("100")
     expect(leafRows[1]?.total).toBe("140")
   })

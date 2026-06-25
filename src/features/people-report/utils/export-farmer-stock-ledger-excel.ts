@@ -9,6 +9,7 @@ export type ExportFarmerStockLedgerExcelInput = BuildFarmerStockLedgerExcelPacka
 
 export {
   buildFarmerStockLedgerExcelPackage,
+  buildFarmerStockLedgerPreviewData,
   getExportDateLabel,
   hasFarmerStockLedgerExportRows,
 } from "./build-farmer-stock-ledger-excel"

@@ -10,9 +10,5 @@ export function FarmerReportDocument({
   linkId,
   search,
 }: FarmerReportDocumentProps) {
-  return (
-    <div className="mx-auto w-full max-w-7xl">
-      <FarmerReportGatePassesSection linkId={linkId} search={search} />
-    </div>
-  )
+  return <FarmerReportGatePassesSection linkId={linkId} search={search} />
 }

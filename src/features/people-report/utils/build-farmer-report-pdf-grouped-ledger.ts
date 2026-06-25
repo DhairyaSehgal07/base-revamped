@@ -8,11 +8,13 @@ import {
   type GroupingState,
   type Row,
   type SortingState,
+  type Table,
 } from "@tanstack/react-table"
 
 import { farmerReportSortingFns } from "@/features/people-report/components/columns"
 import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import { collectExportRows } from "@/features/people-report/utils/export-cell-value"
 import {
   mapFarmerReportRowToPdfLedger,
   type PdfLedgerGroupRow,
@@ -54,7 +56,7 @@ function mapTableRowToPdfItem(
         return [size, Number.isFinite(value) && value > 0 ? value : 0]
       }),
     ) as Record<string, number>
-    const rowBagsTotal = Number(row.getValue("totalBags"))
+    const rowBagsTotal = Number(row.getValue("rowBags"))
 
     const groupRow: PdfLedgerGroupRow = {
       kind: "group",
@@ -165,6 +167,30 @@ export function buildPdfGroupedLedgerItems({
     sizeColumns,
     grouping,
   )
+
+  return { openingBalanceRows, items }
+}
+
+export function buildPdfGroupedLedgerItemsFromTable(
+  table: Table<FarmerReportTableRow>,
+  sizeColumns: string[],
+  sectionRows: FarmerReportTableRow[],
+): BuildPdfGroupedLedgerItemsResult {
+  const grouping = table.getState().grouping
+  const isGroupingActive = grouping.length > 0
+
+  const openingBalanceRows: PdfLedgerLeafRow[] = isGroupingActive
+    ? sectionRows
+        .filter((row) => row.kind === "opening-balance")
+        .map((row) => ({
+          ...mapFarmerReportRowToPdfLedger(row, sizeColumns),
+          kind: "leaf" as const,
+          depth: 0,
+          suppressedGroupColumns: [],
+        }))
+    : []
+
+  const items = flattenTableRows(collectExportRows(table), sizeColumns, grouping)
 
   return { openingBalanceRows, items }
 }

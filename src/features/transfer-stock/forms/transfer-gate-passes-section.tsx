@@ -114,11 +114,11 @@ export function TransferGatePassesSection({
           <Search className="size-4" aria-hidden />
         </InputGroupAddon>
         <InputGroupInput
-          placeholder="Search by gate pass or manual parchi number"
+          placeholder="Search by gate pass, manual parchi, or lot number"
           value={matrix.gatePassSearch}
           onChange={(e) => matrix.setGatePassSearch(e.target.value)}
           className="text-base sm:text-sm"
-          aria-label="Search gate passes"
+          aria-label="Search gate passes by voucher, manual parchi, or lot number"
         />
       </InputGroup>
 

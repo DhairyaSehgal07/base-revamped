@@ -1,6 +1,8 @@
-import type { GroupingState } from "@tanstack/react-table"
+import type { GroupingState, Table } from "@tanstack/react-table"
 
 import { parseDateParam } from "@/features/people/search"
+import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import { buildFilterSummaryLines } from "@/features/people-report/utils/export-cell-value"
 import {
   FARMER_REPORT_GROUP_COLUMN_IDS,
   type FarmerReportGroupColumnId,
@@ -63,16 +65,22 @@ export function buildFarmerReportFilterSummaryLines({
   appliedFrom,
   appliedTo,
   grouping,
+  viewTable,
 }: {
   appliedFrom?: string
   appliedTo?: string
   grouping: GroupingState
+  viewTable?: Table<FarmerReportTableRow> | null
 }): string[] {
   const lines = [buildFarmerReportDateRangeSummary(appliedFrom, appliedTo)]
-  const groupingSummary = buildFarmerReportGroupingSummary(grouping)
 
-  if (groupingSummary) {
-    lines.push(groupingSummary)
+  if (viewTable) {
+    lines.push(...buildFilterSummaryLines(viewTable))
+  } else {
+    const groupingSummary = buildFarmerReportGroupingSummary(grouping)
+    if (groupingSummary) {
+      lines.push(groupingSummary)
+    }
   }
 
   return lines

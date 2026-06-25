@@ -11,9 +11,11 @@ export type StorageGatePassBagSlot = {
 export type StorageGatePass = {
   _id: string
   farmerStorageLinkId: string
+  accountNumber: number
   gatePassNo: number
   manualGatePassNumber?: number
   manualParchiNumber?: string | null
+  customMarka?: string | null
   date: string
   variety: string
   storageCategory: string
