@@ -39,6 +39,7 @@ import {
   countIncomingReportSearchMatches,
   createIncomingReportSearchIndex,
 } from "./utils/report-search"
+import { buildIncomingReportPdfData } from "./utils/build-incoming-report-pdf-data"
 
 const DEFAULT_REPORT_PARAMS = {} satisfies IncomingGatePassReportParams
 
@@ -237,6 +238,21 @@ const IncomingReportPage = () => {
     setQuantityMode(value as IncomingQuantityMode)
   }, [])
 
+  const getPdfData = useCallback(() => {
+    const reportTable = reportTableRef.current
+    if (!reportTable) return null
+
+    if (reportTable.getFilteredRowModel().rows.length === 0) return null
+
+    return buildIncomingReportPdfData({
+      table: reportTable,
+      quantityMode,
+      reportTitle: "Incoming Report",
+      dateFrom,
+      dateTo,
+    })
+  }, [dateFrom, dateTo, quantityMode])
+
   const reportTable = isReportTableReady ? reportTableRef.current : null
   const isSearchPending = searchQuery !== deferredSearchQuery
 
@@ -294,6 +310,8 @@ const IncomingReportPage = () => {
           isExporting={isExporting}
           onPreview={handlePreview}
           onExportExcel={handleExportExcel}
+          getPdfData={getPdfData}
+          pdfDisabled={isLoading || !reportTable}
           showViewFilters={showViewFilters}
         />
       </div>

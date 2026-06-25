@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { formatDateParam, parseDateParam } from "@/features/people/search"
 import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
+import { GatePassReportPdfButton } from "@/lib/gate-pass-report-pdf/gate-pass-report-pdf-button"
+import type { GatePassReportPdfData } from "@/lib/gate-pass-report-pdf/types"
 import { cn } from "@/lib/utils"
 
 import { ViewFiltersSheet } from "./view-filters"
@@ -26,6 +28,8 @@ export interface ReportToolbarProps {
   isExporting?: boolean
   onPreview?: () => void
   onExportExcel?: () => void
+  getPdfData: () => GatePassReportPdfData | null
+  pdfDisabled?: boolean
   showViewFilters?: boolean
   className?: string
 }
@@ -46,6 +50,8 @@ export function ReportToolbar({
   isExporting = false,
   onPreview,
   onExportExcel,
+  getPdfData,
+  pdfDisabled = false,
   showViewFilters = false,
   className,
 }: ReportToolbarProps) {
@@ -126,6 +132,12 @@ export function ReportToolbar({
           {showViewFilters && table ? (
             <ViewFiltersSheet table={table} />
           ) : null}
+
+          <GatePassReportPdfButton
+            getPdfData={getPdfData}
+            disabled={pdfDisabled}
+            variant="outline"
+          />
 
           <Button
             type="button"

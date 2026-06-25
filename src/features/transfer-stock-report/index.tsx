@@ -31,6 +31,7 @@ import {
   countTransferStockReportSearchMatches,
   createTransferStockReportSearchIndex,
 } from "./utils/report-search"
+import { buildTransferStockReportPdfData } from "./utils/build-transfer-stock-report-pdf-data"
 
 const DEFAULT_REPORT_PARAMS = {} satisfies TransferStockReportParams
 
@@ -202,6 +203,20 @@ const TransferStockReportPage = () => {
     void refetch()
   }, [refetch])
 
+  const getPdfData = useCallback(() => {
+    const reportTable = reportTableRef.current
+    if (!reportTable) return null
+
+    if (reportTable.getFilteredRowModel().rows.length === 0) return null
+
+    return buildTransferStockReportPdfData({
+      table: reportTable,
+      reportTitle: "Transfer Stock Report",
+      dateFrom,
+      dateTo,
+    })
+  }, [dateFrom, dateTo])
+
   const reportTable = isReportTableReady ? reportTableRef.current : null
   const isSearchPending = searchQuery !== deferredSearchQuery
 
@@ -259,6 +274,8 @@ const TransferStockReportPage = () => {
           isExporting={isExporting}
           onPreview={handlePreview}
           onExportExcel={handleExportExcel}
+          getPdfData={getPdfData}
+          pdfDisabled={isLoading || !reportTable}
           showViewFilters={showViewFilters}
         />
       </div>
