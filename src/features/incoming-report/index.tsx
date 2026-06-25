@@ -64,6 +64,9 @@ const IncomingReportPage = () => {
   const customMarkaPreference = usePreferencesStore(
     (state) => state.preferences?.customMarka,
   )
+  const showViewFilters = usePreferencesStore(
+    (state) => state.preferences?.showViewFilters ?? false,
+  )
   const showStockFilter = shouldShowStockFilter(stockFilterPreference)
   const showCustomMarka = shouldShowCustomMarka(customMarkaPreference)
   const { data, error, isFetching, isLoading, refetch } =
@@ -291,6 +294,7 @@ const IncomingReportPage = () => {
           isExporting={isExporting}
           onPreview={handlePreview}
           onExportExcel={handleExportExcel}
+          showViewFilters={showViewFilters}
         />
       </div>
 

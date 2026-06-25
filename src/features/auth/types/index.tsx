@@ -21,6 +21,7 @@ export interface Preferences {
   commodities: CommodityPreference[]
   reportFormat: string
   showFinances: boolean
+  showViewFilters?: boolean
   labourCost: number
   stockFilter?: StockFilterPreference
   customMarka?: boolean
@@ -30,6 +31,11 @@ export interface Preferences {
   updatedAt: string
 }
 
+export interface Chamber {
+  name: string
+  capacity: number
+}
+
 export interface ColdStorage {
   _id: string
   preferencesId: string
@@ -37,6 +43,7 @@ export interface ColdStorage {
   address: string
   mobileNumber: string
   capacity: number
+  chambers?: Chamber[]
   imageUrl: string
   isPaid: boolean
   isActive: boolean

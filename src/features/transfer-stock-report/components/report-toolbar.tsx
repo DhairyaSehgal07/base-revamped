@@ -1,8 +1,10 @@
 import type { Table } from "@tanstack/react-table"
 import { Eye, FileSpreadsheet, Loader2, RefreshCw, Search } from "lucide-react"
 
+import { DatePickerInput } from "@/components/date-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatDateParam, parseDateParam } from "@/features/people/search"
 import type { TransferStockReportRecord } from "@/features/transfer-stock-report/api/types"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +26,7 @@ export interface ReportToolbarProps {
   isExporting?: boolean
   onPreview?: () => void
   onExportExcel?: () => void
+  showViewFilters?: boolean
   className?: string
 }
 
@@ -43,6 +46,7 @@ export function ReportToolbar({
   isExporting = false,
   onPreview,
   onExportExcel,
+  showViewFilters = false,
   className,
 }: ReportToolbarProps) {
   return (
@@ -59,27 +63,27 @@ export function ReportToolbar({
         )}
       >
         <div className="flex min-w-0 shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3 lg:gap-3">
-          <label className="grid min-w-0 gap-1.5 sm:w-[180px]">
-            <span className="text-sm font-medium text-foreground">From</span>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => onDateFromChange(event.target.value)}
-              disabled={isRefreshing}
-              className="h-10"
-            />
-          </label>
+          <DatePickerInput
+            id="transfer-stock-report-from"
+            label="From"
+            value={parseDateParam(dateFrom)}
+            onChange={(date) =>
+              onDateFromChange(date ? formatDateParam(date) : "")
+            }
+            disabled={isRefreshing}
+            className="min-w-0 sm:w-[180px]"
+          />
 
-          <label className="grid min-w-0 gap-1.5 sm:w-[180px]">
-            <span className="text-sm font-medium text-foreground">To</span>
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(event) => onDateToChange(event.target.value)}
-              disabled={isRefreshing}
-              className="h-10"
-            />
-          </label>
+          <DatePickerInput
+            id="transfer-stock-report-to"
+            label="To"
+            value={parseDateParam(dateTo)}
+            onChange={(date) =>
+              onDateToChange(date ? formatDateParam(date) : "")
+            }
+            disabled={isRefreshing}
+            className="min-w-0 sm:w-[180px]"
+          />
 
           <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
             <Button
@@ -119,7 +123,9 @@ export function ReportToolbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {table ? <ViewFiltersSheet table={table} /> : null}
+          {showViewFilters && table ? (
+            <ViewFiltersSheet table={table} />
+          ) : null}
 
           <Button
             type="button"

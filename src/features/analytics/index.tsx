@@ -1,12 +1,13 @@
-import { getRouteApi } from "@tanstack/react-router"
+import { getRouteApi, Link } from "@tanstack/react-router"
 import { useIsFetching, useQueryClient } from "@tanstack/react-query"
-import { BarChart3, Loader2, RefreshCw } from "lucide-react"
+import { BarChart3, ChevronRight, LineChart, Loader2, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
   Item,
   ItemActions,
   ItemContent,
+  ItemDescription,
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item"
@@ -24,7 +25,7 @@ import { ANALYTICS_TOP_FARMERS_QUERY_KEY } from "./api/use-analytics-top-farmers
 import { AnalyticsTabContent } from "./components/analytics-tab-content"
 import type { AnalyticsTab } from "./search"
 
-const analyticsRouteApi = getRouteApi("/_authenticated/analytics")
+const analyticsRouteApi = getRouteApi("/_authenticated/analytics/")
 
 const ANALYTICS_QUERY_KEYS = [
   ANALYTICS_SUMMARY_QUERY_KEY,
@@ -82,6 +83,40 @@ const AnalyticsPage = () => {
             Refresh
           </Button>
         </ItemActions>
+      </Item>
+
+      <Item
+        variant="outline"
+        size="sm"
+        asChild
+        className="group cursor-pointer transition-colors hover:bg-muted/40"
+      >
+        <Link
+          to="/analytics/advanced"
+          search={{ tab: "current", view: "location", floor: "" }}
+          preload="intent"
+          aria-label="Location Wise Analytics — stock breakdown by storage location"
+        >
+          <ItemMedia variant="icon">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/15">
+              <LineChart className="h-5 w-5 text-primary transition-transform duration-200 group-hover:scale-105" />
+            </div>
+          </ItemMedia>
+
+          <ItemContent>
+            <ItemTitle>Location Wise Analytics</ItemTitle>
+            <ItemDescription>
+              Stock breakdown and occupancy across storage locations.
+            </ItemDescription>
+          </ItemContent>
+
+          <ItemActions>
+            <ChevronRight
+              className="size-4 text-muted-foreground transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
+              aria-hidden
+            />
+          </ItemActions>
+        </Link>
       </Item>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full gap-4">

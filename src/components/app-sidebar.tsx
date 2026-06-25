@@ -94,10 +94,15 @@ function isPeopleNavActive(pathname: string) {
   return pathname === '/people' || pathname.startsWith('/people/');
 }
 
+function isAnalyticsNavActive(pathname: string) {
+  return pathname === '/analytics' || pathname.startsWith('/analytics/');
+}
+
 function isNavItemActive(item: NavItem, pathname: string) {
   if (!item.to) return false;
   if (item.to === '/daybook') return isDaybookNavActive(pathname);
   if (item.to === '/people') return isPeopleNavActive(pathname);
+  if (item.to === '/analytics') return isAnalyticsNavActive(pathname);
   if (item.to === '/settings') return isSettingsNavActive(pathname);
   return pathname === item.to;
 }

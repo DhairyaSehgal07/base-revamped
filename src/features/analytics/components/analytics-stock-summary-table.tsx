@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -15,6 +16,7 @@ import {
   getFooterClassName,
   getHeadClassName,
   stockSummaryAccentBgClass,
+  stockSummaryAccentHoverClass,
   stockSummaryAccentTextClass,
   TABLE_GRID_CLASS,
 } from "@/features/people/components/farmer-stock-summary-table-styles"
@@ -33,12 +35,23 @@ export function AnalyticsStockSummaryTable({
   matrix,
   quantityMode,
 }: AnalyticsStockSummaryTableProps) {
+  const navigate = useNavigate()
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { sizeColumns, rows, footerBySize, grandTotal } = matrix
   const hasRows = rows.length > 0
   const accentTextClass = stockSummaryAccentTextClass(quantityMode)
   const accentBgClass = stockSummaryAccentBgClass(quantityMode)
+  const accentHoverClass = stockSummaryAccentHoverClass(quantityMode)
+
+  const handleCellClick = (variety: string, bagSize: string, value: number) => {
+    if (value <= 0) return
+
+    void navigate({
+      to: "/analytics/variety-breakdown",
+      search: { variety, bagSize, tab: "current" },
+    })
+  }
 
   const handleTableScroll = useCallback(() => {
     const el = scrollContainerRef.current
@@ -120,6 +133,7 @@ export function AnalyticsStockSummaryTable({
 
                 {sizeColumns.map((size) => {
                   const value = row.bySize[size] ?? 0
+                  const isClickable = value > 0
 
                   return (
                     <TableCell
@@ -130,7 +144,34 @@ export function AnalyticsStockSummaryTable({
                           align: "right",
                         }),
                         value === 0 && "font-normal text-muted-foreground",
+                        isClickable &&
+                          cn(
+                            "cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+                            accentHoverClass,
+                          ),
                       )}
+                      tabIndex={isClickable ? 0 : undefined}
+                      role={isClickable ? "button" : undefined}
+                      aria-label={
+                        isClickable
+                          ? `View breakdown for ${row.variety}, ${size}, ${formatQuantity(value)} bags`
+                          : undefined
+                      }
+                      onClick={
+                        isClickable
+                          ? () => handleCellClick(row.variety, size, value)
+                          : undefined
+                      }
+                      onKeyDown={
+                        isClickable
+                          ? (event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault()
+                                handleCellClick(row.variety, size, value)
+                              }
+                            }
+                          : undefined
+                      }
                     >
                       {formatQuantity(value)}
                     </TableCell>

@@ -35,6 +35,7 @@ const routeTitles: Record<string, string> = {
   '/outgoing/': 'Outgoing Gate Pass',
   '/people': 'People',
   '/analytics': 'Analytics',
+  '/analytics/advanced': 'Location Wise Analytics',
   '/additional': 'Additional',
   '/finances': 'Finances',
   '/settings': 'Settings',
@@ -70,6 +71,12 @@ function resolvePageTitle(
   }
   if (pathname.startsWith('/finances/ledgers/')) {
     return 'Ledger Statement';
+  }
+  if (pathname === '/analytics/variety-breakdown') {
+    const varietyName = personName?.trim();
+    return varietyName
+      ? `Variety Breakdown — ${varietyName}`
+      : 'Variety Breakdown';
   }
   if (pathname.startsWith('/settings')) {
     return 'Settings';
@@ -170,6 +177,11 @@ export function AppTopbar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const personName = useRouterState({
     select: (s) => {
+      if (s.location.pathname === '/analytics/variety-breakdown') {
+        const search = s.location.search as { variety?: string };
+        return search.variety;
+      }
+
       if (
         !s.location.pathname.startsWith('/people/') ||
         s.location.pathname === '/people'

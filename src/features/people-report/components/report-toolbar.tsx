@@ -1,8 +1,10 @@
 import type { GroupingState, Table } from "@tanstack/react-table"
 import { Eye, FileSpreadsheet, Loader2, RefreshCw, Search } from "lucide-react"
 
+import { DatePickerInput } from "@/components/date-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatDateParam, parseDateParam } from "@/features/people/search"
 import { Separator } from "@/components/ui/separator"
 import { FarmerStockLedgerPdfButton } from "@/features/people-report/components/farmer-stock-ledger-pdf-button"
 import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
@@ -39,6 +41,7 @@ export interface ReportToolbarProps {
   pdfDisabled?: boolean
   previewDisabled?: boolean
   excelDisabled?: boolean
+  showViewFilters?: boolean
   className?: string
 }
 
@@ -65,6 +68,7 @@ export function ReportToolbar({
   pdfDisabled = false,
   previewDisabled = false,
   excelDisabled = false,
+  showViewFilters = false,
   className,
 }: ReportToolbarProps) {
   const isVarietyGrouped = isFarmerReportGrouped(
@@ -87,25 +91,27 @@ export function ReportToolbar({
             )}
           >
           <div className="flex min-w-0 shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3 lg:gap-3">
-            <label className="grid min-w-0 gap-1.5 sm:w-[180px]">
-              <span className="text-sm font-medium text-foreground">From</span>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(event) => onDateFromChange(event.target.value)}
-                disabled={isRefreshing}
-              />
-            </label>
+            <DatePickerInput
+              id="farmer-report-from"
+              label="From"
+              value={parseDateParam(dateFrom)}
+              onChange={(date) =>
+                onDateFromChange(date ? formatDateParam(date) : "")
+              }
+              disabled={isRefreshing}
+              className="min-w-0 sm:w-[180px]"
+            />
 
-            <label className="grid min-w-0 gap-1.5 sm:w-[180px]">
-              <span className="text-sm font-medium text-foreground">To</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(event) => onDateToChange(event.target.value)}
-                disabled={isRefreshing}
-              />
-            </label>
+            <DatePickerInput
+              id="farmer-report-to"
+              label="To"
+              value={parseDateParam(dateTo)}
+              onChange={(date) =>
+                onDateToChange(date ? formatDateParam(date) : "")
+              }
+              disabled={isRefreshing}
+              className="min-w-0 sm:w-[180px]"
+            />
 
             <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
               <Button
@@ -145,7 +151,9 @@ export function ReportToolbar({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {table ? <ViewFiltersSheet table={table} /> : null}
+            {showViewFilters && table ? (
+              <ViewFiltersSheet table={table} />
+            ) : null}
 
             <FarmerStockLedgerPdfButton
               getPdfBuildInput={getPdfBuildInput}

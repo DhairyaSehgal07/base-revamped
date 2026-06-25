@@ -215,6 +215,9 @@ export function FarmerReportGatePassesSection({
   const stockFilterPreference = usePreferencesStore(
     (state) => state.preferences?.stockFilter,
   )
+  const showViewFilters = usePreferencesStore(
+    (state) => state.preferences?.showViewFilters ?? false,
+  )
   const coldStorageName = useColdStorageStore((state) => state.coldStorage?.name)
   const coldStorageAddress = useColdStorageStore(
     (state) => state.coldStorage?.address,
@@ -706,6 +709,7 @@ export function FarmerReportGatePassesSection({
           pdfDisabled={exportDisabled}
           previewDisabled={exportDisabled}
           excelDisabled={exportDisabled}
+          showViewFilters={showViewFilters}
         />
       </div>
 

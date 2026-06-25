@@ -226,6 +226,24 @@ export function PreferencesForm({
                 )}
               </form.Field>
 
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <FieldLabel htmlFor="showViewFilters">
+                    Show view filters
+                  </FieldLabel>
+                  <FieldDescription>
+                    Enables column and view filters on reports. Managed by your
+                    administrator.
+                  </FieldDescription>
+                </FieldContent>
+                <Switch
+                  id="showViewFilters"
+                  checked={preferences.showViewFilters ?? false}
+                  disabled
+                  aria-readonly
+                />
+              </Field>
+
               <form.Field name="stockFilter.enabled">
                 {(field) => (
                   <Field orientation="horizontal">

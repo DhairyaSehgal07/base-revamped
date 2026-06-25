@@ -37,6 +37,7 @@ import {
   hasUpdatePayloadChanges,
 } from "../schemas/profile-form-schema"
 import { SettingsBackButton } from "@/features/settings/components/settings-back-button"
+import { ProfileChambersSection } from "./profile-chambers-section"
 import { ProfileUnsavedToast } from "./profile-unsaved-toast"
 
 type ProfileFormProps = {
@@ -416,6 +417,8 @@ export function ProfileForm({
             </FieldGroup>
           </CardContent>
         </Card>
+
+        <ProfileChambersSection form={form} />
 
         <Card className="sticky bottom-0 z-10 border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <CardFooter className="flex flex-col gap-3 sm:flex-row sm:justify-end">

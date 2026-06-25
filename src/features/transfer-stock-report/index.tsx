@@ -12,6 +12,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import type { TransferStockReportRecord } from "@/features/transfer-stock-report/api/types"
 
 import {
@@ -47,6 +48,9 @@ const TransferStockReportPage = () => {
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const coldStorageName = useColdStorageStore((s) => s.coldStorage?.name)
+  const showViewFilters = usePreferencesStore(
+    (state) => state.preferences?.showViewFilters ?? false,
+  )
   const { data, error, isFetching, isLoading, refetch } =
     useTransferStockReport(appliedParams)
 
@@ -255,6 +259,7 @@ const TransferStockReportPage = () => {
           isExporting={isExporting}
           onPreview={handlePreview}
           onExportExcel={handleExportExcel}
+          showViewFilters={showViewFilters}
         />
       </div>
 

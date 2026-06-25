@@ -1,4 +1,5 @@
 import type {
+  Chamber,
   ColdStorage,
   ColdStoragePopulated,
   StoreAdmin,
@@ -25,7 +26,9 @@ export interface UpdateProfilePayload {
   password?: string
   coldStorage?: Partial<
     Pick<ColdStorage, "name" | "address" | "mobileNumber" | "capacity">
-  >
+  > & {
+    chambers?: Chamber[]
+  }
 }
 
 export interface UpdateProfileResponse {

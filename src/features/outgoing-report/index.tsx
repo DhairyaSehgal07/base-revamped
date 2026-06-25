@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
 
 import {
@@ -53,6 +54,9 @@ const OutgoingReportPage = () => {
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const coldStorageName = useColdStorageStore((s) => s.coldStorage?.name)
+  const showViewFilters = usePreferencesStore(
+    (state) => state.preferences?.showViewFilters ?? false,
+  )
   const { data, error, isFetching, isLoading, refetch } =
     useOutgoingGatePassReport(appliedParams)
 
@@ -272,6 +276,7 @@ const OutgoingReportPage = () => {
           isExporting={isExporting}
           onPreview={handlePreview}
           onExportExcel={handleExportExcel}
+          showViewFilters={showViewFilters}
         />
       </div>
 

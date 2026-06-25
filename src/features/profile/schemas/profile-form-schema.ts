@@ -6,6 +6,13 @@ const mobileNumberSchema = z
   .string()
   .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number")
 
+const chamberFormSchema = z.object({
+  name: z.string().trim().min(1, "Chamber name is required"),
+  capacity: z
+    .number({ message: "Capacity is required" })
+    .positive("Chamber capacity must be greater than zero"),
+})
+
 const coldStorageFormSchema = z.object({
   name: z.string().trim().min(1, "Cold storage name is required"),
   address: z.string().trim().min(1, "Address is required"),
@@ -13,7 +20,14 @@ const coldStorageFormSchema = z.object({
   capacity: z
     .number({ message: "Capacity is required" })
     .positive("Capacity must be greater than 0"),
+  chambers: z.array(chamberFormSchema),
 })
+
+export type ChamberFormValues = z.infer<typeof chamberFormSchema>
+
+export function emptyChamber(): ChamberFormValues {
+  return { name: "", capacity: 0 }
+}
 
 export const profileFormSchema = z
   .object({
@@ -62,15 +76,34 @@ export function profileToFormValues(profile: ProfileData): ProfileFormValues {
       address: coldStorage.address,
       mobileNumber: coldStorage.mobileNumber,
       capacity: coldStorage.capacity,
+      chambers: (coldStorage.chambers ?? []).map((chamber) => ({
+        name: chamber.name,
+        capacity: chamber.capacity,
+      })),
     },
   }
+}
+
+function chambersEqual(
+  left: ProfileFormValues["coldStorage"]["chambers"],
+  right: ProfileFormValues["coldStorage"]["chambers"],
+): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every(
+    (chamber, index) =>
+      chamber.name === right[index]?.name &&
+      chamber.capacity === right[index]?.capacity,
+  )
 }
 
 function hasColdStorageChanges(
   values: ProfileFormValues["coldStorage"],
   original: ProfileData["coldStorage"],
-): Partial<ProfileFormValues["coldStorage"]> | undefined {
-  const changes: Partial<ProfileFormValues["coldStorage"]> = {}
+): UpdateProfilePayload["coldStorage"] | undefined {
+  const changes: UpdateProfilePayload["coldStorage"] = {}
 
   if (values.name !== original.name) {
     changes.name = values.name
@@ -83,6 +116,15 @@ function hasColdStorageChanges(
   }
   if (values.capacity !== original.capacity) {
     changes.capacity = values.capacity
+  }
+
+  const originalChambers = (original.chambers ?? []).map((chamber) => ({
+    name: chamber.name,
+    capacity: chamber.capacity,
+  }))
+
+  if (!chambersEqual(values.chambers, originalChambers)) {
+    changes.chambers = values.chambers
   }
 
   return Object.keys(changes).length > 0 ? changes : undefined
