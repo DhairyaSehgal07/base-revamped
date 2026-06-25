@@ -10,6 +10,7 @@ const cash: ReportLedger = {
   subType: "Current Assets",
   category: "Cash",
   openingBalance: 1000,
+  farmerStorageLinkId: null,
 }
 
 const creditor: ReportLedger = {
@@ -19,6 +20,7 @@ const creditor: ReportLedger = {
   subType: "Current Liabilities",
   category: "Creditors",
   openingBalance: 500,
+  farmerStorageLinkId: null,
 }
 
 describe("computeLedgerBalances", () => {

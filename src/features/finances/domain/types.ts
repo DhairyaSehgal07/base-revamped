@@ -9,6 +9,7 @@ export type ReportLedger = {
   subType: string
   category: string
   openingBalance: number
+  farmerStorageLinkId: string | null
 }
 
 export type ReportVoucher = {

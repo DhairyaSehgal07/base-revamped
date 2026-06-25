@@ -41,7 +41,7 @@ export function BuyPotatoDialog({
 
   const handleTransferStock = () => {
     void navigate({
-      to: "/transfer/",
+      to: "/transfer",
       search: {
         farmerLinkId: linkId,
         potatoAction: "buy",

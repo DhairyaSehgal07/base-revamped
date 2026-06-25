@@ -326,6 +326,10 @@ export function FarmerFinanceVoucherDialog({
     )
   }
 
+  if (!debitLedger || !creditLedger) {
+    return null
+  }
+
   return (
     <FarmerFinanceVoucherDialogContent
       onOpenChange={handleOpenChange}

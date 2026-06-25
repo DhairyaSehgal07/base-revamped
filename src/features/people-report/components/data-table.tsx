@@ -279,7 +279,7 @@ export function DataTable({
 
   onTableReadyRef.current = onTableReady
 
-  const { grouping, expanded } = viewState
+  const { grouping } = viewState
   const isGroupingActive = grouping.length > 0
 
   const pinnedRows = React.useMemo(

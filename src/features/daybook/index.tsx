@@ -200,7 +200,7 @@ const DaybookPage = () => {
   }
 
   const handleGetReports = () => {
-    window.alert("Reports are coming soon.")
+    navigate({ to: "/reports/incoming" })
   }
 
   if (!isSearchActive && listQuery.isLoading) {

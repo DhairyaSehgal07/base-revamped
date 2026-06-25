@@ -1,4 +1,5 @@
 import type { DaybookEntry } from "@/features/daybook/types"
+import { isIncomingDaybookEntry } from "@/features/daybook/types"
 import { formatDaybookDate } from "@/features/daybook/utils/format"
 import {
   getGatePassTotalBags,
@@ -11,25 +12,31 @@ export type FarmerReportSearchIndex = {
 }
 
 function buildFarmerReportSearchText(entry: DaybookEntry): string {
+  const incomingFields = isIncomingDaybookEntry(entry)
+    ? [
+        entry.stockFilter,
+        entry.customMarka,
+        ...(entry.bagSizes ?? []).flatMap((bag) => [
+          bag.name,
+          String(bag.currentQuantity),
+          String(bag.initialQuantity),
+          bag.location?.chamber,
+          bag.location?.floor,
+          bag.location?.row,
+        ]),
+      ]
+    : []
+
   return [
     formatDaybookDate(entry.date || entry.createdAt),
     String(entry.gatePassNo),
     entry.manualParchiNumber,
     getGatePassVariety(entry),
-    entry.stockFilter,
-    entry.customMarka,
+    ...incomingFields,
     entry.remarks,
     entry.truckNumber,
     entry.createdBy?.name,
     String(getGatePassTotalBags(entry)),
-    ...(entry.bagSizes ?? []).flatMap((bag) => [
-      bag.name,
-      String(bag.currentQuantity),
-      String(bag.initialQuantity),
-      bag.location?.chamber,
-      bag.location?.floor,
-      bag.location?.row,
-    ]),
   ]
     .filter((value) => value != null && value !== "")
     .join("\u0000")

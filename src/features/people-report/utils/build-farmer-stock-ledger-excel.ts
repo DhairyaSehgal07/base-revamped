@@ -65,7 +65,10 @@ const ALIGN_RIGHT = {
   vertical: "middle",
 } satisfies Partial<ExcelJS.Alignment>
 
-function bodyFont(bold = false, colorArgb = COLORS.foreground): Partial<ExcelJS.Font> {
+function bodyFont(
+  bold = false,
+  colorArgb: string = COLORS.foreground,
+): Partial<ExcelJS.Font> {
   return {
     name: "Calibri",
     size: 10,
@@ -435,7 +438,7 @@ export function getLeafCellValue(
 
 export function ledgerItemsToBodyRows(
   items: PdfLedgerItem[],
-  layout: LedgerColumnLayout,
+  _layout: LedgerColumnLayout,
   exportColumns: LedgerExportColumn[],
 ): ExcelBodyRow[] {
   return items.map((item) => {

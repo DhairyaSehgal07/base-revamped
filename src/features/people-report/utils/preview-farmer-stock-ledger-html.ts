@@ -200,7 +200,7 @@ function renderLedgerTableBodyRows(
           : ""
 
       const cells = row.values
-        .map((value, index) => {
+        .map((value) => {
           const isNumeric = typeof value === "number"
           const formatted = formatCellValue(value)
           const cellHtml =

@@ -11,6 +11,7 @@ const stock: ReportLedger = {
   subType: "Current Assets",
   category: "Stock in Hand",
   openingBalance: 100,
+  farmerStorageLinkId: null,
 }
 
 const sales: ReportLedger = {
@@ -20,6 +21,7 @@ const sales: ReportLedger = {
   subType: "Operating Income",
   category: "Sales",
   openingBalance: 0,
+  farmerStorageLinkId: null,
 }
 
 const purchases: ReportLedger = {
@@ -29,6 +31,7 @@ const purchases: ReportLedger = {
   subType: "Direct Expenses",
   category: "Purchases",
   openingBalance: 0,
+  farmerStorageLinkId: null,
 }
 
 const salary: ReportLedger = {
@@ -38,6 +41,7 @@ const salary: ReportLedger = {
   subType: "Indirect Expenses",
   category: "Salary",
   openingBalance: 0,
+  farmerStorageLinkId: null,
 }
 
 describe("computeNetProfitLoss", () => {
@@ -49,6 +53,7 @@ describe("computeNetProfitLoss", () => {
       subType: "Current Assets",
       category: "Cash",
       openingBalance: 0,
+      farmerStorageLinkId: null,
     }
 
     const vouchers: ReportVoucher[] = [
@@ -103,6 +108,7 @@ describe("computeNetProfitLoss", () => {
       subType: "Current Assets",
       category: "Cash",
       openingBalance: 0,
+      farmerStorageLinkId: null,
     }
 
     const vouchers: ReportVoucher[] = [

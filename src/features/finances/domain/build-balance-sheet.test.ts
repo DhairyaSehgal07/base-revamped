@@ -11,6 +11,7 @@ const cash: ReportLedger = {
   subType: "Current Assets",
   category: "Cash",
   openingBalance: 0,
+  farmerStorageLinkId: null,
 }
 
 const capital: ReportLedger = {
@@ -20,6 +21,7 @@ const capital: ReportLedger = {
   subType: "Capital",
   category: "Owner Capital",
   openingBalance: 1000,
+  farmerStorageLinkId: null,
 }
 
 describe("buildBalanceSheetReport", () => {

@@ -33,6 +33,7 @@ export function toReportLedger(ledger: LedgerApiRecord): ReportLedger {
     subType: ledger.subType,
     category: ledger.category,
     openingBalance: ledger.openingBalance ?? 0,
+    farmerStorageLinkId: ledger.farmerStorageLinkId,
   }
 }
 

@@ -15,6 +15,7 @@ const assetLedger: ReportLedger = {
   subType: "Current Assets",
   category: "Cash",
   openingBalance: 0,
+  farmerStorageLinkId: null,
 }
 
 describe("ledger-classification", () => {
