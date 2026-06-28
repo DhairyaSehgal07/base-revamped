@@ -69,6 +69,13 @@ function resolvePageTitle(
   if (pathname.startsWith('/incoming/') && pathname !== '/incoming') {
     return 'Edit Incoming Gate Pass';
   }
+  if (
+    pathname.startsWith('/outgoing/') &&
+    pathname !== '/outgoing' &&
+    pathname !== '/outgoing/edit-history'
+  ) {
+    return 'Edit Outgoing Gate Pass';
+  }
   if (pathname.startsWith('/finances/ledgers/')) {
     return 'Ledger Statement';
   }

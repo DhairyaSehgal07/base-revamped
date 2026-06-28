@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { useMemo } from "react"
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -23,6 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import type { OutgoingFormValues } from "@/features/outgoing/types"
+import type { OutgoingEditFormValues } from "@/features/outgoing/schemas/outgoing-edit-form-schema"
 import { AllocationReviewByVariety } from "@/features/transfer-stock/forms/allocation-review-by-variety"
 import type {
   StorageGatePass,
@@ -30,7 +32,7 @@ import type {
 } from "@/features/transfer-stock/types/storage-gate-pass"
 import { cn } from "@/lib/utils"
 
-export type OutgoingSummaryValues = OutgoingFormValues
+export type OutgoingSummaryValues = OutgoingFormValues | OutgoingEditFormValues
 
 type OutgoingSummarySheetProps = {
   open: boolean
@@ -43,6 +45,7 @@ type OutgoingSummarySheetProps = {
   onSubmit: () => void
   canSubmit: boolean
   isSubmitting: boolean
+  confirmLabel?: string
 }
 
 function formatReviewDate(iso: string) {
@@ -136,6 +139,14 @@ function OutgoingReviewSummary({
   passes: StorageGatePass[]
 }) {
   const totalBags = outgoingItems.reduce((sum, item) => sum + item.quantity, 0)
+  const varietyCount = useMemo(() => {
+    const names = new Set<string>()
+    for (const item of outgoingItems) {
+      const pass = passes.find((p) => p._id === item.storageGatePassId)
+      names.add(pass?.variety?.trim() || "—")
+    }
+    return names.size
+  }, [outgoingItems, passes])
   const from = values.from.trim()
   const to = values.to.trim()
   const truckNumber = values.truckNumber.trim()
@@ -205,7 +216,18 @@ function OutgoingReviewSummary({
 
       <div className="space-y-2">
         <SectionLabel icon={Scale}>Allocations</SectionLabel>
-        <AllocationReviewByVariety items={outgoingItems} passes={passes} />
+        {outgoingItems.length > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {varietyCount > 1
+              ? `${varietyCount.toLocaleString("en-IN")} varieties on this outgoing pass`
+              : "Stock lines for this outgoing pass"}
+          </p>
+        ) : null}
+        <AllocationReviewByVariety
+          items={outgoingItems}
+          passes={passes}
+          variant="card"
+        />
         <SummaryCard className="mt-3">
           <DetailRow
             label="Total bags"
@@ -241,6 +263,7 @@ export function OutgoingSummarySheet({
   onSubmit,
   canSubmit,
   isSubmitting,
+  confirmLabel = "Confirm & submit",
 }: OutgoingSummarySheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -306,7 +329,7 @@ export function OutgoingSummarySheet({
             ) : (
               <>
                 <CheckCircle2 className="size-3.5" />
-                Confirm &amp; submit
+                {confirmLabel}
               </>
             )}
           </Button>

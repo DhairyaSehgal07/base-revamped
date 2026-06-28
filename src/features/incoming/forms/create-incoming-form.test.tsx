@@ -41,6 +41,10 @@ vi.mock('@/features/incoming/forms/incoming-form', () => ({
   },
 }));
 
+vi.mock('@/features/daybook/components/daybook-back-button', () => ({
+  DaybookBackButton: () => <div data-testid="daybook-back-button" />,
+}));
+
 function setupStores({
   userId = USER_ID,
   preferences = makePreferences(),

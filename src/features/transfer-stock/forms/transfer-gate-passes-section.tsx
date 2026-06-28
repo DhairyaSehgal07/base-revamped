@@ -37,6 +37,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TransferGatePassMatrix } from "@/features/transfer-stock/forms/transfer-gate-pass-matrix"
 import { useStorageGatePassesForFarmer } from "@/features/transfer-stock/hooks/use-storage-gate-passes-for-farmer"
 import { useTransferGatePassMatrix } from "@/features/transfer-stock/hooks/use-transfer-gate-pass-matrix"
+import type { VarietyFilterMode } from "@/features/transfer-stock/hooks/use-transfer-gate-pass-matrix"
+import type { StorageGatePass } from "@/features/transfer-stock/types/storage-gate-pass"
 import { cn } from "@/lib/utils"
 
 type TransferGatePassesSectionProps = {
@@ -44,6 +46,12 @@ type TransferGatePassesSectionProps = {
   allocations: Record<string, number>
   onAllocationsChange: (next: Record<string, number>) => void
   farmerPromptLabel?: string
+  varietyFilterMode?: VarietyFilterMode
+  allocationMode?: "create" | "edit"
+  baselineAllocations?: Record<string, number>
+  passesOverride?: StorageGatePass[]
+  passesLoading?: boolean
+  passesError?: Error | null
 }
 
 export function TransferGatePassesSection({
@@ -51,14 +59,26 @@ export function TransferGatePassesSection({
   allocations,
   onAllocationsChange,
   farmerPromptLabel = "From",
+  varietyFilterMode = "single-required",
+  allocationMode = "create",
+  baselineAllocations = {},
+  passesOverride,
+  passesLoading: passesLoadingOverride,
+  passesError: passesErrorOverride,
 }: TransferGatePassesSectionProps) {
-  const { data: allPasses, isLoading, error } =
-    useStorageGatePassesForFarmer(fromFarmerStorageLinkId)
+  const hookResult = useStorageGatePassesForFarmer(
+    passesOverride != null ? "" : fromFarmerStorageLinkId
+  )
+
+  const allPasses = passesOverride ?? hookResult.data
+  const isLoading = passesLoadingOverride ?? hookResult.isLoading
+  const error = passesErrorOverride ?? hookResult.error
 
   const matrix = useTransferGatePassMatrix({
     allPasses,
     allocations,
     onAllocationsChange,
+    varietyFilterMode,
   })
 
   if (!fromFarmerStorageLinkId) {
@@ -189,52 +209,100 @@ export function TransferGatePassesSection({
           </DropdownMenu>
         </div>
 
-        {matrix.uniqueVarieties.length > 0 && (
-          <div
-            className={cn(
-              "flex flex-col gap-2 rounded-lg transition-[box-shadow,background-color,border-color]",
-              matrix.needsVarietySelection &&
-                "border-2 border-primary/50 bg-primary/5 p-2.5 shadow-sm ring-2 ring-primary/25"
-            )}
-          >
-            <div className="flex flex-col gap-0.5">
-              <Label
-                className={cn(
-                  "text-xs font-medium leading-none",
-                  matrix.needsVarietySelection
-                    ? "text-primary"
-                    : "text-muted-foreground"
-                )}
-              >
-                Variety
-                {matrix.needsVarietySelection ? (
-                  <span className="ml-0.5 font-semibold text-destructive">*</span>
-                ) : null}
+        {matrix.uniqueVarieties.length > 0 &&
+          (matrix.varietyFilterMode === "multi-optional" ? (
+            <div className="flex flex-col gap-2">
+              <Label className="text-xs font-medium leading-none text-muted-foreground">
+                Varieties
               </Label>
-              {matrix.needsVarietySelection ? (
-                <p className="max-w-52 text-xs leading-snug text-muted-foreground">
-                  Choose a variety to show gate passes below.
-                </p>
-              ) : null}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 gap-2"
+                  >
+                    <Package className="size-4" />
+                    Varieties
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Toggle varieties</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={matrix.varietyVisibility === "all"}
+                    onCheckedChange={(checked) => {
+                      if (checked) matrix.handleSelectAllVarieties()
+                      else matrix.setVarietyVisibility(new Set())
+                    }}
+                  >
+                    All
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  {matrix.uniqueVarieties.map((variety) => (
+                    <DropdownMenuCheckboxItem
+                      key={variety}
+                      checked={matrix.isVarietyVisible(
+                        matrix.varietyVisibility,
+                        variety
+                      )}
+                      onCheckedChange={() => matrix.handleVarietyToggle(variety)}
+                    >
+                      {variety}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <MatrixRadioFilter
-              value={matrix.varietyFilter}
-              options={matrix.uniqueVarieties}
-              onChange={matrix.setVarietyFilter}
-              icon={Package}
-              triggerClassName={cn(
-                "min-w-[120px]",
+          ) : (
+            <div
+              className={cn(
+                "flex flex-col gap-2 rounded-lg transition-[box-shadow,background-color,border-color]",
                 matrix.needsVarietySelection &&
-                  "border-primary/60 bg-background text-primary hover:bg-primary/10"
+                  "border-2 border-primary/50 bg-primary/5 p-2.5 shadow-sm ring-2 ring-primary/25"
               )}
-              ariaLabel={
-                matrix.needsVarietySelection
-                  ? "Variety — required"
-                  : "Variety filter"
-              }
-            />
-          </div>
-        )}
+            >
+              <div className="flex flex-col gap-0.5">
+                <Label
+                  className={cn(
+                    "text-xs font-medium leading-none",
+                    matrix.needsVarietySelection
+                      ? "text-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  Variety
+                  {matrix.needsVarietySelection ? (
+                    <span className="ml-0.5 font-semibold text-destructive">
+                      *
+                    </span>
+                  ) : null}
+                </Label>
+                {matrix.needsVarietySelection ? (
+                  <p className="max-w-52 text-xs leading-snug text-muted-foreground">
+                    Choose a variety to show gate passes below.
+                  </p>
+                ) : null}
+              </div>
+              <MatrixRadioFilter
+                value={matrix.varietyFilter}
+                options={matrix.uniqueVarieties}
+                onChange={matrix.setVarietyFilter}
+                icon={Package}
+                triggerClassName={cn(
+                  "min-w-[120px]",
+                  matrix.needsVarietySelection &&
+                    "border-primary/60 bg-background text-primary hover:bg-primary/10"
+                )}
+                ariaLabel={
+                  matrix.needsVarietySelection
+                    ? "Variety — required"
+                    : "Variety filter"
+                }
+              />
+            </div>
+          ))}
 
         {matrix.uniqueLocations.chambers.length > 0 && (
           <MatrixRadioFilter
@@ -298,6 +366,9 @@ export function TransferGatePassesSection({
         onAllocationClear={matrix.handleAllocationClear}
         hasFilteredData={matrix.hasFilteredData}
         hasActiveFilters={matrix.hasActiveFilters}
+        varietyFilterMode={matrix.varietyFilterMode}
+        allocationMode={allocationMode}
+        baselineAllocations={baselineAllocations}
       />
     </div>
   )

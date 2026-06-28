@@ -6,7 +6,7 @@ import type {
 } from "@/features/transfer-stock/types/storage-gate-pass"
 import { normalizeUppercase } from "@/lib/form-utils"
 
-function groupItemsIntoIncomingGatePasses(
+export function groupItemsIntoIncomingGatePasses(
   items: TransferStockItem[],
   passes: StorageGatePass[]
 ): CreateOutgoingGatePassPayload["incomingGatePasses"] {

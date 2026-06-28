@@ -20,8 +20,20 @@ import {
 /** `'all'` shows every size column; otherwise only sizes in the set. */
 export type SizeVisibility = "all" | Set<string>
 
+/** `'all'` shows every variety; otherwise only varieties in the set. */
+export type VarietyVisibility = "all" | Set<string>
+
+export type VarietyFilterMode = "single-required" | "multi-optional"
+
 function isSizeVisible(visibility: SizeVisibility, size: string): boolean {
   return visibility === "all" || visibility.has(size)
+}
+
+function isVarietyVisible(
+  visibility: VarietyVisibility,
+  variety: string
+): boolean {
+  return visibility === "all" || visibility.has(variety)
 }
 
 function resolveVisibleSizes(
@@ -36,15 +48,19 @@ type UseTransferGatePassMatrixOptions = {
   allPasses: StorageGatePass[]
   allocations: Record<string, number>
   onAllocationsChange: (next: Record<string, number>) => void
+  varietyFilterMode?: VarietyFilterMode
 }
 
 export function useTransferGatePassMatrix({
   allPasses,
   allocations,
   onAllocationsChange,
+  varietyFilterMode = "single-required",
 }: UseTransferGatePassMatrixOptions) {
   const [voucherSort, setVoucherSort] = useState<VoucherSort>("asc")
   const [varietyFilter, setVarietyFilter] = useState("")
+  const [varietyVisibility, setVarietyVisibility] =
+    useState<VarietyVisibility>("all")
   const [sizeVisibility, setSizeVisibility] = useState<SizeVisibility>("all")
   const [selectedPassIds, setSelectedPassIds] = useState<Set<string>>(
     () => new Set()
@@ -59,9 +75,20 @@ export function useTransferGatePassMatrix({
   const preferences = usePreferencesStore((state) => state.preferences)
   const commodities = preferences?.commodities ?? []
 
+  const varietyForSizeOrder = useMemo(() => {
+    if (varietyFilterMode === "multi-optional") {
+      if (varietyVisibility === "all") return ""
+      if (varietyVisibility.size === 1) {
+        return [...varietyVisibility][0] ?? ""
+      }
+      return ""
+    }
+    return varietyFilter
+  }, [varietyFilterMode, varietyVisibility, varietyFilter])
+
   const preferredSizeOrder = useMemo(
-    () => getPreferredBagSizeOrderForTransfer(commodities, varietyFilter),
-    [commodities, varietyFilter]
+    () => getPreferredBagSizeOrderForTransfer(commodities, varietyForSizeOrder),
+    [commodities, varietyForSizeOrder]
   )
 
   const uniqueVarieties = useMemo(
@@ -74,16 +101,36 @@ export function useTransferGatePassMatrix({
     [allPasses]
   )
 
-  const filteredPasses = useMemo(
-    () =>
-      filterStorageGatePasses(allPasses, {
-        variety: varietyFilter,
-        search: gatePassSearch,
-        location: locationFilters,
-        preferences,
-      }),
-    [allPasses, varietyFilter, gatePassSearch, locationFilters, preferences]
-  )
+  const filteredPasses = useMemo(() => {
+    const base = {
+      search: gatePassSearch,
+      location: locationFilters,
+      preferences,
+    }
+
+    if (varietyFilterMode === "multi-optional") {
+      if (varietyVisibility === "all") {
+        return filterStorageGatePasses(allPasses, base)
+      }
+      return filterStorageGatePasses(allPasses, {
+        ...base,
+        varieties: [...varietyVisibility],
+      })
+    }
+
+    return filterStorageGatePasses(allPasses, {
+      ...base,
+      variety: varietyFilter,
+    })
+  }, [
+    allPasses,
+    varietyFilterMode,
+    varietyVisibility,
+    varietyFilter,
+    gatePassSearch,
+    locationFilters,
+    preferences,
+  ])
 
   const tableSizes = useMemo(
     () => getUniqueSizes(filteredPasses, preferredSizeOrder),
@@ -106,14 +153,18 @@ export function useTransferGatePassMatrix({
   )
 
   const needsVarietySelection =
-    uniqueVarieties.length > 0 && varietyFilter.trim() === ""
+    varietyFilterMode === "single-required" &&
+    uniqueVarieties.length > 0 &&
+    varietyFilter.trim() === ""
 
   const varietySelected = !needsVarietySelection
   const hasFilteredData =
     varietySelected && filteredPasses.length > 0 && visibleSizes.length > 0
 
   const hasActiveFilters =
-    varietyFilter.trim() !== "" ||
+    (varietyFilterMode === "multi-optional"
+      ? varietyVisibility !== "all"
+      : varietyFilter.trim() !== "") ||
     gatePassSearch.trim() !== "" ||
     locationFilters.chamber !== "" ||
     locationFilters.floor !== "" ||
@@ -151,9 +202,42 @@ export function useTransferGatePassMatrix({
     [tableSizes, allTableSizes]
   )
 
+  const handleSelectAllVarieties = useCallback(() => {
+    setVarietyVisibility("all")
+  }, [])
+
+  const handleVarietyToggle = useCallback(
+    (variety: string) => {
+      setVarietyVisibility((prev) => {
+        const pickerVarieties =
+          uniqueVarieties.length > 0 ? uniqueVarieties : []
+
+        if (prev === "all") {
+          const next = new Set(pickerVarieties)
+          next.delete(variety)
+          return next
+        }
+
+        const next = new Set(prev)
+        if (next.has(variety)) next.delete(variety)
+        else next.add(variety)
+
+        if (
+          pickerVarieties.length > 0 &&
+          pickerVarieties.every((v) => next.has(v))
+        ) {
+          return "all"
+        }
+        return next
+      })
+    },
+    [uniqueVarieties]
+  )
+
   const handleResetFilters = useCallback(() => {
     setVoucherSort("asc")
     setVarietyFilter("")
+    setVarietyVisibility("all")
     setGatePassSearch("")
     setLocationFilters({ chamber: "", floor: "", row: "" })
     setSizeVisibility("all")
@@ -222,10 +306,13 @@ export function useTransferGatePassMatrix({
     hasFilteredData,
     hasActiveFilters,
     needsVarietySelection,
+    varietyFilterMode,
     voucherSort,
     setVoucherSort,
     varietyFilter,
     setVarietyFilter,
+    varietyVisibility,
+    setVarietyVisibility,
     gatePassSearch,
     setGatePassSearch,
     locationFilters,
@@ -235,8 +322,11 @@ export function useTransferGatePassMatrix({
     selectedPassIds,
     sizesForColumnPicker,
     isSizeVisible,
+    isVarietyVisible,
     handleSelectAllSizes,
     handleSizeToggle,
+    handleSelectAllVarieties,
+    handleVarietyToggle,
     handleResetFilters,
     handleAllocationChange,
     handleAllocationClear,

@@ -4,6 +4,7 @@ import type { IncomingQuantityRow } from "@/features/incoming/schemas/incoming-f
 import { resolveBagSizes } from "@/features/incoming/schemas/incoming-quantities-schema"
 import type { IncomingFormValues } from "@/features/incoming/types"
 import { findCommodityByVariety, getBagSizeOrderForVariety, sortByPreferenceOrder } from "@/features/incoming/utils/incoming-preferences"
+import { resolveFarmerStorageLinkId } from "@/features/daybook/utils/resolve-farmer-storage-link-id"
 import type { FarmerStorageLink } from "@/features/people/types"
 import { DEFAULT_BAG_TYPE } from "@/lib/constants"
 
@@ -19,21 +20,6 @@ function normalizeToIsoDateTime(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return new Date().toISOString()
   return date.toISOString()
-}
-
-function resolveFarmerLinkId(
-  entry: IncomingDaybookEntry,
-  farmerStorageLinks: FarmerStorageLink[]
-): string {
-  if (entry.farmerStorageLinkId._id) {
-    return entry.farmerStorageLinkId._id
-  }
-
-  const match = farmerStorageLinks.find(
-    (link) => link.accountNumber === entry.farmerStorageLinkId.accountNumber
-  )
-
-  return match?._id ?? ""
 }
 
 function bagToQuantityRow(
@@ -125,7 +111,10 @@ export function incomingDaybookEntryToFormValues({
   return {
     gatePassNo: entry.gatePassNo,
     manualGatePassNumber: parseManualGatePassNumber(entry.manualParchiNumber),
-    farmerIncomingLinkId: resolveFarmerLinkId(entry, farmerStorageLinks),
+    farmerIncomingLinkId: resolveFarmerStorageLinkId(
+      entry.farmerStorageLinkId,
+      farmerStorageLinks
+    ),
     createdBy: entry.createdBy?._id ?? userId,
     commodity: commodityName,
     variety: entry.variety,

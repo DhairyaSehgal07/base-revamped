@@ -334,10 +334,10 @@ const DaybookPage = () => {
             <Button
               variant="outline"
               className="min-w-0 px-2.5 sm:px-3"
-              onClick={handleGetReports}
+              onClick={handleTransferStock}
             >
-              <FileText className="h-4 w-4 shrink-0 sm:mr-2" />
-              <span className="truncate">Get Reports</span>
+              <ArrowLeftRight className="h-4 w-4 shrink-0 sm:mr-2" />
+              <span className="truncate">Transfer stock</span>
             </Button>
 
             <DropdownMenu>
@@ -352,9 +352,9 @@ const DaybookPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onSelect={handleTransferStock}>
-                  <ArrowLeftRight className="h-4 w-4" />
-                  Transfer stock
+                <DropdownMenuItem onSelect={handleGetReports}>
+                  <FileText className="h-4 w-4" />
+                  Get Reports
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={handleIncomingEditHistory}>
                   <History className="h-4 w-4" />

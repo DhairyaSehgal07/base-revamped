@@ -127,6 +127,74 @@ describe("buildCreateOutgoingGatePassPayload", () => {
     expect(payload.incomingGatePasses[1]?.variety).toBe("Kufri")
   })
 
+  it("creates separate incomingGatePasses entries per variety (Chipsona + Kufri Jyoti)", () => {
+    const mixedPasses: StorageGatePass[] = [
+      {
+        _id: PASS_A,
+        farmerStorageLinkId: FARMER_ID,
+        accountNumber: 101,
+        gatePassNo: 12,
+        date: "2026-06-01T00:00:00.000Z",
+        variety: "Kufri Jyoti",
+        storageCategory: "Local",
+        bagSizes: [],
+        remarks: "",
+      },
+      {
+        _id: PASS_B,
+        farmerStorageLinkId: FARMER_ID,
+        accountNumber: 101,
+        gatePassNo: 13,
+        date: "2026-06-02T00:00:00.000Z",
+        variety: "Chipsona",
+        storageCategory: "Local",
+        bagSizes: [],
+        remarks: "",
+      },
+    ]
+
+    const items: TransferStockItem[] = [
+      {
+        storageGatePassId: PASS_A,
+        gatePassNo: 12,
+        bagSize: "50 kg",
+        bagIndex: 0,
+        quantity: 20,
+        location: { chamber: "A", floor: "1", row: "R1" },
+      },
+      {
+        storageGatePassId: PASS_B,
+        gatePassNo: 13,
+        bagSize: "50 kg",
+        bagIndex: 0,
+        quantity: 15,
+        location: { chamber: "B", floor: "2", row: "R3" },
+      },
+    ]
+
+    const payload = buildCreateOutgoingGatePassPayload(
+      baseValues,
+      items,
+      mixedPasses,
+      101
+    )
+
+    expect(payload.incomingGatePasses).toHaveLength(2)
+    expect(payload.incomingGatePasses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          incomingGatePassId: PASS_A,
+          variety: "Kufri Jyoti",
+        }),
+        expect.objectContaining({
+          incomingGatePassId: PASS_B,
+          variety: "Chipsona",
+        }),
+      ])
+    )
+    expect(payload).not.toHaveProperty("variety")
+  })
+
   it("maps top-level fields and omits empty optional strings", () => {
     const payload = buildCreateOutgoingGatePassPayload(
       {

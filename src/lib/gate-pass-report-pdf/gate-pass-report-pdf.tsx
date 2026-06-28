@@ -339,11 +339,11 @@ function GatePassReportPage({
             key={`row-${rowIndex}`}
             style={[
               styles.tableRow,
-              row.isGroupRow ? styles.tableRowGroup : null,
-              !row.isGroupRow && rowIndex % 2 === 1
-                ? styles.tableRowZebra
-                : null,
-            ].filter(Boolean)}
+              ...(row.isGroupRow ? [styles.tableRowGroup] : []),
+              ...(!row.isGroupRow && rowIndex % 2 === 1
+                ? [styles.tableRowZebra]
+                : []),
+            ]}
             wrap={false}
           >
             {row.cells.map((cell, cellIndex) => (
@@ -357,9 +357,11 @@ function GatePassReportPage({
                     cell.align === "right"
                       ? styles.alignRight
                       : styles.alignLeft,
-                    cell.isEmpty ? styles.bodyCellEmpty : null,
-                    row.isGroupRow ? { fontFamily: "Roboto", fontWeight: 700 } : null,
-                  ].filter(Boolean)}
+                    ...(cell.isEmpty ? [styles.bodyCellEmpty] : []),
+                    ...(row.isGroupRow
+                      ? [{ fontFamily: "Roboto", fontWeight: 700 }]
+                      : []),
+                  ]}
                 >
                   {cell.text}
                 </Text>

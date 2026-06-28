@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
+
+import { DatePickerInput } from "@/components/date-picker"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -9,23 +12,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
-import { OutgoingSummarySheet } from "@/features/outgoing/forms/outgoing-summary-sheet"
-import { useCreateOutgoingForm } from "@/features/outgoing/forms/use-create-outgoing-form"
-import {
-  outgoingFormSchema,
-  type OutgoingFormValues,
-} from "@/features/outgoing/schemas/outgoing-form-schema"
-import { buildCreateOutgoingGatePassPayload } from "@/features/outgoing/utils/outgoing-form-values-to-create-payload"
-import { useCreateOutgoingGatePass } from "@/features/outgoing/api/use-create-outgoing-gate-pass"
+import type { OutgoingDaybookEntry } from "@/features/daybook/types"
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
+import { resolveFarmerStorageLinkId } from "@/features/daybook/utils/resolve-farmer-storage-link-id"
+import { useOutgoingDaybookEntry } from "@/features/outgoing/api/use-outgoing-daybook-entry"
 import { useFarmerStorageLinks } from "@/features/people/api/use-farmer-storage-links"
-import { getLinkDisplayName } from "@/features/people/utils/get-link-display-fields"
+import { useUpdateOutgoingGatePass } from "@/features/outgoing/api/use-update-outgoing-gate-pass"
+import { OutgoingSummarySheet } from "@/features/outgoing/forms/outgoing-summary-sheet"
+import { useEditOutgoingGatePassForm } from "@/features/outgoing/forms/use-edit-outgoing-gate-pass"
+import {
+  outgoingEditFormSchema,
+  type OutgoingEditFormValues,
+} from "@/features/outgoing/schemas/outgoing-edit-form-schema"
+import { outgoingDaybookEntryToAllocations } from "@/features/outgoing/utils/outgoing-daybook-entry-to-allocations"
+import { outgoingDaybookEntryToEditFormValues } from "@/features/outgoing/utils/outgoing-daybook-entry-to-edit-form-values"
+import { mergeOutgoingSnapshotPasses } from "@/features/outgoing/utils/merge-outgoing-snapshot-passes"
+import { buildUpdateOutgoingGatePassPayload } from "@/features/outgoing/utils/outgoing-form-values-to-update-payload"
 import { TransferGatePassesSection } from "@/features/transfer-stock/forms/transfer-gate-passes-section"
 import { useStorageGatePassesForFarmer } from "@/features/transfer-stock/hooks/use-storage-gate-passes-for-farmer"
 import { buildTransferItems } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
+import type { StorageGatePass } from "@/features/transfer-stock/types/storage-gate-pass"
 import {
   Field,
   FieldDescription,
@@ -36,12 +45,6 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePickerInput } from "@/components/date-picker"
-import {
-  SearchableOptionCombobox,
-  filterAndSortOptions,
-  type ComboboxOption,
-} from "@/components/searchable-option-combobox"
 import {
   numericInputProps,
   normalizeUppercase,
@@ -52,138 +55,76 @@ function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
 }
 
-type OutgoingReviewSheetProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  farmerStorageLinkId: string
-  values: OutgoingFormValues | null
-  farmerLabel: string
-  onBack: () => void
-  onSubmit: () => void
-  canSubmit: boolean
-  isSubmitting: boolean
-}
-
-function OutgoingReviewSheet({
-  open,
-  onOpenChange,
-  farmerStorageLinkId,
-  values,
-  farmerLabel,
-  onBack,
-  onSubmit,
-  canSubmit,
-  isSubmitting,
-}: OutgoingReviewSheetProps) {
-  const { data: passes = [] } = useStorageGatePassesForFarmer(farmerStorageLinkId)
-  const outgoingItems =
-    values != null ? buildTransferItems(values.allocations, passes) : []
-
+function EditOutgoingFormLayout({ children }: { children: ReactNode }) {
   return (
-    <OutgoingSummarySheet
-      open={open}
-      onOpenChange={onOpenChange}
-      values={values}
-      farmerLabel={farmerLabel}
-      outgoingItems={outgoingItems}
-      passes={passes}
-      onBack={onBack}
-      onSubmit={onSubmit}
-      canSubmit={canSubmit}
-      isSubmitting={isSubmitting}
-    />
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <DaybookBackButton />
+      {children}
+    </div>
   )
 }
 
-const CreateOutgoingForm = () => {
+type EditOutgoingFormLoadedProps = {
+  entry: OutgoingDaybookEntry
+  gatePassId: string
+  defaultValues: OutgoingEditFormValues
+  baselineValues: OutgoingEditFormValues
+  baselineAllocations: Record<string, number>
+  farmerLabel: string
+  storagePasses: StorageGatePass[]
+}
+
+function EditOutgoingFormLoaded({
+  entry,
+  gatePassId,
+  defaultValues,
+  baselineValues,
+  baselineAllocations,
+  farmerLabel,
+  storagePasses,
+}: EditOutgoingFormLoadedProps) {
   const navigate = useNavigate()
-  const { mutateAsync: createOutgoingGatePass } = useCreateOutgoingGatePass()
-
-  const {
-    data: farmerStorageLinks = [],
-    isLoading: isLoadingFarmers,
-    isError: isFarmersError,
-    error: farmersError,
-  } = useFarmerStorageLinks()
-
-  const farmerOptions = useMemo<ComboboxOption[]>(
-    () =>
-      farmerStorageLinks.map((link) => ({
-        id: link._id,
-        label: `${getLinkDisplayName(link)} — Acct #${link.accountNumber}`,
-      })),
-    [farmerStorageLinks]
-  )
-
-  const [farmerSearch, setFarmerSearch] = useState("")
-  const [farmerComboboxOpen, setFarmerComboboxOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
+  const { mutateAsync: updateOutgoingGatePass, isPending: isSaving } =
+    useUpdateOutgoingGatePass()
 
-  const sortedFarmers = useMemo(
-    () => filterAndSortOptions(farmerSearch, farmerOptions),
-    [farmerSearch, farmerOptions]
-  )
-
-  function resetComboboxState() {
-    setFarmerSearch("")
-    setFarmerComboboxOpen(false)
-  }
-
-  const {
-    form,
-    nextVoucherNumber,
-    isLoadingVoucherNumber,
-    isVoucherNumberError,
-    isGatePassNumberReady,
-  } = useCreateOutgoingForm({
+  const { form } = useEditOutgoingGatePassForm({
+    defaultValues,
+    resolveStoragePasses: () => storagePasses,
     onOpenReview: () => setReviewOpen(true),
     onCloseReview: () => setReviewOpen(false),
     onSubmitConfirmed: async (values, items, passes) => {
-      if (nextVoucherNumber == null) {
-        throw new Error("Gate pass number is not ready.")
+      const payload = buildUpdateOutgoingGatePassPayload(
+        values,
+        baselineValues,
+        items,
+        passes
+      )
+
+      if (!payload) {
+        toast.info("No changes to save", { position: "bottom-right" })
+        return
       }
 
       try {
-        const payload = buildCreateOutgoingGatePassPayload(
-          values,
-          items,
-          passes,
-          nextVoucherNumber,
-          crypto.randomUUID()
-        )
-        const created = await createOutgoingGatePass(payload)
-
+        await updateOutgoingGatePass({ id: gatePassId, payload })
         toast.success(
-          `Outgoing #${created.gatePassNo.toLocaleString("en-IN")} created`,
+          `Outgoing #${entry.gatePassNo.toLocaleString("en-IN")} updated`,
           { position: "bottom-right" }
         )
         setReviewOpen(false)
-        form.reset()
-        resetComboboxState()
         navigate({ to: "/daybook", search: DEFAULT_DAYBOOK_SEARCH })
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
-            : "Failed to create outgoing gate pass",
+            : "Failed to update outgoing gate pass",
           { position: "bottom-right" }
         )
         throw error
       }
     },
   })
-
-  const displayGatePassNo = isLoadingVoucherNumber
-    ? "…"
-    : isVoucherNumberError
-      ? "—"
-      : (nextVoucherNumber ?? "—")
-
-  const getFarmerLabel = (farmerStorageLinkId: string) =>
-    farmerOptions.find((option) => option.id === farmerStorageLinkId)?.label ??
-    farmerStorageLinkId
-
-  const farmerComboboxDisabled = isLoadingFarmers || isFarmersError
 
   const handleOpenReview = () => {
     void form.handleSubmit({ submitAction: "review" })
@@ -193,24 +134,24 @@ const CreateOutgoingForm = () => {
     void form.handleSubmit({ submitAction: "submit" })
   }
 
+  const farmerStorageLinkId = defaultValues.farmerStorageLinkId
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-      <DaybookBackButton />
-      <Card className="w-full shadow-sm">
+    <Card className="w-full shadow-sm">
       <CardHeader className="border-b bg-muted/30 pb-6">
         <CardTitle className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
-          Outgoing{" "}
+          Edit outgoing{" "}
           <span className="font-mono text-xl tabular-nums text-primary sm:text-2xl">
-            #{displayGatePassNo}
+            #{entry.gatePassNo.toLocaleString("en-IN")}
           </span>
         </CardTitle>
         <CardDescription className="text-base">
-          Record stock leaving storage for a farmer account.
+          Update allocations, route details, and remarks for this gate pass.
         </CardDescription>
       </CardHeader>
 
       <form
-        id="create-outgoing-form"
+        id={`edit-outgoing-form-${gatePassId}`}
         noValidate
         onSubmit={(e) => e.preventDefault()}
       >
@@ -218,66 +159,25 @@ const CreateOutgoingForm = () => {
           <FieldGroup className="@container/field-group gap-10">
             <FieldSet>
               <FieldLegend className="font-heading text-base font-semibold">
+                Account
+              </FieldLegend>
+              <FieldGroup className="mt-5 grid grid-cols-1 gap-6">
+                <Field>
+                  <FieldLabel>Farmer</FieldLabel>
+                  <Input value={farmerLabel} readOnly disabled />
+                  <FieldDescription>
+                    Farmer account cannot be changed on an existing outgoing
+                    pass.
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </FieldSet>
+
+            <FieldSet>
+              <FieldLegend className="font-heading text-base font-semibold">
                 Outgoing details
               </FieldLegend>
-              <FieldDescription>
-                Select the farmer account and outgoing date.
-              </FieldDescription>
               <FieldGroup className="mt-5 grid grid-cols-1 gap-6">
-                <form.Field name="farmerStorageLinkId">
-                  {(field) => {
-                    const isInvalid = isFieldInvalid(field.state.meta)
-                    return (
-                      <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor="outgoing-farmer">
-                          Farmer
-                        </FieldLabel>
-                        <SearchableOptionCombobox
-                          id="outgoing-farmer"
-                          name={field.name}
-                          value={field.state.value}
-                          onValueChange={(value) => {
-                            field.handleChange(value)
-                            form.setFieldValue("allocations", {})
-                          }}
-                          onBlur={field.handleBlur}
-                          isInvalid={isInvalid}
-                          placeholder={
-                            isLoadingFarmers
-                              ? "Loading farmers…"
-                              : "Search farmers…"
-                          }
-                          emptyMessage={
-                            isLoadingFarmers
-                              ? "Loading farmers…"
-                              : "No farmers found."
-                          }
-                          options={farmerOptions}
-                          sortedOptions={sortedFarmers}
-                          search={farmerSearch}
-                          setSearch={setFarmerSearch}
-                          open={farmerComboboxOpen}
-                          setOpen={setFarmerComboboxOpen}
-                          disabled={farmerComboboxDisabled}
-                        />
-                        {isFarmersError && (
-                          <FieldDescription className="text-destructive">
-                            {farmersError instanceof Error
-                              ? farmersError.message
-                              : "Something went wrong while fetching farmers."}
-                          </FieldDescription>
-                        )}
-                        <FieldDescription>
-                          Farmer account stock is outgoing from.
-                        </FieldDescription>
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
-                      </Field>
-                    )
-                  }}
-                </form.Field>
-
                 <form.Field name="date">
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
@@ -338,9 +238,6 @@ const CreateOutgoingForm = () => {
                           aria-invalid={isInvalid}
                           className="tabular-nums"
                         />
-                        <FieldDescription>
-                          Optional reference number if used on the physical pass.
-                        </FieldDescription>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -355,9 +252,6 @@ const CreateOutgoingForm = () => {
               <FieldLegend className="font-heading text-base font-semibold">
                 Route &amp; vehicle
               </FieldLegend>
-              <FieldDescription>
-                Optional source, destination, and truck for this dispatch.
-              </FieldDescription>
               <FieldGroup className="mt-5 grid grid-cols-1 gap-6 @md/field-group:grid-cols-3">
                 <form.Field name="from">
                   {(field) => {
@@ -367,12 +261,10 @@ const CreateOutgoingForm = () => {
                         <FieldLabel htmlFor={field.name}>From</FieldLabel>
                         <Input
                           id={field.name}
-                          name={field.name}
                           value={field.state.value}
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
                           placeholder="Optional"
-                          autoComplete="off"
                           aria-invalid={isInvalid}
                         />
                         {isInvalid && (
@@ -391,12 +283,10 @@ const CreateOutgoingForm = () => {
                         <FieldLabel htmlFor={field.name}>To</FieldLabel>
                         <Input
                           id={field.name}
-                          name={field.name}
                           value={field.state.value}
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
                           placeholder="Optional"
-                          autoComplete="off"
                           aria-invalid={isInvalid}
                         />
                         {isInvalid && (
@@ -415,20 +305,15 @@ const CreateOutgoingForm = () => {
                         <FieldLabel htmlFor={field.name}>Truck number</FieldLabel>
                         <Input
                           id={field.name}
-                          name={field.name}
                           value={field.state.value}
                           onBlur={field.handleBlur}
                           onChange={(e) =>
                             field.handleChange(normalizeUppercase(e.target.value))
                           }
                           placeholder="Optional"
-                          autoComplete="off"
                           aria-invalid={isInvalid}
                           className="uppercase"
                         />
-                        <FieldDescription>
-                          Optional vehicle registration for this dispatch.
-                        </FieldDescription>
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />
                         )}
@@ -439,33 +324,32 @@ const CreateOutgoingForm = () => {
               </FieldGroup>
             </FieldSet>
 
-            <form.Subscribe
-              selector={(state) => state.values.farmerStorageLinkId}
-              children={(farmerStorageLinkId) => (
-                <FieldSet>
-                  <FieldLegend className="font-heading text-base font-semibold">
-                    Incoming gate pass
-                  </FieldLegend>
-                  <FieldDescription>
-                    Select vouchers and quantities to mark as outgoing.
-                  </FieldDescription>
-                  <div className="mt-5">
-                    <form.Field name="allocations">
-                      {(allocField) => (
-                        <TransferGatePassesSection
-                          key={farmerStorageLinkId || "no-farmer"}
-                          varietyFilterMode="multi-optional"
-                          fromFarmerStorageLinkId={farmerStorageLinkId}
-                          allocations={allocField.state.value}
-                          onAllocationsChange={allocField.handleChange}
-                          farmerPromptLabel="farmer"
-                        />
-                      )}
-                    </form.Field>
-                  </div>
-                </FieldSet>
-              )}
-            />
+            <FieldSet>
+              <FieldLegend className="font-heading text-base font-semibold">
+                Incoming gate pass
+              </FieldLegend>
+              <FieldDescription>
+                Adjust vouchers and quantities for this outgoing pass.
+              </FieldDescription>
+              <div className="mt-5">
+                <form.Field name="allocations">
+                  {(allocField) => (
+                    <TransferGatePassesSection
+                      key={farmerStorageLinkId}
+                      varietyFilterMode="multi-optional"
+                      allocationMode="edit"
+                      baselineAllocations={baselineAllocations}
+                      fromFarmerStorageLinkId={farmerStorageLinkId}
+                      allocations={allocField.state.value}
+                      onAllocationsChange={allocField.handleChange}
+                      farmerPromptLabel="farmer"
+                      passesOverride={storagePasses}
+                      passesLoading={false}
+                    />
+                  )}
+                </form.Field>
+              </div>
+            </FieldSet>
 
             <FieldSet>
               <FieldLegend className="font-heading text-base font-semibold">
@@ -482,7 +366,6 @@ const CreateOutgoingForm = () => {
                         </FieldLabel>
                         <Textarea
                           id={field.name}
-                          name={field.name}
                           value={field.state.value}
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
@@ -506,22 +389,19 @@ const CreateOutgoingForm = () => {
           <Button
             variant="outline"
             type="button"
-            onClick={() => {
-              form.reset()
-              resetComboboxState()
-            }}
+            onClick={() => form.reset(defaultValues)}
           >
-            Reset form
+            Reset changes
           </Button>
           <form.Subscribe
             selector={(state) => state.isSubmitting}
             children={(isSubmitting) => (
               <Button
                 type="button"
-                disabled={isSubmitting || !isGatePassNumberReady}
+                disabled={isSubmitting || isSaving}
                 onClick={handleOpenReview}
               >
-                {isSubmitting ? "Validating…" : "Review"}
+                {isSubmitting ? "Validating…" : "Review changes"}
               </Button>
             )}
           />
@@ -535,33 +415,239 @@ const CreateOutgoingForm = () => {
           isSubmitting: state.isSubmitting,
         })}
         children={({ values, canSubmit, isSubmitting }) => {
-          const parsed = outgoingFormSchema.safeParse(values)
+          const parsed = outgoingEditFormSchema.safeParse(values)
           const farmerId = parsed.success
             ? parsed.data.farmerStorageLinkId
             : values.farmerStorageLinkId
 
           return (
-            <OutgoingReviewSheet
+            <EditOutgoingReviewSheet
               open={reviewOpen}
               onOpenChange={setReviewOpen}
               farmerStorageLinkId={farmerId}
               values={parsed.success ? parsed.data : null}
-              farmerLabel={
-                parsed.success
-                  ? getFarmerLabel(parsed.data.farmerStorageLinkId)
-                  : ""
-              }
+              farmerLabel={farmerLabel}
               onBack={() => setReviewOpen(false)}
               onSubmit={handleConfirmSubmit}
               canSubmit={canSubmit}
-              isSubmitting={isSubmitting}
+              isSubmitting={isSubmitting || isSaving}
             />
           )
         }}
       />
     </Card>
-    </div>
   )
 }
 
-export default CreateOutgoingForm
+function EditOutgoingReviewSheet({
+  open,
+  onOpenChange,
+  farmerStorageLinkId,
+  values,
+  farmerLabel,
+  onBack,
+  onSubmit,
+  canSubmit,
+  isSubmitting,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  farmerStorageLinkId: string
+  values: OutgoingEditFormValues | null
+  farmerLabel: string
+  onBack: () => void
+  onSubmit: () => void
+  canSubmit: boolean
+  isSubmitting: boolean
+}) {
+  const { data: passes = [] } = useStorageGatePassesForFarmer(farmerStorageLinkId)
+  const outgoingItems =
+    values != null ? buildTransferItems(values.allocations, passes) : []
+
+  return (
+    <OutgoingSummarySheet
+      open={open}
+      onOpenChange={onOpenChange}
+      values={values}
+      farmerLabel={farmerLabel}
+      outgoingItems={outgoingItems}
+      passes={passes}
+      onBack={onBack}
+      onSubmit={onSubmit}
+      canSubmit={canSubmit}
+      isSubmitting={isSubmitting}
+      confirmLabel="Confirm & save"
+    />
+  )
+}
+
+type EditOutgoingFormProps = {
+  gatePassId: string
+}
+
+const EditOutgoingForm = ({ gatePassId }: EditOutgoingFormProps) => {
+  const entry = useOutgoingDaybookEntry(gatePassId)
+  const { data: farmerStorageLinks = [], isLoading: isFarmersLoading } =
+    useFarmerStorageLinks()
+
+  const farmerStorageLinkId = useMemo(() => {
+    if (!entry) return ""
+    return resolveFarmerStorageLinkId(
+      entry.farmerStorageLinkId,
+      farmerStorageLinks
+    )
+  }, [entry, farmerStorageLinks])
+
+  const { data: passes = [], isLoading: isLoadingPasses } =
+    useStorageGatePassesForFarmer(farmerStorageLinkId)
+
+  const accountNumber = useMemo(() => {
+    const matchedLink = farmerStorageLinks.find(
+      (link) => link._id === farmerStorageLinkId
+    )
+    if (matchedLink) return matchedLink.accountNumber
+    return entry?.farmerStorageLinkId.accountNumber ?? 0
+  }, [entry, farmerStorageLinkId, farmerStorageLinks])
+
+  const mergedPasses = useMemo(() => {
+    if (!entry || !farmerStorageLinkId) return []
+    return mergeOutgoingSnapshotPasses(
+      passes,
+      entry.incomingGatePassSnapshots ?? [],
+      farmerStorageLinkId,
+      accountNumber
+    )
+  }, [passes, entry, farmerStorageLinkId, accountNumber])
+
+  const mapped = useMemo(() => {
+    if (!entry || isFarmersLoading || !farmerStorageLinkId || isLoadingPasses) {
+      return null
+    }
+
+    const { allocations, baselineAllocations } = outgoingDaybookEntryToAllocations(
+      entry,
+      mergedPasses
+    )
+    const values = outgoingDaybookEntryToEditFormValues(
+      entry,
+      allocations,
+      farmerStorageLinks
+    )
+    const matchedLink = farmerStorageLinks.find(
+      (link) => link._id === farmerStorageLinkId
+    )
+    const link = entry.farmerStorageLinkId
+    const farmerLabel = matchedLink
+      ? `${matchedLink.name} — Acct #${matchedLink.accountNumber}`
+      : `${link.name} — Acct #${link.accountNumber}`
+
+    return {
+      values: {
+        ...values,
+        allocations: { ...allocations },
+      },
+      baselineValues: {
+        ...values,
+        allocations: { ...allocations },
+      },
+      baselineAllocations,
+      farmerLabel,
+      storagePasses: mergedPasses,
+    }
+  }, [
+    entry,
+    farmerStorageLinkId,
+    farmerStorageLinks,
+    isFarmersLoading,
+    isLoadingPasses,
+    mergedPasses,
+  ])
+
+  if (!entry) {
+    return (
+      <EditOutgoingFormLayout>
+        <Card className="w-full shadow-sm">
+          <CardHeader className="border-b bg-muted/30 pb-6">
+            <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+              Gate pass not found
+            </CardTitle>
+            <CardDescription>
+              This outgoing gate pass is not in the daybook cache. Open it from
+              the daybook or search results first.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </EditOutgoingFormLayout>
+    )
+  }
+
+  if (entry.isNull) {
+    return (
+      <EditOutgoingFormLayout>
+        <Card className="w-full shadow-sm">
+          <CardHeader className="border-b bg-muted/30 pb-6">
+            <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+              Cannot edit null gate pass
+            </CardTitle>
+            <CardDescription>
+              Outgoing gate pass #{entry.gatePassNo.toLocaleString("en-IN")} has
+              been marked as null.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </EditOutgoingFormLayout>
+    )
+  }
+
+  if (!farmerStorageLinkId && !isFarmersLoading) {
+    return (
+      <EditOutgoingFormLayout>
+        <Card className="w-full shadow-sm">
+          <CardHeader className="border-b bg-muted/30 pb-6">
+            <CardTitle className="font-heading text-xl font-semibold tracking-tight">
+              Farmer account unavailable
+            </CardTitle>
+            <CardDescription>
+              Could not resolve the farmer storage link for this outgoing pass.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </EditOutgoingFormLayout>
+    )
+  }
+
+  if (!mapped) {
+    return (
+      <EditOutgoingFormLayout>
+        <Card className="w-full shadow-sm">
+          <CardHeader className="border-b bg-muted/30 pb-6">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="mt-2 h-4 w-80" />
+          </CardHeader>
+          <CardContent className="space-y-4 pt-8 pb-8">
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </EditOutgoingFormLayout>
+    )
+  }
+
+  return (
+    <EditOutgoingFormLayout>
+      <EditOutgoingFormLoaded
+        key={gatePassId}
+        entry={entry}
+        gatePassId={gatePassId}
+        defaultValues={mapped.values}
+        baselineValues={mapped.baselineValues}
+        baselineAllocations={mapped.baselineAllocations}
+        farmerLabel={mapped.farmerLabel}
+        storagePasses={mapped.storagePasses}
+      />
+    </EditOutgoingFormLayout>
+  )
+}
+
+export default EditOutgoingForm

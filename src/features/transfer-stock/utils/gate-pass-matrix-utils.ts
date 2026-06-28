@@ -21,6 +21,7 @@ const KEY_SEP = "\u001f"
 
 export type StorageGatePassFilterParams = {
   variety?: string
+  varieties?: string[]
   search?: string
   location?: LocationFilters
   preferences?: LotNoPreferences
@@ -69,10 +70,19 @@ function getLotNoSearchTerms(
 
 export function filterStorageGatePasses(
   passes: StorageGatePass[],
-  { variety, search, location, preferences }: StorageGatePassFilterParams
+  { variety, varieties, search, location, preferences }: StorageGatePassFilterParams
 ): StorageGatePass[] {
   let list = passes
-  if (variety?.trim()) {
+  const varietySet =
+    varieties != null && varieties.length > 0
+      ? new Set(varieties.map((v) => v.trim()).filter(Boolean))
+      : null
+  if (varietySet) {
+    list = list.filter((p) => {
+      const passVariety = p.variety?.trim()
+      return passVariety != null && varietySet.has(passVariety)
+    })
+  } else if (variety?.trim()) {
     const v = variety.trim()
     list = list.filter((p) => p.variety?.trim() === v)
   }

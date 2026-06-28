@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { DEFAULT_DAYBOOK_SEARCH } from '@/features/daybook/search';
 import type { IncomingGatePassRecord } from '@/features/incoming/types/api';
 import CreateOutgoingForm from '@/features/outgoing/forms/create-outgoing-form';
+import { incomingGatePassesByFarmerLinkQueryKey } from '@/features/incoming/api/use-incoming-gate-passes-by-farmer-link';
 import { allocationKey } from '@/features/transfer-stock/utils/gate-pass-matrix-utils';
 import {
   FARMER_LINK_ID,
@@ -13,14 +14,45 @@ import { renderWithProviders, screen, user, waitFor } from '@/test/test-utils';
 
 const STORAGE_PASS_ID = '674a1b2c3d4e5f6789012346';
 
-function incomingGatePassesByFarmerLinkQueryKey(farmerStorageLinkId: string) {
-  return ['incoming-gate-passes-by-farmer-link', farmerStorageLinkId] as const;
-}
-
 const mockNavigate = vi.fn();
 const mockUseFarmerStorageLinks = vi.fn();
 const mockUseNextGatePassNumber = vi.fn();
 const mockCreateOutgoingGatePass = vi.fn();
+
+const mockTransferGatePassesSection = vi.fn(
+  ({
+    onAllocationsChange,
+    varietyFilterMode,
+  }: {
+    onAllocationsChange: (value: Record<string, number>) => void;
+    varietyFilterMode?: string;
+  }) => (
+    <div data-testid="transfer-gate-passes-section" data-variety-mode={varietyFilterMode}>
+      <button
+        type="button"
+        data-testid="set-allocation"
+        onClick={() =>
+          onAllocationsChange({
+            [allocationKey(STORAGE_PASS_ID, '50kg', 0)]: 10,
+          })
+        }
+      >
+        Set allocation
+      </button>
+    </div>
+  ),
+);
+
+vi.mock('@/features/transfer-stock/forms/transfer-gate-passes-section', () => ({
+  TransferGatePassesSection: (props: {
+    onAllocationsChange: (value: Record<string, number>) => void;
+    varietyFilterMode?: string;
+  }) => mockTransferGatePassesSection(props),
+}));
+
+vi.mock('@/features/daybook/components/daybook-back-button', () => ({
+  DaybookBackButton: () => <div data-testid="daybook-back-button" />,
+}));
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>();
@@ -63,26 +95,6 @@ vi.mock(
   }),
 );
 
-vi.mock('@/features/transfer-stock/forms/transfer-gate-passes-section', () => ({
-  TransferGatePassesSection: ({
-    onAllocationsChange,
-  }: {
-    onAllocationsChange: (value: Record<string, number>) => void;
-  }) => (
-    <button
-      type="button"
-      data-testid="set-allocation"
-      onClick={() =>
-        onAllocationsChange({
-          [allocationKey(STORAGE_PASS_ID, '50kg', 0)]: 10,
-        })
-      }
-    >
-      Set allocation
-    </button>
-  ),
-}));
-
 vi.mock('@/features/outgoing/forms/outgoing-summary-sheet', () => ({
   OutgoingSummarySheet: ({
     open,
@@ -105,7 +117,9 @@ vi.mock('@/features/outgoing/forms/outgoing-summary-sheet', () => ({
     ) : null,
 }));
 
-function makeIncomingGatePassRecord(): IncomingGatePassRecord {
+function makeIncomingGatePassRecord(
+  overrides: Partial<IncomingGatePassRecord> & { _id?: string; variety?: string } = {},
+): IncomingGatePassRecord {
   return {
     _id: STORAGE_PASS_ID,
     farmerStorageLinkId: {
@@ -131,6 +145,7 @@ function makeIncomingGatePassRecord(): IncomingGatePassRecord {
     status: 'OPEN',
     createdAt: '2026-06-01T00:00:00.000Z',
     updatedAt: '2026-06-01T00:00:00.000Z',
+    ...overrides,
   };
 }
 
@@ -165,10 +180,13 @@ async function selectFarmerOption(label: string) {
   await user.click(option);
 }
 
-function seedIncomingPasses(queryClient: ReturnType<typeof renderWithProviders>['queryClient']) {
+function seedIncomingPasses(
+  queryClient: ReturnType<typeof renderWithProviders>['queryClient'],
+  records: IncomingGatePassRecord[] = [makeIncomingGatePassRecord()],
+) {
   queryClient.setQueryData(
     incomingGatePassesByFarmerLinkQueryKey(FARMER_LINK_ID),
-    [makeIncomingGatePassRecord()],
+    records,
   );
 }
 
@@ -347,6 +365,17 @@ describe('CreateOutgoingForm', () => {
 
     expect(farmerInput).toHaveValue('');
     expect(screen.getByPlaceholderText(/search farmers/i)).toBeInTheDocument();
+  });
+
+  it('passes multi-optional variety filter mode to the gate pass section', async () => {
+    const farmerLabel = 'Rajesh Kumar — Acct #101';
+    renderWithProviders(<CreateOutgoingForm />);
+
+    await selectFarmerOption(farmerLabel);
+
+    expect(mockTransferGatePassesSection).toHaveBeenCalledWith(
+      expect.objectContaining({ varietyFilterMode: 'multi-optional' }),
+    );
   });
 
   it('omits remarks from the create payload when remarks are cleared before submit', async () => {

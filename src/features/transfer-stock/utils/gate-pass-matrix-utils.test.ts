@@ -118,6 +118,45 @@ describe("filterStorageGatePasses", () => {
     expect(noMatch).toHaveLength(0)
   })
 
+  it("filters by multiple varieties when varieties array is provided", () => {
+    const otherPass: StorageGatePass = {
+      ...samplePass,
+      _id: "pass-2",
+      variety: "K. Pukhraj",
+    }
+
+    const result = filterStorageGatePasses([samplePass, otherPass], {
+      varieties: ["K. Jyoti", "K. Pukhraj"],
+    })
+    expect(result).toHaveLength(2)
+
+    const singleResult = filterStorageGatePasses([samplePass, otherPass], {
+      varieties: ["K. Jyoti"],
+    })
+    expect(singleResult).toHaveLength(1)
+    expect(singleResult[0]?.variety).toBe("K. Jyoti")
+
+    const noMatch = filterStorageGatePasses([samplePass, otherPass], {
+      varieties: ["Other"],
+    })
+    expect(noMatch).toHaveLength(0)
+  })
+
+  it("prefers varieties array over single variety when both are set", () => {
+    const otherPass: StorageGatePass = {
+      ...samplePass,
+      _id: "pass-2",
+      variety: "K. Pukhraj",
+    }
+
+    const result = filterStorageGatePasses([samplePass, otherPass], {
+      variety: "K. Jyoti",
+      varieties: ["K. Pukhraj"],
+    })
+    expect(result).toHaveLength(1)
+    expect(result[0]?.variety).toBe("K. Pukhraj")
+  })
+
   it("filters by marka using manual parchi or gate pass fallback", () => {
     const result = filterStorageGatePasses([samplePass], {
       search: "100/50",

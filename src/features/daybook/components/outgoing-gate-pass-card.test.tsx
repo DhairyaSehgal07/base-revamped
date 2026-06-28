@@ -10,6 +10,15 @@ import {
 import { renderWithProviders, screen, user, waitFor } from '@/test/test-utils';
 
 const mockNullOutgoingGatePass = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>();
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock('sonner', () => ({
   toast: {
@@ -23,10 +32,6 @@ vi.mock('@/features/outgoing/api/use-null-outgoing-gate-pass', () => ({
     mutateAsync: mockNullOutgoingGatePass,
     isPending: false,
   }),
-}));
-
-vi.mock('@/features/outgoing/forms/edit-outgoing-gate-pass-sheet', () => ({
-  EditOutgoingGatePassSheet: () => null,
 }));
 
 function renderCard(
@@ -52,6 +57,19 @@ describe('OutgoingGatePassCard mark as null', () => {
     expect(
       screen.getByRole('button', { name: /edit outgoing gate pass 24/i }),
     ).toBeInTheDocument();
+  });
+
+  it('navigates to the edit page when edit is clicked', async () => {
+    const entry = renderCard();
+
+    await user.click(
+      screen.getByRole('button', { name: /edit outgoing gate pass 24/i }),
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/outgoing/$id',
+      params: { id: entry._id },
+    });
   });
 
   it('hides edit and mark-as-null actions for nulled entries', () => {

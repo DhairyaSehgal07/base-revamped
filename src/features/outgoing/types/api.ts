@@ -65,6 +65,7 @@ export type UpdateOutgoingGatePassPayload = {
   to?: string
   truckNumber?: string
   remarks?: string
+  incomingGatePasses?: CreateOutgoingGatePassIncomingPayload[]
 }
 
 export type UpdateOutgoingGatePassResponse = {

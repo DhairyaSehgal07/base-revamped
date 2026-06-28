@@ -1,5 +1,7 @@
 import type { OutgoingDaybookEntry } from "@/features/daybook/types"
+import { resolveFarmerStorageLinkId } from "@/features/daybook/utils/resolve-farmer-storage-link-id"
 import type { OutgoingEditFormValues } from "@/features/outgoing/schemas/outgoing-edit-form-schema"
+import type { FarmerStorageLink } from "@/features/people/types"
 
 function parseManualGatePassNumber(
   value: string | number | undefined
@@ -16,14 +18,21 @@ function normalizeToIsoDateTime(value: string): string {
 }
 
 export function outgoingDaybookEntryToEditFormValues(
-  entry: OutgoingDaybookEntry
+  entry: OutgoingDaybookEntry,
+  allocations: Record<string, number> = {},
+  farmerStorageLinks: FarmerStorageLink[] = []
 ): OutgoingEditFormValues {
   return {
+    farmerStorageLinkId: resolveFarmerStorageLinkId(
+      entry.farmerStorageLinkId,
+      farmerStorageLinks
+    ),
     manualGatePassNumber: parseManualGatePassNumber(entry.manualParchiNumber),
     date: normalizeToIsoDateTime(entry.date),
     from: entry.from?.trim() ?? "",
     to: entry.to?.trim() ?? "",
     truckNumber: (entry.truckNumber ?? "").trim().toUpperCase(),
     remarks: entry.remarks?.trim() ?? "",
+    allocations,
   }
 }

@@ -23,6 +23,8 @@ import {
   TransferAllocationSheet,
   type AllocationSheetTarget,
 } from "@/features/transfer-stock/forms/transfer-allocation-sheet"
+import { OutgoingAllocationSheet } from "@/features/outgoing/forms/outgoing-allocation-sheet"
+import type { VarietyFilterMode } from "@/features/transfer-stock/hooks/use-transfer-gate-pass-matrix"
 import type {
   DatePassGroup,
   StorageGatePass,
@@ -106,18 +108,33 @@ function LotNoDisplay({ lotNo }: { lotNo: string }) {
   )
 }
 
-function GatePassVoucherCell({ pass }: { pass: StorageGatePass }) {
+function GatePassVoucherCell({
+  pass,
+  showVarietyLabel = false,
+}: {
+  pass: StorageGatePass
+  showVarietyLabel?: boolean
+}) {
   const preferences = usePreferencesStore((state) => state.preferences)
   const marka = useMemo(
     () => getStorageGatePassLotNo(pass, preferences),
     [pass, preferences]
   )
+  const variety = pass.variety?.trim()
 
   return (
     <div className="flex min-w-0 flex-col gap-0.5">
       <span className="font-mono text-sm font-semibold tabular-nums text-primary">
         #{pass.gatePassNo.toLocaleString("en-IN")}
       </span>
+      {showVarietyLabel && variety ? (
+        <span
+          className="truncate text-xs text-muted-foreground"
+          title={variety}
+        >
+          {variety}
+        </span>
+      ) : null}
       {marka !== "—" ? <LotNoDisplay lotNo={marka} /> : null}
     </div>
   )
@@ -152,19 +169,27 @@ function SlotButton({
   sizeName,
   slot,
   selectedQty,
+  previouslyIssued = 0,
+  allocationMode = "create",
   onClick,
 }: {
   pass: StorageGatePass
   sizeName: string
   slot: BagSlotDetail
   selectedQty: number
+  previouslyIssued?: number
+  allocationMode?: "create" | "edit"
   onClick: () => void
 }) {
   const isSelected = selectedQty > 0
   const currentQty = slot.currentQuantity
   const initialQty = slot.initialQuantity
-  const isUnavailable = isSlotUnavailable(currentQty)
+  const isUnavailable =
+    allocationMode === "edit"
+      ? isSlotUnavailable(currentQty) && previouslyIssued <= 0
+      : isSlotUnavailable(currentQty)
   const stockLevel = getSlotStockLevel(currentQty, initialQty)
+  const showSelectedBadge = isSelected && !isUnavailable
 
   return (
     <Button
@@ -177,8 +202,7 @@ function SlotButton({
         isUnavailable
           ? slotUnavailableButtonClasses()
           : slotStockLevelButtonClasses(stockLevel, isSelected),
-        isSelected &&
-          !isUnavailable &&
+        showSelectedBadge &&
           "border-primary bg-primary/5 ring-2 ring-primary/30 hover:bg-primary/5"
       )}
       aria-label={
@@ -187,7 +211,7 @@ function SlotButton({
           : `${pass.variety}, ${sizeName}, ${formatLocationShort(slot)}, ${isSelected ? `${selectedQty} of ${currentQty} selected` : `${currentQty} of ${initialQty} bags`}`
       }
     >
-      {isSelected && !isUnavailable ? (
+      {showSelectedBadge ? (
         <SelectedQuantityBadge quantity={selectedQty} />
       ) : null}
       <span
@@ -223,11 +247,15 @@ function GatePassSizeCell({
   pass,
   sizeName,
   allocations,
+  baselineAllocations,
+  allocationMode = "create",
   onSlotClick,
 }: {
   pass: StorageGatePass
   sizeName: string
   allocations: Record<string, number>
+  baselineAllocations?: Record<string, number>
+  allocationMode?: "create" | "edit"
   onSlotClick: (
     pass: StorageGatePass,
     sizeName: string,
@@ -245,6 +273,7 @@ function GatePassSizeCell({
       {slots.map((slot) => {
         const key = allocationKey(pass._id, sizeName, slot.bagIndex)
         const selectedQty = allocations[key] ?? 0
+        const previouslyIssued = baselineAllocations?.[key] ?? 0
         return (
           <SlotButton
             key={key}
@@ -252,6 +281,8 @@ function GatePassSizeCell({
             sizeName={sizeName}
             slot={slot}
             selectedQty={selectedQty}
+            previouslyIssued={previouslyIssued}
+            allocationMode={allocationMode}
             onClick={() => onSlotClick(pass, sizeName, slot)}
           />
         )
@@ -270,6 +301,9 @@ type TransferGatePassMatrixProps = {
   onAllocationClear: (key: string) => void
   hasFilteredData?: boolean
   hasActiveFilters?: boolean
+  varietyFilterMode?: VarietyFilterMode
+  allocationMode?: "create" | "edit"
+  baselineAllocations?: Record<string, number>
 }
 
 export function TransferGatePassMatrix({
@@ -282,6 +316,9 @@ export function TransferGatePassMatrix({
   onAllocationClear,
   hasFilteredData = true,
   hasActiveFilters = false,
+  varietyFilterMode = "single-required",
+  allocationMode = "create",
+  baselineAllocations = {},
 }: TransferGatePassMatrixProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetTarget, setSheetTarget] = useState<AllocationSheetTarget | null>(
@@ -292,9 +329,15 @@ export function TransferGatePassMatrix({
 
   const handleSlotClick = useCallback(
     (pass: StorageGatePass, sizeName: string, slot: BagSlotDetail) => {
-      if (isSlotUnavailable(slot.currentQuantity)) return
-
       const key = allocationKey(pass._id, sizeName, slot.bagIndex)
+      const previouslyIssued = baselineAllocations[key] ?? 0
+      const blocked =
+        allocationMode === "edit"
+          ? isSlotUnavailable(slot.currentQuantity) && previouslyIssued <= 0
+          : isSlotUnavailable(slot.currentQuantity)
+
+      if (blocked) return
+
       setSheetTarget({
         pass,
         sizeName,
@@ -304,11 +347,14 @@ export function TransferGatePassMatrix({
       })
       setSheetOpen(true)
     },
-    []
+    [allocationMode, baselineAllocations]
   )
 
   const sheetInitialQty = sheetTarget
     ? allocations[sheetTarget.allocationKey] ?? 0
+    : 0
+  const sheetPreviouslyIssued = sheetTarget
+    ? baselineAllocations[sheetTarget.allocationKey] ?? 0
     : 0
 
   if (!hasFilteredData) {
@@ -328,7 +374,9 @@ export function TransferGatePassMatrix({
               <EmptyDescription>
                 {hasActiveFilters
                   ? "Try different filters or clear the search."
-                  : "Choose a variety to display gate passes, or check back when stock is available."}
+                  : varietyFilterMode === "multi-optional"
+                    ? "No gate passes match the current filters, or check back when stock is available."
+                    : "Choose a variety to display gate passes, or check back when stock is available."}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -414,7 +462,12 @@ export function TransferGatePassMatrix({
                         stickyVoucherCellClass()
                       )}
                     >
-                      <GatePassVoucherCell pass={pass} />
+                      <GatePassVoucherCell
+                        pass={pass}
+                        showVarietyLabel={
+                          varietyFilterMode === "multi-optional"
+                        }
+                      />
                     </TableCell>
                     {visibleSizes.map((sizeName, index) => (
                       <TableCell
@@ -428,6 +481,8 @@ export function TransferGatePassMatrix({
                           pass={pass}
                           sizeName={sizeName}
                           allocations={allocations}
+                          baselineAllocations={baselineAllocations}
+                          allocationMode={allocationMode}
                           onSlotClick={handleSlotClick}
                         />
                       </TableCell>
@@ -441,14 +496,26 @@ export function TransferGatePassMatrix({
         </CardContent>
       </Card>
 
-      <TransferAllocationSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        target={sheetTarget}
-        initialQuantity={sheetInitialQty}
-        onApply={onAllocationChange}
-        onClear={onAllocationClear}
-      />
+      {allocationMode === "edit" ? (
+        <OutgoingAllocationSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          target={sheetTarget}
+          initialQuantity={sheetInitialQty}
+          previouslyIssued={sheetPreviouslyIssued}
+          onApply={onAllocationChange}
+          onClear={onAllocationClear}
+        />
+      ) : (
+        <TransferAllocationSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          target={sheetTarget}
+          initialQuantity={sheetInitialQty}
+          onApply={onAllocationChange}
+          onClear={onAllocationClear}
+        />
+      )}
     </>
   )
 }

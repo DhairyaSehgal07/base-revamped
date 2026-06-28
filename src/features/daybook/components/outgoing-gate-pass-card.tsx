@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import {
   Ban,
@@ -53,7 +54,6 @@ import {
   isOutgoingTransferType,
   TransferGatePassBadge,
 } from "@/features/daybook/components/transfer-gate-pass-badge"
-import { EditOutgoingGatePassSheet } from "@/features/outgoing/forms/edit-outgoing-gate-pass-sheet"
 import { useNullOutgoingGatePass } from "@/features/outgoing/api/use-null-outgoing-gate-pass"
 
 interface InfoBlockProps {
@@ -224,8 +224,8 @@ interface OutgoingGatePassCardProps {
 }
 
 export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
+  const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [remarks, setRemarks] = useState("")
   const { mutateAsync: nullOutgoingGatePass, isPending: isNulling } =
@@ -547,7 +547,12 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
                 size="icon-sm"
                 className="h-8 w-8"
                 aria-label={`Edit outgoing gate pass ${entry.gatePassNo}`}
-                onClick={() => setEditOpen(true)}
+                onClick={() =>
+                  navigate({
+                    to: "/outgoing/$id",
+                    params: { id: entry._id },
+                  })
+                }
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -569,12 +574,6 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
           </Button>
         </div>
       </CardFooter>
-
-      <EditOutgoingGatePassSheet
-        entry={entry}
-        open={editOpen}
-        onOpenChange={setEditOpen}
-      />
 
       <AlertDialog open={cancelOpen} onOpenChange={handleCancelOpenChange}>
         <AlertDialogContent className="sm:max-w-lg">
