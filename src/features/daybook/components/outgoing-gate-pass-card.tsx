@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 import {
@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
+  Loader2,
   Pencil,
   Printer,
   Truck,
@@ -37,6 +38,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldLabel } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
+import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
 import type {
   IncomingGatePassSnapshot,
   OutgoingDaybookEntry,
@@ -226,8 +228,16 @@ interface OutgoingGatePassCardProps {
 export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [remarks, setRemarks] = useState("")
+  const coldStorageName = useColdStorageStore((state) => state.coldStorage?.name)
+  const coldStorageAddress = useColdStorageStore(
+    (state) => state.coldStorage?.address,
+  )
+  const coldStorageLogo = useColdStorageStore(
+    (state) => state.coldStorage?.imageUrl,
+  )
   const { mutateAsync: nullOutgoingGatePass, isPending: isNulling } =
     useNullOutgoingGatePass()
 
@@ -276,6 +286,40 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
   const entryRemarks = entry.remarks?.trim() || "—"
   const hasRemarks = entryRemarks !== "—"
   const breakdownRows = useMemo(() => buildBreakdownRows(entry), [entry])
+
+  const handlePrint = useCallback(async () => {
+    if (!coldStorageName) {
+      toast.error("Cold storage details are not ready yet.", {
+        position: "bottom-right",
+      })
+      return
+    }
+
+    try {
+      setIsGeneratingPdf(true)
+
+      const { generateOutgoingGatePassPdf } = await import(
+        "@/features/daybook/utils/generate-outgoing-gate-pass-pdf"
+      )
+
+      const blob = await generateOutgoingGatePassPdf({
+        entry,
+        coldStorageName,
+        coldStorageAddress,
+        coldStorageLogo: coldStorageLogo || undefined,
+      })
+
+      const url = URL.createObjectURL(blob)
+      window.open(url, "_blank")
+    } catch (error) {
+      console.error("Failed to generate PDF:", error)
+      toast.error("Failed to generate PDF. Please try again.", {
+        position: "bottom-right",
+      })
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }, [coldStorageAddress, coldStorageLogo, coldStorageName, entry])
 
   return (
     <Card
@@ -568,9 +612,24 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
               </Button>
             </>
           )}
-          <Button variant="secondary" size="sm" className="h-8">
-            <Printer className="mr-2 h-3.5 w-3.5" />
-            Print
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-8"
+            disabled={isGeneratingPdf || !coldStorageName}
+            onClick={() => void handlePrint()}
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <Printer className="mr-2 h-3.5 w-3.5" />
+                Print
+              </>
+            )}
           </Button>
         </div>
       </CardFooter>
