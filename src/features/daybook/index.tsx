@@ -64,6 +64,7 @@ import {
 } from "./search"
 import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "./types"
 import { DEFAULT_INCOMING_EDIT_HISTORY_SEARCH } from "@/features/incoming-edit-history/search"
+import { DEFAULT_OUTGOING_EDIT_HISTORY_SEARCH } from "@/features/outgoing-edit-history/search"
 
 const DaybookPage = () => {
   const navigate = useNavigate({ from: Route.fullPath })
@@ -192,7 +193,10 @@ const DaybookPage = () => {
   }
 
   const handleOutgoingEditHistory = () => {
-    navigate({ to: "/outgoing/edit-history" })
+    navigate({
+      to: "/outgoing/edit-history",
+      search: DEFAULT_OUTGOING_EDIT_HISTORY_SEARCH,
+    })
   }
 
   const handleAddOutgoing = () => {

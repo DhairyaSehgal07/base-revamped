@@ -66,6 +66,9 @@ function resolvePageTitle(
   if (pathname === '/incoming/edit-history') {
     return 'Incoming Edit History';
   }
+  if (pathname === '/outgoing/edit-history') {
+    return 'Outgoing Edit History';
+  }
   if (pathname.startsWith('/incoming/') && pathname !== '/incoming') {
     return 'Edit Incoming Gate Pass';
   }
