@@ -22,7 +22,8 @@ export type IncomingGatePassReportRecord = {
   stockFilter?: string
   customMarka?: string
   bagSizes: IncomingBagSize[]
-  totalBags: number
+  initialTotal: number
+  currentTotal: number
   farmerStorageLinkId: DaybookFarmerStorageLink
   createdBy?: DaybookCreatedBy
 }

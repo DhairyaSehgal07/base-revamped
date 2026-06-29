@@ -3,7 +3,10 @@ import type { Row } from "@tanstack/react-table"
 import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
 import { cn } from "@/lib/utils"
 
-import type { IncomingQuantityMode } from "./columns"
+import {
+  getIncomingReportTotalBags,
+  type IncomingQuantityMode,
+} from "./columns"
 
 const numberFormatter = new Intl.NumberFormat("en-IN")
 
@@ -53,8 +56,7 @@ export function getIncomingReportFooterContent(
   if (columnId === "totalBags") {
     const total = rows.reduce(
       (sum, row) =>
-        sum +
-        (typeof row.original.totalBags === "number" ? row.original.totalBags : 0),
+        sum + getIncomingReportTotalBags(row.original, quantityMode),
       0,
     )
 

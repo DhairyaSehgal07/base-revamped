@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import { AddLedgerDialog } from '@/features/finances/components/ledger-tab/add-ledger-dialog';
 import { addLedgerFormSchema } from '@/features/finances/components/ledger-tab/schemas/add-ledger-form-schema';
-import { renderWithProviders, screen, user, waitFor } from '@/test/test-utils';
+import { renderWithProviders, screen, selectComboboxOption, user, waitFor } from '@/test/test-utils';
 
 const mockCreateLedger = vi.fn();
 
@@ -26,18 +26,6 @@ function renderDialog(onOpenChange = vi.fn()) {
   );
 
   return { onOpenChange };
-}
-
-async function selectComboboxOption(inputId: string, optionLabel: string) {
-  const input = document.getElementById(inputId);
-  expect(input).toBeTruthy();
-
-  await user.click(input!);
-  await user.clear(input!);
-  await user.type(input!, optionLabel);
-
-  const option = await screen.findByRole('option', { name: optionLabel });
-  await user.click(option);
 }
 
 describe('AddLedgerDialog', () => {
@@ -69,25 +57,22 @@ describe('AddLedgerDialog', () => {
     renderDialog();
 
     const subTypeInput = screen.getByLabelText(/sub type/i);
-    expect(subTypeInput).toHaveAttribute('placeholder', 'Select type first');
+    expect(subTypeInput).toHaveTextContent('Select type first');
 
     await selectComboboxOption('add-ledger-type', 'Asset');
 
-    expect(subTypeInput).toHaveAttribute('placeholder', 'Search sub types...');
+    expect(subTypeInput).toHaveTextContent('Search sub types...');
 
     await selectComboboxOption('add-ledger-sub-type', 'Current Assets');
 
-    expect(screen.getByLabelText(/category/i)).toHaveAttribute(
-      'placeholder',
+    expect(screen.getByLabelText(/category/i)).toHaveTextContent(
       'Search categories...',
     );
 
     await selectComboboxOption('add-ledger-type', 'Liability');
 
-    expect(subTypeInput).toHaveValue('');
-    expect(subTypeInput).toHaveAttribute('placeholder', 'Search sub types...');
-    expect(screen.getByLabelText(/category/i)).toHaveAttribute(
-      'placeholder',
+    expect(subTypeInput).toHaveTextContent('Search sub types...');
+    expect(screen.getByLabelText(/category/i)).toHaveTextContent(
       'Select type and sub type first',
     );
   });

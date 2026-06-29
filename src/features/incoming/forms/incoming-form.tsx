@@ -60,7 +60,7 @@ import type { IncomingBagSize } from "@/features/daybook/types"
 import { AddFarmerDialog } from "@/features/people/components/add-farmer-dialog"
 import type { FarmerStorageLink } from "@/features/people/types"
 import { getLinkDisplayName } from "@/features/people/utils/get-link-display-fields"
-import { numericInputProps, normalizeUppercase, parseOptionalNumber } from "@/lib/form-utils"
+import { numericInputProps, normalizeUppercase, parseOptionalNumber, TRUCK_NUMBER_MAX_LENGTH } from "@/lib/form-utils"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
@@ -564,7 +564,10 @@ export function IncomingForm({
                   }}
                 </form.Field>
 
-                <form.Field name="truckNumber">
+                <form.Field
+                  name="truckNumber"
+                  validators={{ onChange: formSchema.shape.truckNumber }}
+                >
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
                     return (
@@ -583,6 +586,7 @@ export function IncomingForm({
                           aria-invalid={isInvalid}
                           placeholder="e.g. HR-26-AB-1234 (optional)"
                           className="uppercase"
+                          maxLength={TRUCK_NUMBER_MAX_LENGTH}
                         />
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />

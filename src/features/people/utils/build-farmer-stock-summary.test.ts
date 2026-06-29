@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import type { IncomingDaybookEntry } from "@/features/daybook/types"
+import type {
+  IncomingDaybookEntry,
+  OutgoingDaybookEntry,
+} from "@/features/daybook/types"
 
 import {
   buildFarmerStockSummary,
@@ -286,7 +289,149 @@ describe("buildStockSummaryCellBreakdown", () => {
       size: "Ration",
     })
 
+    expect(lines).toHaveLength(0)
+  })
+
+  it("uses outgoing gate pass details in outgoing mode", () => {
+    const incomingPasses = [
+      createPass({
+        _id: "incoming-1",
+        gatePassNo: 101,
+        variety: "Atlantic",
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 100,
+            currentQuantity: 70,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      }),
+    ]
+
+    const outgoingGatePasses: OutgoingDaybookEntry[] = [
+      {
+        _id: "outgoing-1",
+        gatePassNo: 202,
+        manualParchiNumber: "OGP-55",
+        date: "2026-01-02",
+        createdAt: "2026-01-02T10:00:00.000Z",
+        farmerStorageLinkId: incomingPasses[0]!.farmerStorageLinkId,
+        orderDetails: [
+          {
+            size: "Ration",
+            quantityAvailable: 80,
+            quantityIssued: 30,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+        incomingGatePassSnapshots: [
+          {
+            _id: "incoming-1",
+            gatePassNo: 101,
+            variety: "Atlantic",
+            bagSizes: [
+              {
+                name: "Ration",
+                initialQuantity: 100,
+                currentQuantity: 70,
+                type: "Ration",
+                quantityIssued: 30,
+                location: { chamber: "1", floor: "1", row: "A" },
+              },
+            ],
+          },
+        ],
+      },
+    ]
+
+    const lines = buildStockSummaryCellBreakdown({
+      passes: incomingPasses,
+      outgoingPasses: outgoingGatePasses,
+      stockFilterTab: "all",
+      quantityMode: "outgoing",
+      variety: "Atlantic",
+      size: "Ration",
+    })
+
     expect(lines).toHaveLength(1)
-    expect(lines[0]?.quantity).toBe(20)
+    expect(lines[0]).toMatchObject({
+      variety: "Atlantic",
+      size: "Ration",
+      location: "1/1/A",
+      quantity: 30,
+      gatePassNo: 202,
+      reference: "101",
+    })
+  })
+
+  it("resolves outgoing passes from allEntries when outgoingPasses is omitted", () => {
+    const incomingPasses = [
+      createPass({
+        _id: "incoming-1",
+        gatePassNo: 26,
+        variety: "Chipsona 1",
+        bagSizes: [
+          {
+            name: "Goli",
+            initialQuantity: 10,
+            currentQuantity: 0,
+            location: { chamber: "1", floor: "1", row: "4" },
+          },
+        ],
+      }),
+    ]
+
+    const allEntries = [
+      ...incomingPasses,
+      {
+        _id: "outgoing-1",
+        gatePassNo: 8,
+        date: "2026-01-02",
+        createdAt: "2026-01-02T10:00:00.000Z",
+        farmerStorageLinkId: incomingPasses[0]!.farmerStorageLinkId,
+        orderDetails: [
+          {
+            size: "Goli",
+            quantityAvailable: 10,
+            quantityIssued: 10,
+            location: { chamber: "1", floor: "1", row: "4" },
+          },
+        ],
+        incomingGatePassSnapshots: [
+          {
+            _id: "incoming-1",
+            gatePassNo: 26,
+            variety: "Chipsona 1",
+            bagSizes: [
+              {
+                name: "Goli",
+                initialQuantity: 10,
+                currentQuantity: 0,
+                type: "Goli",
+                quantityIssued: 10,
+                location: { chamber: "1", floor: "1", row: "4" },
+              },
+            ],
+          },
+        ],
+      } satisfies OutgoingDaybookEntry,
+    ]
+
+    const lines = buildStockSummaryCellBreakdown({
+      passes: incomingPasses,
+      allEntries,
+      stockFilterTab: "all",
+      quantityMode: "outgoing",
+      variety: "Chipsona 1",
+      size: "Goli",
+    })
+
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toMatchObject({
+      gatePassNo: 8,
+      reference: "26",
+      quantity: 10,
+    })
   })
 })

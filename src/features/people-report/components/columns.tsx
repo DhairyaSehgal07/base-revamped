@@ -225,7 +225,7 @@ function buildFarmerReportColumnsForSizes(
       accessorFn: (row) =>
         row.entry ? getGatePassVariety(row.entry) : "—",
       header: "Variety",
-      meta: { groupable: true, filterLabel: "Variety" },
+      meta: { groupable: true, wrap: true, filterLabel: "Variety" },
       enableGrouping: true,
       getGroupingValue: getRowVarietyGroupingValue,
       sortingFn: "text",
@@ -238,7 +238,7 @@ function buildFarmerReportColumnsForSizes(
 
         const variety = getGatePassVariety(row.original.entry)
         return (
-          <span className="block min-w-0" title={variety}>
+          <span className="block min-w-0 break-words" title={variety}>
             {variety}
           </span>
         )

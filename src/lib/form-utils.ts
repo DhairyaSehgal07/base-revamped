@@ -15,3 +15,5 @@ export const numericInputProps = {
 export function normalizeUppercase(value: string): string {
   return value.toUpperCase()
 }
+
+export const TRUCK_NUMBER_MAX_LENGTH = 15

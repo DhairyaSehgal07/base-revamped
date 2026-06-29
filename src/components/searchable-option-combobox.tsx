@@ -7,7 +7,10 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 } from "@/components/ui/combobox"
+import { InputGroup } from "@/components/ui/input-group"
+import { cn } from "@/lib/utils"
 
 export type ComboboxOption = {
   id: string
@@ -22,6 +25,7 @@ export type SearchableOptionComboboxProps = {
   onBlur: () => void
   isInvalid: boolean
   placeholder: string
+  popupSearchPlaceholder?: string
   emptyMessage: string
   options: ComboboxOption[]
   sortedOptions: ComboboxOption[]
@@ -65,6 +69,7 @@ export function SearchableOptionCombobox({
   onBlur,
   isInvalid,
   placeholder,
+  popupSearchPlaceholder,
   emptyMessage,
   options,
   sortedOptions,
@@ -76,40 +81,55 @@ export function SearchableOptionCombobox({
   disabled = false,
 }: SearchableOptionComboboxProps) {
   const selected = options.find((option) => option.id === value) ?? null
-  const inputDisplayValue = search || selected?.label || ""
+  const popupPlaceholder = popupSearchPlaceholder ?? placeholder
 
   return (
     <Combobox
       items={sortedOptions}
       itemToStringValue={(option) => option.label}
       value={selected}
-      inputValue={inputDisplayValue}
+      inputValue={search}
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen) {
+          setSearch("")
+        }
+      }}
       disabled={disabled}
       autoHighlight={"always" as unknown as boolean}
       onInputValueChange={(inputValue) => {
         setSearch(inputValue)
-        if (!inputValue.trim()) {
-          onValueChange("")
-        }
       }}
       onValueChange={(val) => {
         onValueChange(val ? val.id : "")
-        setSearch(val ? val.label : "")
+        setSearch("")
         setOpen(false)
       }}
     >
-      <ComboboxInput
-        id={id}
-        name={name}
-        placeholder={placeholder}
-        aria-invalid={isInvalid}
-        onFocus={() => setOpen(true)}
-        onBlur={onBlur}
-        className="w-full"
-      />
+      <InputGroup className="w-full">
+        <ComboboxTrigger
+          id={id}
+          name={name}
+          aria-invalid={isInvalid}
+          onBlur={onBlur}
+          disabled={disabled}
+          className={cn(
+            "flex h-9 min-h-9 w-full min-w-0 flex-1 cursor-default items-center justify-between gap-2 rounded-4xl border border-transparent bg-transparent px-3 py-0 text-left text-sm font-normal shadow-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30",
+            !selected && "text-muted-foreground"
+          )}
+        >
+          <span className="min-w-0 flex-1 truncate">
+            {selected?.label ?? placeholder}
+          </span>
+        </ComboboxTrigger>
+      </InputGroup>
       <ComboboxContent container={portalContainer}>
+        <ComboboxInput
+          showTrigger={false}
+          placeholder={popupPlaceholder}
+          aria-label={popupPlaceholder}
+        />
         <ComboboxEmpty>{emptyMessage}</ComboboxEmpty>
         <ComboboxList>
           {(option) => (

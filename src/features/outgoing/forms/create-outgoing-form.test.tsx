@@ -10,7 +10,7 @@ import {
   FARMER_LINK_ID,
   makeFarmerStorageLink,
 } from '@/test/fixtures';
-import { renderWithProviders, screen, user, waitFor } from '@/test/test-utils';
+import { renderWithProviders, screen, selectComboboxOption, user, waitFor } from '@/test/test-utils';
 
 const STORAGE_PASS_ID = '674a1b2c3d4e5f6789012346';
 
@@ -169,15 +169,7 @@ function setupReadyMocks() {
 }
 
 async function selectFarmerOption(label: string) {
-  const input = document.getElementById('outgoing-farmer');
-  expect(input).toBeTruthy();
-
-  await user.click(input!);
-  await user.clear(input!);
-  await user.type(input!, label);
-
-  const option = await screen.findByRole('option', { name: label });
-  await user.click(option);
+  await selectComboboxOption('outgoing-farmer', label);
 }
 
 function seedIncomingPasses(
@@ -359,12 +351,11 @@ describe('CreateOutgoingForm', () => {
     await selectFarmerOption(farmerLabel);
 
     const farmerInput = document.getElementById('outgoing-farmer');
-    expect(farmerInput).toHaveValue(farmerLabel);
+    expect(farmerInput).toHaveTextContent(farmerLabel);
 
     await user.click(screen.getByRole('button', { name: /reset form/i }));
 
-    expect(farmerInput).toHaveValue('');
-    expect(screen.getByPlaceholderText(/search farmers/i)).toBeInTheDocument();
+    expect(farmerInput).toHaveTextContent(/search farmers/i);
   });
 
   it('passes multi-optional variety filter mode to the gate pass section', async () => {

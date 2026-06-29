@@ -46,6 +46,7 @@ import {
   numericInputProps,
   normalizeUppercase,
   parseOptionalNumber,
+  TRUCK_NUMBER_MAX_LENGTH,
 } from "@/lib/form-utils"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
@@ -425,6 +426,7 @@ const CreateOutgoingForm = () => {
                           autoComplete="off"
                           aria-invalid={isInvalid}
                           className="uppercase"
+                          maxLength={TRUCK_NUMBER_MAX_LENGTH}
                         />
                         <FieldDescription>
                           Optional vehicle registration for this dispatch.

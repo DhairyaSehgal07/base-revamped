@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
-import type { IncomingDaybookEntry } from "@/features/daybook/types"
+import type {
+  DaybookEntry,
+  IncomingDaybookEntry,
+  OutgoingDaybookEntry,
+} from "@/features/daybook/types"
 import { shouldShowStockFilter } from "@/features/incoming/utils/incoming-preferences"
 import { FarmerStockSummaryTable } from "@/features/people/components/farmer-stock-summary-table"
 import {
@@ -37,6 +41,8 @@ const QUANTITY_MODES = Object.keys(
 
 type FarmerStockSummarySectionProps = {
   passes: IncomingDaybookEntry[]
+  outgoingPasses?: OutgoingDaybookEntry[]
+  allEntries?: DaybookEntry[]
   isError?: boolean
   error?: Error | null
   isFetching?: boolean
@@ -46,6 +52,8 @@ type FarmerStockSummarySectionProps = {
 
 export function FarmerStockSummarySection({
   passes,
+  outgoingPasses,
+  allEntries,
   isError = false,
   error = null,
   isFetching = false,
@@ -182,6 +190,8 @@ export function FarmerStockSummarySection({
             <FarmerStockSummaryTable
               matrix={summary}
               passes={passes}
+              outgoingPasses={outgoingPasses}
+              allEntries={allEntries}
               stockFilterTab={stockFilterTab}
               quantityMode={quantityMode}
             />

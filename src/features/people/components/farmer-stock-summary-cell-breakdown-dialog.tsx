@@ -90,6 +90,11 @@ export function FarmerStockSummaryCellBreakdownDialog({
                   >
                     Gate pass no.
                   </TableHead>
+                  {quantityMode === "outgoing" ? (
+                    <TableHead className={getHeadClassName(undefined, false)}>
+                      Reference
+                    </TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
 
@@ -125,6 +130,16 @@ export function FarmerStockSummaryCellBreakdownDialog({
                     >
                       {line.gatePassNo}
                     </TableCell>
+                    {quantityMode === "outgoing" ? (
+                      <TableCell
+                        className={cn(
+                          getCellClassName(undefined),
+                          "font-mono tabular-nums",
+                        )}
+                      >
+                        {line.reference ?? "—"}
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

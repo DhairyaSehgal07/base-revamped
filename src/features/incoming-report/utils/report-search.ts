@@ -23,6 +23,8 @@ function buildIncomingReportSearchText(
     row.remarks,
     row.truckNumber,
     row.createdBy?.name,
+    String(row.initialTotal),
+    String(row.currentTotal),
     ...row.bagSizes.flatMap((bag) => [
       bag.name,
       String(bag.currentQuantity),

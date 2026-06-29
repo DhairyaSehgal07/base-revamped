@@ -1,5 +1,6 @@
 import * as z from "zod"
 import { createIncomingQuantitiesSchema } from "@/features/incoming/schemas/incoming-quantities-schema"
+import { TRUCK_NUMBER_MAX_LENGTH } from "@/lib/form-utils"
 
 export const objectId = z
   .string()
@@ -47,7 +48,12 @@ export function createIncomingFormSchema(config: IncomingFormSchemaConfig) {
     stockFilter: stockFilterSchema(config.requireStockFilter),
     customMarka: customMarkaSchema(config.requireCustomMarka),
     date: z.string().datetime("Select a valid date."),
-    truckNumber: z.string(),
+    truckNumber: z
+      .string()
+      .max(
+        TRUCK_NUMBER_MAX_LENGTH,
+        `Truck number must be at most ${TRUCK_NUMBER_MAX_LENGTH} characters.`
+      ),
     remarks: z.string(),
   })
 

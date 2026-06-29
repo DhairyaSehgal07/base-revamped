@@ -3,7 +3,10 @@ import type { Column, Row, Table } from "@tanstack/react-table"
 
 import type { IncomingBagSize } from "@/features/daybook/types"
 import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
-import type { IncomingQuantityMode } from "@/features/incoming-report/components/columns"
+import {
+  getIncomingReportTotalBags,
+  type IncomingQuantityMode,
+} from "@/features/incoming-report/components/columns"
 import type {
   AdvancedFilterCondition,
   AdvancedReportGlobalFilter,
@@ -409,8 +412,7 @@ export function getFooterExportValue(
   if (columnId === "totalBags") {
     const total = rows.reduce(
       (sum, row) =>
-        sum +
-        (typeof row.original.totalBags === "number" ? row.original.totalBags : 0),
+        sum + getIncomingReportTotalBags(row.original, quantityMode),
       0,
     )
 

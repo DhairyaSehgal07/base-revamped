@@ -164,6 +164,54 @@ describe("getGatePassVariety", () => {
       ),
     ).toBe("Atlantic")
   })
+
+  it("joins multiple snapshot varieties for outgoing passes", () => {
+    expect(
+      getGatePassVariety(
+        createOutgoingPass({
+          variety: undefined,
+          incomingGatePassSnapshots: [
+            {
+              _id: "incoming-1",
+              gatePassNo: 101,
+              variety: "Atlantic",
+              bagSizes: [],
+            },
+            {
+              _id: "incoming-2",
+              gatePassNo: 102,
+              variety: "Chipsona",
+              bagSizes: [],
+            },
+          ],
+        }),
+      ),
+    ).toBe("Atlantic, Chipsona")
+  })
+
+  it("deduplicates snapshot varieties for outgoing passes", () => {
+    expect(
+      getGatePassVariety(
+        createOutgoingPass({
+          variety: undefined,
+          incomingGatePassSnapshots: [
+            {
+              _id: "incoming-1",
+              gatePassNo: 101,
+              variety: "Atlantic",
+              bagSizes: [],
+            },
+            {
+              _id: "incoming-2",
+              gatePassNo: 102,
+              variety: "Atlantic",
+              bagSizes: [],
+            },
+          ],
+        }),
+      ),
+    ).toBe("Atlantic")
+  })
 })
 
 describe("getGatePassSizeQuantity", () => {

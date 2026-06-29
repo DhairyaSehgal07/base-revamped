@@ -89,6 +89,11 @@ export function FarmerGatePassesSection({
     [gatePasses.entries],
   )
 
+  const outgoingPasses = useMemo(
+    () => gatePasses.entries.filter(isOutgoingDaybookEntry),
+    [gatePasses.entries],
+  )
+
   const typeFilteredEntries = useMemo(
     () => filterFarmerGatePassEntriesByType(gatePasses.entries, type),
     [gatePasses.entries, type],
@@ -257,6 +262,8 @@ export function FarmerGatePassesSection({
 
       <FarmerStockSummarySection
         passes={incomingPasses}
+        outgoingPasses={outgoingPasses}
+        allEntries={gatePasses.entries}
         isError={gatePasses.isError}
         error={gatePasses.error}
         isFetching={gatePasses.isFetching}

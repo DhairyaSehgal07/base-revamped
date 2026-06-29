@@ -24,6 +24,7 @@ export type IncomingReportColumnId =
   | "address"
   | "accountNumber"
   | "createdBy"
+  | "totalBags"
   | `size-${string}`
 
 export type AdvancedFilterCondition = {

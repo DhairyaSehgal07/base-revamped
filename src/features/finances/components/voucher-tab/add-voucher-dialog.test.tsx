@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import { AddVoucherDialog } from '@/features/finances/components/voucher-tab/add-voucher-dialog';
 import { makeLedgerOptions } from '@/test/fixtures';
-import { renderWithProviders, screen, user, waitFor } from '@/test/test-utils';
+import { renderWithProviders, screen, selectComboboxOption, user, waitFor } from '@/test/test-utils';
 
 const mockCreateVoucher = vi.fn();
 const ledgerOptions = makeLedgerOptions();
@@ -31,18 +31,6 @@ function renderDialog(onOpenChange = vi.fn()) {
   );
 
   return { onOpenChange };
-}
-
-async function selectComboboxOption(inputId: string, optionLabel: string) {
-  const input = document.getElementById(inputId);
-  expect(input).toBeTruthy();
-
-  await user.click(input!);
-  await user.clear(input!);
-  await user.type(input!, optionLabel);
-
-  const option = await screen.findByRole('option', { name: optionLabel });
-  await user.click(option);
 }
 
 describe('AddVoucherDialog', () => {

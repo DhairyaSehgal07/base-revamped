@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import type { IncomingDaybookEntry } from "@/features/daybook/types"
+import type { DaybookEntry, IncomingDaybookEntry, OutgoingDaybookEntry } from "@/features/daybook/types"
 import { FarmerStockSummaryCellBreakdownDialog } from "@/features/people/components/farmer-stock-summary-cell-breakdown-dialog"
 import {
   buildStockSummaryCellBreakdown,
@@ -40,6 +40,8 @@ type SelectedCell = {
 type FarmerStockSummaryTableProps = {
   matrix: StockSummaryMatrix
   passes: IncomingDaybookEntry[]
+  outgoingPasses?: OutgoingDaybookEntry[]
+  allEntries?: DaybookEntry[]
   stockFilterTab: StockFilterTab
   quantityMode: StockQuantityMode
 }
@@ -47,6 +49,8 @@ type FarmerStockSummaryTableProps = {
 export function FarmerStockSummaryTable({
   matrix,
   passes,
+  outgoingPasses,
+  allEntries,
   stockFilterTab,
   quantityMode,
 }: FarmerStockSummaryTableProps) {
@@ -64,12 +68,14 @@ export function FarmerStockSummaryTable({
 
     return buildStockSummaryCellBreakdown({
       passes,
+      outgoingPasses,
+      allEntries,
       stockFilterTab,
       quantityMode,
       variety: selectedCell.variety,
       size: selectedCell.size,
     })
-  }, [passes, quantityMode, selectedCell, stockFilterTab])
+  }, [allEntries, outgoingPasses, passes, quantityMode, selectedCell, stockFilterTab])
 
   const handleTableScroll = useCallback(() => {
     const el = scrollContainerRef.current
@@ -77,6 +83,10 @@ export function FarmerStockSummaryTable({
 
     setIsHeaderScrolled(el.scrollTop > 0)
   }, [])
+
+  useEffect(() => {
+    setSelectedCell(null)
+  }, [quantityMode, stockFilterTab])
 
   useEffect(() => {
     handleTableScroll()

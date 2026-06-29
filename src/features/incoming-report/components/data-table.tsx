@@ -308,6 +308,10 @@ export const DataTable = memo(function DataTable({
     () => filterIncomingReportSearchIndex(searchIndex, deferredQuickSearch),
     [deferredQuickSearch, searchIndex],
   )
+  const tableData = useMemo(
+    () => [...filteredData],
+    [filteredData, quantityMode],
+  )
   const onTableReadyRef = useRef(onTableReady)
 
   onTableReadyRef.current = onTableReady
@@ -343,7 +347,7 @@ export const DataTable = memo(function DataTable({
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<IncomingGatePassReportRecord>({
-    data: filteredData,
+    data: tableData,
     columns,
     defaultColumn: defaultTableColumn,
     filterFns: tableFilterFns,

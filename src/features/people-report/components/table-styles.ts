@@ -34,12 +34,14 @@ export function getHeadClassName(
     isHeaderScrolled
       ? "bg-muted/60 text-foreground backdrop-blur-sm supports-[backdrop-filter]:bg-muted/55"
       : "bg-secondary text-secondary-foreground",
-    "whitespace-nowrap",
     meta?.numeric === true && "tabular-nums",
-    meta?.wrap === true && "min-w-[14rem] whitespace-normal",
-    meta?.compact === true && "w-[1%] max-w-[9rem] whitespace-nowrap",
-    meta?.groupable === true &&
-      "min-w-[12rem] max-w-[20rem] whitespace-nowrap",
+    meta?.wrap === true
+      ? "min-w-[14rem] !whitespace-normal"
+      : meta?.groupable === true
+        ? "min-w-[12rem] max-w-[20rem] whitespace-nowrap"
+        : meta?.compact === true
+          ? "w-[1%] max-w-[9rem] whitespace-nowrap"
+          : "whitespace-nowrap",
     meta?.groupStart === true && "border-l-2 border-l-border/60",
     align === "right" && "text-right",
   )
@@ -53,7 +55,7 @@ export function getCellClassName(meta: ColumnMeta | undefined) {
     meta?.numeric === true && "tabular-nums font-medium",
     meta?.mono === true && "font-mono",
     meta?.wrap === true
-      ? "min-w-[14rem] max-w-[22rem] whitespace-normal break-words leading-relaxed"
+      ? "min-w-[14rem] max-w-[22rem] !whitespace-normal break-words leading-relaxed [overflow-wrap:anywhere]"
       : meta?.groupable === true
         ? "min-w-[12rem] max-w-[20rem] whitespace-nowrap"
         : meta?.compact === true

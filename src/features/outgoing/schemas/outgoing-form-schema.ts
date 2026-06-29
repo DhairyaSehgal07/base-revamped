@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { TRUCK_NUMBER_MAX_LENGTH } from "@/lib/form-utils"
 
 export const objectId = z
   .string()
@@ -13,7 +14,12 @@ export const outgoingFormSchema = z.object({
   ]),
   from: z.string(),
   to: z.string(),
-  truckNumber: z.string(),
+  truckNumber: z
+    .string()
+    .max(
+      TRUCK_NUMBER_MAX_LENGTH,
+      `Truck number must be at most ${TRUCK_NUMBER_MAX_LENGTH} characters.`
+    ),
   remarks: z.string().max(500),
   allocations: z
     .record(z.string(), z.number().int().min(1))

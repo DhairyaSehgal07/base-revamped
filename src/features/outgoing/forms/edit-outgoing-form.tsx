@@ -49,6 +49,7 @@ import {
   numericInputProps,
   normalizeUppercase,
   parseOptionalNumber,
+  TRUCK_NUMBER_MAX_LENGTH,
 } from "@/lib/form-utils"
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
@@ -313,6 +314,7 @@ function EditOutgoingFormLoaded({
                           placeholder="Optional"
                           aria-invalid={isInvalid}
                           className="uppercase"
+                          maxLength={TRUCK_NUMBER_MAX_LENGTH}
                         />
                         {isInvalid && (
                           <FieldError errors={field.state.meta.errors} />

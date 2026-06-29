@@ -51,10 +51,21 @@ export function getGatePassVariety(entry: DaybookEntry): string {
   }
 
   if (isOutgoingDaybookEntry(entry)) {
-    const variety =
-      entry.variety?.trim() ||
-      entry.incomingGatePassSnapshots?.[0]?.variety?.trim()
-    return variety || "—"
+    if (entry.variety?.trim()) return entry.variety.trim()
+
+    const snapshots = entry.incomingGatePassSnapshots ?? []
+    const varieties = [
+      ...new Set(
+        snapshots
+          .map((snapshot) => snapshot.variety)
+          .filter((value): value is string => Boolean(value?.trim())),
+      ),
+    ]
+
+    if (varieties.length === 1) return varieties[0]
+    if (varieties.length > 1) return varieties.join(", ")
+
+    return "—"
   }
 
   return "—"

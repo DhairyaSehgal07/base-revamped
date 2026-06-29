@@ -1,8 +1,14 @@
 import type { CommodityPreference } from "@/features/auth/types"
 import type {
+  DaybookEntry,
   DaybookLocation,
   IncomingDaybookEntry,
+  IncomingGatePassSnapshot,
+  OutgoingDaybookEntry,
+  OutgoingOrderDetail,
 } from "@/features/daybook/types"
+import { isOutgoingDaybookEntry } from "@/features/daybook/types"
+import { locationKey } from "@/features/daybook/utils/format"
 import { getMergedBagSizeOrder } from "@/features/incoming/utils/incoming-preferences"
 
 export type StockQuantityMode = "current" | "initial" | "outgoing"
@@ -29,6 +35,7 @@ export type StockSummaryBreakdownLine = {
   location: string
   quantity: number
   gatePassNo: number
+  reference?: string
 }
 
 export type BuildFarmerStockSummaryInput = {
@@ -40,6 +47,8 @@ export type BuildFarmerStockSummaryInput = {
 
 export type BuildStockSummaryCellBreakdownInput = {
   passes: IncomingDaybookEntry[]
+  outgoingPasses?: OutgoingDaybookEntry[]
+  allEntries?: DaybookEntry[]
   stockFilterTab: StockFilterTab
   quantityMode: StockQuantityMode
   variety: string
@@ -65,13 +74,95 @@ export function formatStockSummaryLocation(location: DaybookLocation): string {
   return `${location.chamber}/${location.floor}/${location.row}`
 }
 
-export function buildStockSummaryCellBreakdown({
-  passes,
-  stockFilterTab,
-  quantityMode,
-  variety,
-  size,
-}: BuildStockSummaryCellBreakdownInput): StockSummaryBreakdownLine[] {
+function findSnapshotForOrderLine(
+  snapshots: IncomingGatePassSnapshot[],
+  orderLine: OutgoingOrderDetail,
+): IncomingGatePassSnapshot | undefined {
+  const key = `${orderLine.size}\u001f${locationKey(orderLine.location)}`
+
+  return snapshots.find((snapshot) =>
+    snapshot.bagSizes.some(
+      (bag) => `${bag.name}\u001f${locationKey(bag.location)}` === key,
+    ),
+  )
+}
+
+function sortStockSummaryBreakdownLines(
+  lines: StockSummaryBreakdownLine[],
+): StockSummaryBreakdownLine[] {
+  return lines.sort((a, b) => {
+    const passDiff = a.gatePassNo - b.gatePassNo
+    if (passDiff !== 0) return passDiff
+    return a.location.localeCompare(b.location)
+  })
+}
+
+function resolveOutgoingPasses(
+  input: BuildStockSummaryCellBreakdownInput,
+): OutgoingDaybookEntry[] {
+  if (input.outgoingPasses?.length) return input.outgoingPasses
+  if (!input.allEntries?.length) return []
+  return input.allEntries.filter(isOutgoingDaybookEntry)
+}
+
+function buildOutgoingStockSummaryCellBreakdown(
+  input: BuildStockSummaryCellBreakdownInput,
+): StockSummaryBreakdownLine[] {
+  const { passes, stockFilterTab, variety, size } = input
+  const outgoingPasses = resolveOutgoingPasses(input)
+  const filteredIncomingIds =
+    stockFilterTab === "all"
+      ? null
+      : new Set(
+          filterPassesByStockFilter(passes, stockFilterTab).map((pass) => pass._id),
+        )
+  const normalizedSize = size.trim()
+  const lines: StockSummaryBreakdownLine[] = []
+
+  for (const pass of outgoingPasses) {
+    if (pass.isNull === true) continue
+
+    const snapshots = pass.incomingGatePassSnapshots ?? []
+
+    for (const orderLine of pass.orderDetails ?? []) {
+      if (orderLine.size.trim() !== normalizedSize) continue
+      if (orderLine.quantityIssued <= 0) continue
+
+      const snapshot = findSnapshotForOrderLine(snapshots, orderLine)
+      const lineVariety =
+        snapshot?.variety?.trim() || pass.variety?.trim() || "—"
+      if (lineVariety !== variety) continue
+
+      if (filteredIncomingIds) {
+        if (!snapshot || !filteredIncomingIds.has(snapshot._id)) continue
+      }
+
+      lines.push({
+        variety: lineVariety,
+        size: normalizedSize,
+        location: formatStockSummaryLocation(orderLine.location),
+        quantity: orderLine.quantityIssued,
+        gatePassNo: pass.gatePassNo,
+        reference:
+          snapshot?.gatePassNo != null
+            ? String(snapshot.gatePassNo)
+            : undefined,
+      })
+    }
+  }
+
+  return sortStockSummaryBreakdownLines(lines)
+}
+
+export function buildStockSummaryCellBreakdown(
+  input: BuildStockSummaryCellBreakdownInput,
+): StockSummaryBreakdownLine[] {
+  const { passes, stockFilterTab, quantityMode, variety, size } = input
+
+  if (quantityMode === "outgoing") {
+    return buildOutgoingStockSummaryCellBreakdown(input)
+  }
+
   const filteredPasses = filterPassesByStockFilter(passes, stockFilterTab)
   const normalizedSize = size.trim()
   const lines: StockSummaryBreakdownLine[] = []
@@ -100,11 +191,7 @@ export function buildStockSummaryCellBreakdown({
     }
   }
 
-  return lines.sort((a, b) => {
-    const passDiff = a.gatePassNo - b.gatePassNo
-    if (passDiff !== 0) return passDiff
-    return a.location.localeCompare(b.location)
-  })
+  return sortStockSummaryBreakdownLines(lines)
 }
 
 export function filterPassesByStockFilter(

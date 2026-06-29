@@ -108,6 +108,13 @@ const getBagQuantity = (
   quantityMode: IncomingQuantityMode,
 ) => (quantityMode === "current" ? bag.currentQuantity : bag.initialQuantity)
 
+export function getIncomingReportTotalBags(
+  row: IncomingGatePassReportRecord,
+  quantityMode: IncomingQuantityMode,
+) {
+  return quantityMode === "current" ? row.currentTotal : row.initialTotal
+}
+
 const formatLocation = (location: IncomingBagSize["location"]) =>
   [location.chamber, location.floor, location.row].filter(Boolean).join("-")
 
@@ -239,31 +246,36 @@ const customMarkaColumn: ColumnDef<IncomingGatePassReportRecord> = {
   cell: ({ getValue }) => getValue<string | undefined>() || "-",
 }
 
-const totalBagsColumn: ColumnDef<IncomingGatePassReportRecord> = {
-  accessorKey: "totalBags",
-  header: () => (
-    <span className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-sm leading-tight font-medium">Total</span>
-      <span className="text-xs font-normal opacity-70">bags</span>
-    </span>
-  ),
-  meta: {
-    align: "right",
-    filterLabel: "Total bags",
-    groupStart: true,
-    numeric: true,
-  },
-  ...sortNumeric,
-  ...aggregateSum,
-  cell: ({ getValue }) => {
-    const value = getValue<number | undefined>()
+function createTotalBagsColumn(
+  quantityMode: IncomingQuantityMode,
+): ColumnDef<IncomingGatePassReportRecord> {
+  return {
+    id: "totalBags",
+    accessorFn: (row) => getIncomingReportTotalBags(row, quantityMode),
+    header: () => (
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate text-sm leading-tight font-medium">Total</span>
+        <span className="text-xs font-normal opacity-70">bags</span>
+      </span>
+    ),
+    meta: {
+      align: "right",
+      filterLabel: "Total bags",
+      groupStart: true,
+      numeric: true,
+    },
+    ...sortNumeric,
+    ...aggregateSum,
+    cell: ({ row }) => {
+      const value = getIncomingReportTotalBags(row.original, quantityMode)
 
-    return value == null ? (
-      "-"
-    ) : (
-      <span className="font-medium tabular-nums">{formatQuantity(value)}</span>
-    )
-  },
+      return value == null ? (
+        "-"
+      ) : (
+        <span className="font-medium tabular-nums">{formatQuantity(value)}</span>
+      )
+    },
+  }
 }
 
 const trailingColumns: ColumnDef<IncomingGatePassReportRecord>[] = [
@@ -370,7 +382,7 @@ function buildIncomingReportColumns(
   return [
     ...baseColumns,
     ...preferenceColumns,
-    totalBagsColumn,
+    createTotalBagsColumn(quantityMode),
     ...sizeColumns,
     ...trailingColumns,
   ]
