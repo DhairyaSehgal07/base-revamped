@@ -78,14 +78,18 @@ function formatBagLocation(
 function formatBagSizeExportText(
   bag: IncomingBagSize,
   quantityMode: IncomingQuantityMode,
+  showLocation = true,
 ): string {
-  const location = formatBagLocation(bag.location)
-  const paltaiLocation = formatBagLocation(bag.paltaiLocation)
   const quantity = getBagQuantity(bag, quantityMode)
   const lines = [indianIntegerFormatter.format(quantity)]
 
-  if (location) lines.push(`(${location})`)
-  if (paltaiLocation) lines.push(`Paltai: (${paltaiLocation})`)
+  if (showLocation) {
+    const location = formatBagLocation(bag.location)
+    const paltaiLocation = formatBagLocation(bag.paltaiLocation)
+
+    if (location) lines.push(`(${location})`)
+    if (paltaiLocation) lines.push(`Paltai: (${paltaiLocation})`)
+  }
 
   return lines.join("\n")
 }
@@ -170,11 +174,31 @@ function formatSizeColumnValue(
   row: IncomingGatePassReportRecord,
   columnId: string,
   quantityMode: IncomingQuantityMode,
+  showLocation = true,
 ): ExportCellValue {
   const size = columnId.slice("size-".length)
   const bags = getBagsForSizeName(row, size)
 
   if (!bags.length) return { kind: "empty" }
+
+  if (!showLocation) {
+    if (bags.length === 1) {
+      return {
+        kind: "number",
+        value: getBagQuantity(bags[0], quantityMode),
+        format: "integer",
+      }
+    }
+
+    return {
+      kind: "text",
+      value: bags
+        .map((bag) =>
+          indianIntegerFormatter.format(getBagQuantity(bag, quantityMode)),
+        )
+        .join("\n\n"),
+    }
+  }
 
   if (bags.length === 1) {
     const bag = bags[0]
@@ -185,7 +209,7 @@ function formatSizeColumnValue(
     if (hasLocation) {
       return {
         kind: "text",
-        value: formatBagSizeExportText(bag, quantityMode),
+        value: formatBagSizeExportText(bag, quantityMode, showLocation),
       }
     }
 
@@ -199,7 +223,7 @@ function formatSizeColumnValue(
   return {
     kind: "text",
     value: bags
-      .map((bag) => formatBagSizeExportText(bag, quantityMode))
+      .map((bag) => formatBagSizeExportText(bag, quantityMode, showLocation))
       .join("\n\n"),
   }
 }
@@ -209,10 +233,11 @@ export function formatExportCellValue(
   rawValue: unknown,
   row?: IncomingGatePassReportRecord,
   quantityMode: IncomingQuantityMode = "current",
+  showLocation = true,
 ): ExportCellValue {
   if (columnId.startsWith("size-")) {
     return row
-      ? formatSizeColumnValue(row, columnId, quantityMode)
+      ? formatSizeColumnValue(row, columnId, quantityMode, showLocation)
       : { kind: "empty" }
   }
 
@@ -240,6 +265,7 @@ export function getExportCellForRow(
   column: Column<IncomingGatePassReportRecord, unknown>,
   quantityMode: IncomingQuantityMode,
   cell?: Cell<IncomingGatePassReportRecord, unknown>,
+  showLocation = true,
 ): ExportCellValue {
   const resolvedCell =
     cell ??
@@ -267,6 +293,7 @@ export function getExportCellForRow(
       resolvedCell.getValue(),
       row.original,
       quantityMode,
+      showLocation,
     )
   }
 
@@ -283,6 +310,7 @@ export function getExportCellForRow(
     resolvedCell.getValue(),
     row.original,
     quantityMode,
+    showLocation,
   )
 }
 
@@ -412,11 +440,13 @@ function formatSortingSummary(table: Table<IncomingGatePassReportRecord>): strin
 export function buildFilterSummaryLines(
   table: Table<IncomingGatePassReportRecord>,
   quantityMode: IncomingQuantityMode,
+  showLocation = true,
 ): string[] {
   const globalFilter = table.getState().globalFilter
 
   const lines = [
     `Quantity view: ${quantityMode === "current" ? "Current Qty" : "Initial Qty"}`,
+    `Show location: ${showLocation ? "Yes" : "No"}`,
     ...formatColumnFilterSummary(table),
     ...(typeof globalFilter === "object" &&
     globalFilter != null &&

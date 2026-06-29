@@ -102,6 +102,65 @@ describe("formatExportCellValue size columns", () => {
       value: "400\n(C1-F1-R1)\n\n200\n(C2-F2-R2)",
     })
   })
+
+  it("hides location when showLocation is false for a single bag", () => {
+    const row = createRow({
+      bagSizes: [
+        {
+          name: "Jumbo",
+          initialQuantity: 500,
+          currentQuantity: 500,
+          location: { chamber: "C1", floor: "F2", row: "R3" },
+        },
+      ],
+    })
+
+    const cell = formatExportCellValue(
+      "size-Jumbo",
+      500,
+      row,
+      "current",
+      false,
+    )
+
+    expect(cell).toEqual({
+      kind: "number",
+      value: 500,
+      format: "integer",
+    })
+  })
+
+  it("hides location when showLocation is false for multiple bags", () => {
+    const row = createRow({
+      bagSizes: [
+        {
+          name: "Jumbo",
+          initialQuantity: 500,
+          currentQuantity: 400,
+          location: { chamber: "C1", floor: "F1", row: "R1" },
+        },
+        {
+          name: "Jumbo",
+          initialQuantity: 200,
+          currentQuantity: 200,
+          location: { chamber: "C2", floor: "F2", row: "R2" },
+        },
+      ],
+    })
+
+    const cell = formatExportCellValue(
+      "size-Jumbo",
+      600,
+      row,
+      "current",
+      false,
+    )
+
+    expect(cell).toEqual({
+      kind: "text",
+      value: "400\n\n200",
+    })
+  })
 })
 
 describe("computeIncomingReportFooterTotals", () => {

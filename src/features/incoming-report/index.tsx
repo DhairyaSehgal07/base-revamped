@@ -11,6 +11,8 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
@@ -50,6 +52,7 @@ const IncomingReportPage = () => {
   const [isReportTableReady, setIsReportTableReady] = useState(false)
   const [quantityMode, setQuantityMode] =
     useState<IncomingQuantityMode>("current")
+  const [showLocation, setShowLocation] = useState(true)
   const [appliedParams, setAppliedParams] =
     useState<IncomingGatePassReportParams>(DEFAULT_REPORT_PARAMS)
   const [isExporting, setIsExporting] = useState(false)
@@ -93,8 +96,9 @@ const IncomingReportPage = () => {
         quantityMode,
         showCustomMarka,
         showStockFilter,
+        showLocation,
       ),
-    [quantityMode, reportRows, showCustomMarka, showStockFilter],
+    [quantityMode, reportRows, showCustomMarka, showStockFilter, showLocation],
   )
 
   const handleTableReady = useCallback(
@@ -145,6 +149,7 @@ const IncomingReportPage = () => {
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
+        showLocation,
         reportTitle: "Incoming Report",
         dateFrom,
         dateTo,
@@ -169,6 +174,7 @@ const IncomingReportPage = () => {
     dateTo,
     notifyPreviewDownloadComplete,
     quantityMode,
+    showLocation,
   ])
 
   useEffect(() => {
@@ -201,6 +207,7 @@ const IncomingReportPage = () => {
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
+        showLocation,
         reportTitle: "Incoming Report",
         dateFrom,
         dateTo,
@@ -213,7 +220,7 @@ const IncomingReportPage = () => {
         { position: "bottom-right" },
       )
     }
-  }, [coldStorageName, dateFrom, dateTo, quantityMode])
+  }, [coldStorageName, dateFrom, dateTo, quantityMode, showLocation])
 
   const handleApply = useCallback(() => {
     const next: IncomingGatePassReportParams = {}
@@ -247,11 +254,12 @@ const IncomingReportPage = () => {
     return buildIncomingReportPdfData({
       table: reportTable,
       quantityMode,
+      showLocation,
       reportTitle: "Incoming Report",
       dateFrom,
       dateTo,
     })
-  }, [dateFrom, dateTo, quantityMode])
+  }, [dateFrom, dateTo, quantityMode, showLocation])
 
   const reportTable = isReportTableReady ? reportTableRef.current : null
   const isSearchPending = searchQuery !== deferredSearchQuery
@@ -337,6 +345,22 @@ const IncomingReportPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="incoming-show-location"
+                size="sm"
+                checked={showLocation}
+                onCheckedChange={setShowLocation}
+                aria-label="Show location"
+              />
+              <Label
+                htmlFor="incoming-show-location"
+                className="cursor-pointer text-sm font-medium"
+              >
+                Show Location
+              </Label>
+            </div>
+
             <Tabs value={quantityMode} onValueChange={handleQuantityModeChange}>
               <TabsList aria-label="Quantity view">
                 <TabsTrigger value="current">Current Qty</TabsTrigger>

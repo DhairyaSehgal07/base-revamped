@@ -20,6 +20,7 @@ import type { GatePassReportPdfData } from "@/lib/gate-pass-report-pdf/types"
 export type BuildIncomingReportPdfDataInput = {
   table: Table<IncomingGatePassReportRecord>
   quantityMode: IncomingQuantityMode
+  showLocation?: boolean
   reportTitle?: string
   dateFrom?: string
   dateTo?: string
@@ -29,6 +30,7 @@ export type BuildIncomingReportPdfDataInput = {
 export function buildIncomingReportPdfData({
   table,
   quantityMode,
+  showLocation = true,
   reportTitle = "Incoming Report",
   dateFrom,
   dateTo,
@@ -49,12 +51,12 @@ export function buildIncomingReportPdfData({
     formatDateRangeLabel,
     getFilteredLeafRowCount,
     buildFilterSummaryLines: (reportTable) =>
-      buildFilterSummaryLines(reportTable, quantityMode),
+      buildFilterSummaryLines(reportTable, quantityMode, showLocation),
     collectExportRows,
     getColumnExportLabel,
     footerValuesByColumnId,
     getExportCellForRow: (row, column, cell) =>
-      getExportCellForRow(row, column, quantityMode, cell),
+      getExportCellForRow(row, column, quantityMode, cell, showLocation),
     getFooterExportValue: (columnId, rows) =>
       getFooterExportValue(columnId, rows, quantityMode),
     isSummableExportColumn,

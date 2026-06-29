@@ -26,6 +26,7 @@ export type PreviewIncomingReportOptions = {
   table: Table<IncomingGatePassReportRecord>
   coldStorageName: string
   quantityMode: IncomingQuantityMode
+  showLocation?: boolean
   reportTitle?: string
   dateFrom?: string
   dateTo?: string
@@ -171,6 +172,7 @@ export function buildIncomingReportPreviewHtml({
   table,
   coldStorageName,
   quantityMode,
+  showLocation = true,
   reportTitle = "Incoming Report",
   dateFrom,
   dateTo,
@@ -179,7 +181,11 @@ export function buildIncomingReportPreviewHtml({
   const visibleColumns = table.getVisibleLeafColumns()
   const exportRows = collectExportRows(table)
   const filteredLeafCount = getFilteredLeafRowCount(table)
-  const filterSummaryLines = buildFilterSummaryLines(table, quantityMode)
+  const filterSummaryLines = buildFilterSummaryLines(
+    table,
+    quantityMode,
+    showLocation,
+  )
   const filteredRows = table.getFilteredRowModel().rows
 
   const metadataText = [
@@ -211,7 +217,13 @@ export function buildIncomingReportPreviewHtml({
       const cells = visibleColumns
         .map((column) => {
           const isNumeric = column.columnDef.meta?.align === "right"
-          const exportCell = getExportCellForRow(row, column, quantityMode)
+          const exportCell = getExportCellForRow(
+            row,
+            column,
+            quantityMode,
+            undefined,
+            showLocation,
+          )
           const display = exportCellValueToDisplay(exportCell)
           const classNames = [
             isNumeric ? "numeric" : "",

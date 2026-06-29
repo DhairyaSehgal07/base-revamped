@@ -130,11 +130,13 @@ const getBagSizeQuantity = (
 const renderBagSizeValue = (
   bag: IncomingBagSize,
   quantityMode: IncomingQuantityMode,
+  showLocation: boolean,
 ) => {
-  const location = formatLocation(bag.location)
-  const paltaiLocation = bag.paltaiLocation
-    ? formatLocation(bag.paltaiLocation)
-    : null
+  const location = showLocation ? formatLocation(bag.location) : null
+  const paltaiLocation =
+    showLocation && bag.paltaiLocation
+      ? formatLocation(bag.paltaiLocation)
+      : null
   const quantity = getBagQuantity(bag, quantityMode)
 
   return (
@@ -142,7 +144,9 @@ const renderBagSizeValue = (
       <div className="font-semibold text-foreground">
         {formatQuantity(quantity)}
       </div>
-      <div className="text-muted-foreground">{bag.name}</div>
+      {showLocation ? (
+        <div className="text-muted-foreground">{bag.name}</div>
+      ) : null}
       {location ? (
         <div className="text-muted-foreground">({location})</div>
       ) : null}
@@ -318,8 +322,9 @@ function getIncomingReportColumnCacheKey(
   quantityMode: IncomingQuantityMode,
   showCustomMarka: boolean,
   showStockFilter: boolean,
+  showLocation: boolean,
 ) {
-  return `${sizes.join("\0")}|${quantityMode}|cm:${showCustomMarka}|sf:${showStockFilter}`
+  return `${sizes.join("\0")}|${quantityMode}|cm:${showCustomMarka}|sf:${showStockFilter}|sl:${showLocation}`
 }
 
 function buildIncomingReportColumns(
@@ -327,6 +332,7 @@ function buildIncomingReportColumns(
   quantityMode: IncomingQuantityMode,
   showCustomMarka: boolean,
   showStockFilter: boolean,
+  showLocation: boolean,
 ): ColumnDef<IncomingGatePassReportRecord>[] {
   const sizeColumns: ColumnDef<IncomingGatePassReportRecord>[] = sizes.map(
     (sizeName) => ({
@@ -360,7 +366,7 @@ function buildIncomingReportColumns(
               <div
                 key={`${bag.name}-${bag.location.chamber}-${bag.location.floor}-${bag.location.row}-${index}`}
               >
-                {renderBagSizeValue(bag, quantityMode)}
+                {renderBagSizeValue(bag, quantityMode, showLocation)}
               </div>
             ))}
           </div>
@@ -393,6 +399,7 @@ export function getIncomingReportColumns(
   quantityMode: IncomingQuantityMode = "current",
   showCustomMarka = false,
   showStockFilter = false,
+  showLocation = true,
 ): ColumnDef<IncomingGatePassReportRecord>[] {
   const sizes = collectIncomingReportBagSizeNames(rows)
   const cacheKey = getIncomingReportColumnCacheKey(
@@ -400,6 +407,7 @@ export function getIncomingReportColumns(
     quantityMode,
     showCustomMarka,
     showStockFilter,
+    showLocation,
   )
   const cached = columnCache.get(cacheKey)
 
@@ -410,6 +418,7 @@ export function getIncomingReportColumns(
     quantityMode,
     showCustomMarka,
     showStockFilter,
+    showLocation,
   )
   columnCache.set(cacheKey, columns)
 

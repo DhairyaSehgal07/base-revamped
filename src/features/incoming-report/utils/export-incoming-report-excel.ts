@@ -260,6 +260,7 @@ export type ExportIncomingReportOptions = {
   table: Table<IncomingGatePassReportRecord>
   coldStorageName: string
   quantityMode: IncomingQuantityMode
+  showLocation?: boolean
   reportTitle?: string
   dateFrom?: string
   dateTo?: string
@@ -270,6 +271,7 @@ export async function exportIncomingReportToExcel({
   table,
   coldStorageName,
   quantityMode,
+  showLocation = true,
   reportTitle = "Incoming Report",
   dateFrom,
   dateTo,
@@ -281,7 +283,11 @@ export async function exportIncomingReportToExcel({
   const lastColumnLetter = columnIndexToLetter(columnCount)
   const exportRows = collectExportRows(table)
   const filteredLeafCount = getFilteredLeafRowCount(table)
-  const filterSummaryLines = buildFilterSummaryLines(table, quantityMode)
+  const filterSummaryLines = buildFilterSummaryLines(
+    table,
+    quantityMode,
+    showLocation,
+  )
   const filteredRows = table.getFilteredRowModel().rows
 
   const workbook = new ExcelJS.Workbook()
@@ -352,7 +358,13 @@ export async function exportIncomingReportToExcel({
   for (const row of exportRows) {
     const isGroupRow = row.getIsGrouped()
     const exportCells = visibleColumns.map((column) =>
-      getExportCellForRow(row, column, quantityMode),
+      getExportCellForRow(
+        row,
+        column,
+        quantityMode,
+        undefined,
+        showLocation,
+      ),
     )
     const excelRow = worksheet.getRow(currentRowIndex)
     excelRow.height = getExportRowHeight(exportCells, isGroupRow)
