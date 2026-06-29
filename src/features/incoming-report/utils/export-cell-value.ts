@@ -1,5 +1,5 @@
 import { format, isValid, parse, parseISO } from "date-fns"
-import type { Column, Row, Table } from "@tanstack/react-table"
+import type { Cell, Column, Row, Table } from "@tanstack/react-table"
 
 import type { IncomingBagSize } from "@/features/daybook/types"
 import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
@@ -63,25 +63,61 @@ function getBagQuantity(
   return quantityMode === "current" ? bag.currentQuantity : bag.initialQuantity
 }
 
-function formatBagSizeText(
+function formatBagLocation(
+  location: IncomingBagSize["location"] | IncomingBagSize["paltaiLocation"],
+): string | null {
+  if (!location) return null
+
+  const formatted = [location.chamber, location.floor, location.row]
+    .filter(Boolean)
+    .join("-")
+
+  return formatted.length > 0 ? formatted : null
+}
+
+function formatBagSizeExportText(
   bag: IncomingBagSize,
   quantityMode: IncomingQuantityMode,
 ): string {
-  const location = [bag.location.chamber, bag.location.floor, bag.location.row]
-    .filter(Boolean)
-    .join("-")
-  const paltaiLocation = bag.paltaiLocation
-    ? [bag.paltaiLocation.chamber, bag.paltaiLocation.floor, bag.paltaiLocation.row]
-        .filter(Boolean)
-        .join("-")
-    : null
+  const location = formatBagLocation(bag.location)
+  const paltaiLocation = formatBagLocation(bag.paltaiLocation)
   const quantity = getBagQuantity(bag, quantityMode)
-  const parts = [`${quantity.toLocaleString("en-IN")} - ${bag.name}`]
+  const lines = [indianIntegerFormatter.format(quantity)]
 
-  if (location) parts.push(`(${location})`)
-  if (paltaiLocation) parts.push(`Paltai: (${paltaiLocation})`)
+  if (location) lines.push(`(${location})`)
+  if (paltaiLocation) lines.push(`Paltai: (${paltaiLocation})`)
 
-  return parts.join(" ")
+  return lines.join("\n")
+}
+
+const bagsBySizeIndex = new WeakMap<
+  IncomingGatePassReportRecord,
+  Map<string, IncomingBagSize[]>
+>()
+
+function getBagsForSizeName(
+  row: IncomingGatePassReportRecord,
+  sizeName: string,
+): IncomingBagSize[] {
+  let index = bagsBySizeIndex.get(row)
+
+  if (!index) {
+    index = new Map<string, IncomingBagSize[]>()
+
+    for (const bag of row.bagSizes) {
+      const bags = index.get(bag.name)
+
+      if (bags) {
+        bags.push(bag)
+      } else {
+        index.set(bag.name, [bag])
+      }
+    }
+
+    bagsBySizeIndex.set(row, index)
+  }
+
+  return index.get(sizeName) ?? []
 }
 
 function sumBagSizeQuantity(
@@ -135,22 +171,36 @@ function formatSizeColumnValue(
   columnId: string,
   quantityMode: IncomingQuantityMode,
 ): ExportCellValue {
-  const size = columnId.replace(/^size-/, "")
-  const bags = row.bagSizes.filter((bag) => bag.name === size)
+  const size = columnId.slice("size-".length)
+  const bags = getBagsForSizeName(row, size)
 
   if (!bags.length) return { kind: "empty" }
 
   if (bags.length === 1) {
+    const bag = bags[0]
+    const hasLocation =
+      formatBagLocation(bag.location) != null ||
+      formatBagLocation(bag.paltaiLocation) != null
+
+    if (hasLocation) {
+      return {
+        kind: "text",
+        value: formatBagSizeExportText(bag, quantityMode),
+      }
+    }
+
     return {
       kind: "number",
-      value: getBagQuantity(bags[0], quantityMode),
+      value: getBagQuantity(bag, quantityMode),
       format: "integer",
     }
   }
 
   return {
     kind: "text",
-    value: bags.map((bag) => formatBagSizeText(bag, quantityMode)).join("\n"),
+    value: bags
+      .map((bag) => formatBagSizeExportText(bag, quantityMode))
+      .join("\n\n"),
   }
 }
 
@@ -189,18 +239,19 @@ export function getExportCellForRow(
   row: Row<IncomingGatePassReportRecord>,
   column: Column<IncomingGatePassReportRecord, unknown>,
   quantityMode: IncomingQuantityMode,
+  cell?: Cell<IncomingGatePassReportRecord, unknown>,
 ): ExportCellValue {
-  const cell = row
-    .getVisibleCells()
-    .find((item) => item.column.id === column.id)
+  const resolvedCell =
+    cell ??
+    row.getVisibleCells().find((item) => item.column.id === column.id)
 
-  if (!cell) return { kind: "empty" }
+  if (!resolvedCell) return { kind: "empty" }
 
   const columnId = column.id
   const meta = column.columnDef.meta
 
-  if (cell.getIsGrouped()) {
-    const display = formatDisplayValue(cell.getValue(), column)
+  if (resolvedCell.getIsGrouped()) {
+    const display = formatDisplayValue(resolvedCell.getValue(), column)
     const count = row.subRows.length.toLocaleString("en-IN")
     const indent = "  ".repeat(row.depth)
     return {
@@ -209,17 +260,17 @@ export function getExportCellForRow(
     }
   }
 
-  if (cell.getIsAggregated()) {
+  if (resolvedCell.getIsAggregated()) {
     if (meta?.numeric !== true) return { kind: "empty" }
     return formatExportCellValue(
       columnId,
-      cell.getValue(),
+      resolvedCell.getValue(),
       row.original,
       quantityMode,
     )
   }
 
-  if (cell.getIsPlaceholder()) {
+  if (resolvedCell.getIsPlaceholder()) {
     return { kind: "empty" }
   }
 
@@ -229,7 +280,7 @@ export function getExportCellForRow(
 
   return formatExportCellValue(
     columnId,
-    cell.getValue(),
+    resolvedCell.getValue(),
     row.original,
     quantityMode,
   )
@@ -402,6 +453,39 @@ export function exportCellValueToDisplay(cell: ExportCellValue): string {
 
 export function isSummableExportColumn(columnId: string): boolean {
   return SUMMABLE_INTEGER_COLUMNS.has(columnId) || columnId.startsWith("size-")
+}
+
+export function computeIncomingReportFooterTotals(
+  rows: readonly Row<IncomingGatePassReportRecord>[],
+  quantityMode: IncomingQuantityMode,
+): Map<string, ExportCellValue> {
+  let totalBags = 0
+  const sizeTotals = new Map<string, number>()
+
+  for (const row of rows) {
+    totalBags += getIncomingReportTotalBags(row.original, quantityMode)
+
+    for (const bag of row.original.bagSizes) {
+      const columnId = `size-${bag.name}`
+      sizeTotals.set(
+        columnId,
+        (sizeTotals.get(columnId) ?? 0) + getBagQuantity(bag, quantityMode),
+      )
+    }
+  }
+
+  const totals = new Map<string, ExportCellValue>()
+  totals.set("totalBags", {
+    kind: "number",
+    value: totalBags,
+    format: "integer",
+  })
+
+  for (const [columnId, value] of sizeTotals) {
+    totals.set(columnId, { kind: "number", value, format: "integer" })
+  }
+
+  return totals
 }
 
 export function getFooterExportValue(

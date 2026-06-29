@@ -159,6 +159,20 @@ function sanitizeFilename(value: string): string {
   return value.replace(/[^\w.-]+/g, "-").replace(/-+/g, "-")
 }
 
+function getExportRowHeight(
+  exportCells: ExportCellValue[],
+  isGroupRow: boolean,
+): number {
+  if (isGroupRow) return 20
+
+  const maxLines = exportCells.reduce((max, cell) => {
+    if (cell.kind !== "text") return max
+    return Math.max(max, cell.value.split("\n").length)
+  }, 1)
+
+  return Math.max(18, 14 + maxLines * 12)
+}
+
 function applyStyleToRow(
   row: ExcelJS.Row,
   style: Partial<ExcelJS.Style>,
@@ -337,13 +351,16 @@ export async function exportIncomingReportToExcel({
 
   for (const row of exportRows) {
     const isGroupRow = row.getIsGrouped()
+    const exportCells = visibleColumns.map((column) =>
+      getExportCellForRow(row, column, quantityMode),
+    )
     const excelRow = worksheet.getRow(currentRowIndex)
-    excelRow.height = isGroupRow ? 20 : 18
+    excelRow.height = getExportRowHeight(exportCells, isGroupRow)
 
     visibleColumns.forEach((column, columnIndex) => {
       const align =
         column.columnDef.meta?.align === "right" ? "right" : "left"
-      const exportCell = getExportCellForRow(row, column, quantityMode)
+      const exportCell = exportCells[columnIndex]
       const cell = excelRow.getCell(columnIndex + 1)
       cell.value = exportCellValueToPrimitive(exportCell)
 

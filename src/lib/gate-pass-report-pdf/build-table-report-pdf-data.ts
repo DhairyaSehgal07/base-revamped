@@ -1,5 +1,5 @@
 import { format } from "date-fns"
-import type { Column, Row, Table } from "@tanstack/react-table"
+import type { Cell, Column, Row, Table } from "@tanstack/react-table"
 
 import type {
   GatePassReportPdfCell,
@@ -10,6 +10,16 @@ type ExportCellValue =
   | { kind: "text"; value: string }
   | { kind: "number"; value: number; format: "integer" }
   | { kind: "empty" }
+
+const INTEGER_FORMATTER = new Intl.NumberFormat("en-IN", {
+  maximumFractionDigits: 0,
+})
+
+type PreparedPdfColumn<TRow> = {
+  column: Column<TRow, unknown>
+  label: string
+  align: "left" | "right"
+}
 
 export type BuildTableReportPdfDataOptions<TRow> = {
   table: Table<TRow>
@@ -25,6 +35,7 @@ export type BuildTableReportPdfDataOptions<TRow> = {
   getExportCellForRow: (
     row: Row<TRow>,
     column: Column<TRow, unknown>,
+    cell?: Cell<TRow, unknown>,
   ) => ExportCellValue
   getFooterExportValue: (
     columnId: string,
@@ -32,6 +43,7 @@ export type BuildTableReportPdfDataOptions<TRow> = {
   ) => ExportCellValue
   isSummableExportColumn: (columnId: string) => boolean
   exportCellValueToDisplay: (cell: ExportCellValue) => string
+  footerValuesByColumnId?: ReadonlyMap<string, ExportCellValue>
 }
 
 function toPdfCell(
@@ -47,14 +59,37 @@ function cellFromExportValue(
   align: "left" | "right",
 ): GatePassReportPdfCell {
   return toPdfCell(
-    cell.kind === "empty" ? "—" : cell.kind === "number"
-      ? new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
-          cell.value,
-        )
-      : cell.value,
+    cell.kind === "empty"
+      ? "—"
+      : cell.kind === "number"
+        ? INTEGER_FORMATTER.format(cell.value)
+        : cell.value,
     align,
     cell.kind === "empty",
   )
+}
+
+function preparePdfColumns<TRow>(
+  visibleColumns: Column<TRow, unknown>[],
+  getColumnExportLabel: (column: Column<TRow, unknown>) => string,
+): PreparedPdfColumn<TRow>[] {
+  return visibleColumns.map((column) => ({
+    column,
+    label: getColumnExportLabel(column),
+    align: column.columnDef.meta?.align === "right" ? "right" : "left",
+  }))
+}
+
+function buildVisibleCellMap<TRow>(
+  row: Row<TRow>,
+): Map<string, Cell<TRow, unknown>> {
+  const cellsByColumnId = new Map<string, Cell<TRow, unknown>>()
+
+  for (const cell of row.getVisibleCells()) {
+    cellsByColumnId.set(cell.column.id, cell)
+  }
+
+  return cellsByColumnId
 }
 
 export function buildTableReportPdfData<TRow>({
@@ -72,49 +107,55 @@ export function buildTableReportPdfData<TRow>({
   getFooterExportValue,
   isSummableExportColumn,
   exportCellValueToDisplay,
+  footerValuesByColumnId,
 }: BuildTableReportPdfDataOptions<TRow>): GatePassReportPdfData {
   const visibleColumns = table.getVisibleLeafColumns()
+  const preparedColumns = preparePdfColumns(
+    visibleColumns,
+    getColumnExportLabel,
+  )
   const exportRows = collectExportRows(table)
   const filteredLeafCount = getFilteredLeafRowCount(table)
   const filteredRows = table.getFilteredRowModel().rows
   const filterSummaryLines = buildFilterSummaryLines(table)
 
-  const columns = visibleColumns.map((column) => ({
-    label: getColumnExportLabel(column),
-    align: (column.columnDef.meta?.align === "right" ? "right" : "left") as
-      | "left"
-      | "right",
+  const columns = preparedColumns.map(({ label, align }) => ({
+    label,
+    align,
   }))
 
-  const rows = exportRows.map((row) => ({
-    isGroupRow: row.getIsGrouped(),
-    cells: visibleColumns.map((column) => {
-      const align = (column.columnDef.meta?.align === "right"
-        ? "right"
-        : "left") as "left" | "right"
-      const exportCell = getExportCellForRow(row, column)
-      return toPdfCell(
-        exportCellValueToDisplay(exportCell),
-        align,
-        exportCell.kind === "empty",
-      )
-    }),
-  }))
+  const rows = exportRows.map((row) => {
+    const cellsByColumnId = buildVisibleCellMap(row)
 
-  const footerCells = visibleColumns.map((column, columnIndex) => {
-    const align = (column.columnDef.meta?.align === "right"
-      ? "right"
-      : "left") as "left" | "right"
+    return {
+      isGroupRow: row.getIsGrouped(),
+      cells: preparedColumns.map(({ column, align }) => {
+        const exportCell = getExportCellForRow(
+          row,
+          column,
+          cellsByColumnId.get(column.id),
+        )
 
+        return toPdfCell(
+          exportCellValueToDisplay(exportCell),
+          align,
+          exportCell.kind === "empty",
+        )
+      }),
+    }
+  })
+
+  const footerCells = preparedColumns.map(({ column, align }, columnIndex) => {
     if (columnIndex === 0) {
       return toPdfCell("Total", align)
     }
 
     if (isSummableExportColumn(column.id)) {
-      return cellFromExportValue(
-        getFooterExportValue(column.id, filteredRows),
-        align,
-      )
+      const exportCell =
+        footerValuesByColumnId?.get(column.id) ??
+        getFooterExportValue(column.id, filteredRows)
+
+      return cellFromExportValue(exportCell, align)
     }
 
     return toPdfCell("", align, true)

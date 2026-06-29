@@ -5,6 +5,7 @@ import type { IncomingQuantityMode } from "@/features/incoming-report/components
 import {
   buildFilterSummaryLines,
   collectExportRows,
+  computeIncomingReportFooterTotals,
   exportCellValueToDisplay,
   formatDateRangeLabel,
   getColumnExportLabel,
@@ -33,6 +34,12 @@ export function buildIncomingReportPdfData({
   dateTo,
   generatedAt,
 }: BuildIncomingReportPdfDataInput): GatePassReportPdfData {
+  const filteredRows = table.getFilteredRowModel().rows
+  const footerValuesByColumnId = computeIncomingReportFooterTotals(
+    filteredRows,
+    quantityMode,
+  )
+
   return buildTableReportPdfData({
     table,
     reportTitle,
@@ -45,8 +52,9 @@ export function buildIncomingReportPdfData({
       buildFilterSummaryLines(reportTable, quantityMode),
     collectExportRows,
     getColumnExportLabel,
-    getExportCellForRow: (row, column) =>
-      getExportCellForRow(row, column, quantityMode),
+    footerValuesByColumnId,
+    getExportCellForRow: (row, column, cell) =>
+      getExportCellForRow(row, column, quantityMode, cell),
     getFooterExportValue: (columnId, rows) =>
       getFooterExportValue(columnId, rows, quantityMode),
     isSummableExportColumn,

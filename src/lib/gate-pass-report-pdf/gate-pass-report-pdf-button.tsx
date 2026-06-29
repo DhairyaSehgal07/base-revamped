@@ -27,16 +27,27 @@ export function GatePassReportPdfButton({
   )
 
   const handleOpenPdf = useCallback(async () => {
-    const pdfData = getPdfData()
-    if (!pdfData || !coldStorageName) {
+    if (!coldStorageName) {
       toast.error("Report data is not ready yet.", {
         position: "bottom-right",
       })
       return
     }
 
+    setIsGenerating(true)
+
     try {
-      setIsGenerating(true)
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve())
+      })
+
+      const pdfData = getPdfData()
+      if (!pdfData) {
+        toast.error("Report data is not ready yet.", {
+          position: "bottom-right",
+        })
+        return
+      }
 
       const { generateGatePassReportPdf } = await import(
         "@/lib/gate-pass-report-pdf/generate-gate-pass-report-pdf"
