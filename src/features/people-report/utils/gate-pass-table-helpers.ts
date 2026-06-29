@@ -1,10 +1,15 @@
 import type { CommodityPreference } from "@/features/auth/types"
-import type { DaybookEntry } from "@/features/daybook/types"
+import type {
+  DaybookEntry,
+  IncomingGatePassSnapshot,
+  OutgoingDaybookEntry,
+  OutgoingOrderDetail,
+} from "@/features/daybook/types"
 import {
   isIncomingDaybookEntry,
   isOutgoingDaybookEntry,
 } from "@/features/daybook/types"
-import { formatCompactLocation, locationKey } from "@/features/daybook/utils/format"
+import { formatCompactLocation, formatQuantity, locationKey } from "@/features/daybook/utils/format"
 import {
   getMergedBagSizeOrder,
   sortSizeNamesByPreferenceOrder,
@@ -13,6 +18,142 @@ import {
 export type GatePassSizeQuantityLine = {
   quantity: number
   locationLabel: string
+}
+
+export type OutgoingVarietyBreakdownLine = {
+  variety: string
+  quantity: number
+}
+
+export type OutgoingSizeVarietyQuantityLine = {
+  variety: string
+  quantity: number
+  locationLines: GatePassSizeQuantityLine[]
+}
+
+export type OutgoingSizeDetailLine = {
+  variety: string
+  quantity: number
+  locationLabel: string
+}
+
+function findSnapshotForOrderLine(
+  snapshots: IncomingGatePassSnapshot[],
+  orderLine: OutgoingOrderDetail,
+): IncomingGatePassSnapshot | undefined {
+  const key = `${orderLine.size}\u001f${locationKey(orderLine.location)}`
+
+  return snapshots.find((snapshot) =>
+    snapshot.bagSizes.some(
+      (bag) => `${bag.name}\u001f${locationKey(bag.location)}` === key,
+    ),
+  )
+}
+
+export function getOutgoingOrderLineVariety(
+  entry: OutgoingDaybookEntry,
+  orderLine: OutgoingOrderDetail,
+): string {
+  const snapshots = entry.incomingGatePassSnapshots ?? []
+  const snapshot = findSnapshotForOrderLine(snapshots, orderLine)
+  return (
+    snapshot?.variety?.trim() || entry.variety?.trim() || "—"
+  )
+}
+
+export function getOutgoingVarietyBreakdown(
+  entry: OutgoingDaybookEntry,
+): OutgoingVarietyBreakdownLine[] {
+  const totals = new Map<string, number>()
+
+  for (const orderLine of entry.orderDetails ?? []) {
+    if (orderLine.quantityIssued <= 0) continue
+
+    const variety = getOutgoingOrderLineVariety(entry, orderLine)
+    totals.set(variety, (totals.get(variety) ?? 0) + orderLine.quantityIssued)
+  }
+
+  return Array.from(totals.entries())
+    .map(([variety, quantity]) => ({ variety, quantity }))
+    .sort((left, right) => left.variety.localeCompare(right.variety))
+}
+
+export function hasMultipleOutgoingVarieties(
+  entry: OutgoingDaybookEntry,
+): boolean {
+  return getOutgoingVarietyBreakdown(entry).length > 1
+}
+
+export function getOutgoingSizeQuantityLinesByVariety(
+  entry: OutgoingDaybookEntry,
+  size: string,
+): OutgoingSizeVarietyQuantityLine[] {
+  const normalizedSize = size.trim()
+  if (!normalizedSize) return []
+
+  const byVariety = new Map<
+    string,
+    { quantity: number; locations: Map<string, GatePassSizeQuantityLine> }
+  >()
+
+  for (const orderLine of entry.orderDetails ?? []) {
+    if (orderLine.size.trim() !== normalizedSize) continue
+    if (orderLine.quantityIssued <= 0) continue
+
+    const variety = getOutgoingOrderLineVariety(entry, orderLine)
+    const existing = byVariety.get(variety) ?? {
+      quantity: 0,
+      locations: new Map<string, GatePassSizeQuantityLine>(),
+    }
+
+    existing.quantity += orderLine.quantityIssued
+
+    const locationKeyValue = locationKey(orderLine.location)
+    const locationLine = existing.locations.get(locationKeyValue)
+
+    if (locationLine) {
+      locationLine.quantity += orderLine.quantityIssued
+    } else {
+      existing.locations.set(locationKeyValue, {
+        quantity: orderLine.quantityIssued,
+        locationLabel: formatCompactLocation(orderLine.location),
+      })
+    }
+
+    byVariety.set(variety, existing)
+  }
+
+  return Array.from(byVariety.entries())
+    .map(([variety, data]) => ({
+      variety,
+      quantity: data.quantity,
+      locationLines: Array.from(data.locations.values()),
+    }))
+    .sort((left, right) => left.variety.localeCompare(right.variety))
+}
+
+export function getOutgoingSizeQuantityDetailLines(
+  entry: OutgoingDaybookEntry,
+  size: string,
+): OutgoingSizeDetailLine[] {
+  return getOutgoingSizeQuantityLinesByVariety(entry, size).flatMap((line) =>
+    line.locationLines.map((locationLine) => ({
+      variety: line.variety,
+      quantity: locationLine.quantity,
+      locationLabel: locationLine.locationLabel,
+    })),
+  )
+}
+
+export function formatOutgoingVarietyBreakdownForExport(
+  entry: OutgoingDaybookEntry,
+): string {
+  const lines = getOutgoingVarietyBreakdown(entry)
+  if (lines.length <= 1) return getGatePassVariety(entry)
+
+  return lines
+    .map((line) => `${line.variety} (${formatQuantity(line.quantity)})`)
+    .join("\n")
 }
 
 export function collectUniqueBagSizes(rows: DaybookEntry[]): string[] {

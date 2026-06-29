@@ -1,6 +1,7 @@
 import type { GatePassReportPdfRow } from "@/lib/gate-pass-report-pdf/types"
 
 export const GATE_PASS_REPORT_ROWS_PER_PAGE = 36
+export const GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE = 28
 
 export function chunkGatePassReportRows(
   rows: GatePassReportPdfRow[],

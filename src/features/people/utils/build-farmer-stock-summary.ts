@@ -8,7 +8,7 @@ import type {
   OutgoingOrderDetail,
 } from "@/features/daybook/types"
 import { isOutgoingDaybookEntry } from "@/features/daybook/types"
-import { locationKey } from "@/features/daybook/utils/format"
+import { formatManualParchi, locationKey } from "@/features/daybook/utils/format"
 import { getMergedBagSizeOrder } from "@/features/incoming/utils/incoming-preferences"
 
 export type StockQuantityMode = "current" | "initial" | "outgoing"
@@ -36,6 +36,8 @@ export type StockSummaryBreakdownLine = {
   quantity: number
   gatePassNo: number
   reference?: string
+  manualParchiNumber?: string
+  manualGatePassNumber?: string
 }
 
 export type BuildFarmerStockSummaryInput = {
@@ -137,6 +139,8 @@ function buildOutgoingStockSummaryCellBreakdown(
         if (!snapshot || !filteredIncomingIds.has(snapshot._id)) continue
       }
 
+      const manualGatePass = formatManualParchi(pass.manualParchiNumber)
+
       lines.push({
         variety: lineVariety,
         size: normalizedSize,
@@ -147,6 +151,7 @@ function buildOutgoingStockSummaryCellBreakdown(
           snapshot?.gatePassNo != null
             ? String(snapshot.gatePassNo)
             : undefined,
+        ...(manualGatePass !== "—" ? { manualGatePassNumber: manualGatePass } : {}),
       })
     }
   }
@@ -181,12 +186,15 @@ export function buildStockSummaryCellBreakdown(
       )
       if (quantity <= 0) continue
 
+      const manualParchi = formatManualParchi(pass.manualParchiNumber)
+
       lines.push({
         variety: passVariety,
         size: normalizedSize,
         location: formatStockSummaryLocation(bagSize.location),
         quantity,
         gatePassNo: pass.gatePassNo,
+        ...(manualParchi !== "—" ? { manualParchiNumber: manualParchi } : {}),
       })
     }
   }

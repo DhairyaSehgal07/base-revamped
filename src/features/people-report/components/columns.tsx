@@ -4,7 +4,7 @@ import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
-import { isIncomingDaybookEntry } from "@/features/daybook/types"
+import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "@/features/daybook/types"
 import { formatDaybookDate, formatManualParchi, formatQuantity } from "@/features/daybook/utils/format"
 import {
   getFarmerReportRowBagTotal,
@@ -15,6 +15,9 @@ import {
   getGatePassSizeQuantity,
   getGatePassSizeQuantityLines,
   getGatePassVariety,
+  getOutgoingSizeQuantityDetailLines,
+  getOutgoingVarietyBreakdown,
+  hasMultipleOutgoingVarieties,
   orderBagSizes,
 } from "@/features/people-report/utils/gate-pass-table-helpers"
 
@@ -82,6 +85,34 @@ function SizeQuantityCell({
     return <span className="text-muted-foreground">—</span>
   }
 
+  if (
+    isOutgoingDaybookEntry(row.entry) &&
+    hasMultipleOutgoingVarieties(row.entry)
+  ) {
+    const detailLines = getOutgoingSizeQuantityDetailLines(row.entry, size)
+
+    if (detailLines.length === 0) {
+      return <span className="text-muted-foreground">—</span>
+    }
+
+    return (
+      <div className="flex flex-col items-end gap-1">
+        {detailLines.map((line, index) => (
+          <div
+            key={`${line.variety}-${line.locationLabel}-${index}`}
+            className="flex flex-col items-end gap-0.5"
+          >
+            <span className="tabular-nums">{formatQuantity(line.quantity)}</span>
+            <span className="text-xs text-muted-foreground">
+              ({line.locationLabel})
+            </span>
+            <span className="text-xs text-muted-foreground">({line.variety})</span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   const lines = getGatePassSizeQuantityLines(row.entry, size)
 
   if (lines.length === 0) {
@@ -97,6 +128,44 @@ function SizeQuantityCell({
         </div>
       ))}
     </div>
+  )
+}
+
+function VarietyCell({ row }: { row: FarmerReportTableRow }) {
+  if (isOpeningBalanceRow(row) || !row.entry) {
+    return <span className="text-muted-foreground">—</span>
+  }
+
+  if (
+    isOutgoingDaybookEntry(row.entry) &&
+    hasMultipleOutgoingVarieties(row.entry)
+  ) {
+    const breakdown = getOutgoingVarietyBreakdown(row.entry)
+
+    return (
+      <div className="flex min-w-0 flex-col gap-1">
+        {breakdown.map((line) => (
+          <div
+            key={line.variety}
+            className="flex min-w-0 items-baseline justify-between gap-2"
+          >
+            <span className="min-w-0 break-words" title={line.variety}>
+              {line.variety}
+            </span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">
+              {formatQuantity(line.quantity)}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const variety = getGatePassVariety(row.entry)
+  return (
+    <span className="block min-w-0 break-words" title={variety}>
+      {variety}
+    </span>
   )
 }
 
@@ -231,18 +300,7 @@ function buildFarmerReportColumnsForSizes(
       sortingFn: "text",
       aggregationFn: noGroupAggregation,
       aggregatedCell: emptyGroupedAggregatedCell,
-      cell: ({ row }) => {
-        if (isOpeningBalanceRow(row.original) || !row.original.entry) {
-          return <span className="text-muted-foreground">—</span>
-        }
-
-        const variety = getGatePassVariety(row.original.entry)
-        return (
-          <span className="block min-w-0 break-words" title={variety}>
-            {variety}
-          </span>
-        )
-      },
+      cell: ({ row }) => <VarietyCell row={row.original} />,
     },
   ]
 

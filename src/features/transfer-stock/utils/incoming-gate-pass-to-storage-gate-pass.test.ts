@@ -88,6 +88,15 @@ describe("incomingGatePassToStorageGatePass", () => {
 
     expect(mapped.manualGatePassNumber).toBe(4521)
   })
+
+  it("preserves stockFilter when present on the record", () => {
+    const mapped = incomingGatePassToStorageGatePass(
+      makeRecord({ stockFilter: "Owned" }),
+      FARMER_LINK_ID
+    )
+
+    expect(mapped.stockFilter).toBe("Owned")
+  })
 })
 
 describe("incomingGatePassesToStorageGatePasses", () => {

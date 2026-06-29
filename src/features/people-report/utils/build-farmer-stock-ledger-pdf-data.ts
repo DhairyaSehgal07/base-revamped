@@ -1,7 +1,7 @@
 import type { GroupingState, SortingState, Table } from "@tanstack/react-table"
 
 import type { CommodityPreference } from "@/features/auth/types"
-import type { DaybookEntry } from "@/features/daybook/types"
+import type { DaybookEntry, OutgoingDaybookEntry } from "@/features/daybook/types"
 import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "@/features/daybook/types"
 import { formatDaybookDate, formatManualParchi, formatQuantity } from "@/features/daybook/utils/format"
 import type { FarmerGatePassSummaries } from "@/features/people/api/use-farmer-gate-passes"
@@ -22,9 +22,12 @@ import { getFarmerReportColumnsForSizes } from "@/features/people-report/compone
 import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import {
   collectUniqueBagSizes,
+  formatOutgoingVarietyBreakdownForExport,
   getGatePassTotalBags,
   getGatePassSizeQuantityLines,
   getGatePassVariety,
+  getOutgoingSizeQuantityDetailLines,
+  hasMultipleOutgoingVarieties,
   orderBagSizes,
   sumSizeColumn,
 } from "@/features/people-report/utils/gate-pass-table-helpers"
@@ -158,6 +161,54 @@ function formatGeneratedAt(date: Date): string {
   }).format(date)
 }
 
+function mapOutgoingSizeValueForEntry(
+  entry: OutgoingDaybookEntry,
+  size: string,
+): PdfLedgerSizeValue | null {
+  if (!hasMultipleOutgoingVarieties(entry)) {
+    return null
+  }
+
+  const detailLines = getOutgoingSizeQuantityDetailLines(entry, size)
+  if (detailLines.length === 0) return null
+
+  if (detailLines.length === 1) {
+    const line = detailLines[0]!
+    return {
+      type: "stacked",
+      main: formatQuantity(line.quantity),
+      sub: `(${line.locationLabel}, ${line.variety})`,
+    }
+  }
+
+  const total = detailLines.reduce((sum, line) => sum + line.quantity, 0)
+  const breakdown = detailLines
+    .map(
+      (line) =>
+        `${formatQuantity(line.quantity)} (${line.locationLabel}, ${line.variety})`,
+    )
+    .join(", ")
+
+  return {
+    type: "stacked",
+    main: formatQuantity(total),
+    sub: `(${breakdown})`,
+  }
+}
+
+function mapVarietyForEntry(row: FarmerReportTableRow): string {
+  if (row.kind === "opening-balance" || !row.entry) return "—"
+
+  if (
+    isOutgoingDaybookEntry(row.entry) &&
+    hasMultipleOutgoingVarieties(row.entry)
+  ) {
+    return formatOutgoingVarietyBreakdownForExport(row.entry)
+  }
+
+  return getGatePassVariety(row.entry)
+}
+
 function mapSizeValueForEntry(
   row: FarmerReportTableRow,
   size: string,
@@ -169,6 +220,12 @@ function mapSizeValueForEntry(
   }
 
   if (!row.entry) return null
+
+  const outgoingSizeValue =
+    isOutgoingDaybookEntry(row.entry)
+      ? mapOutgoingSizeValueForEntry(row.entry, size)
+      : null
+  if (outgoingSizeValue) return outgoingSizeValue
 
   const lines = getGatePassSizeQuantityLines(row.entry, size)
   if (lines.length === 0) return null
@@ -262,7 +319,7 @@ export function mapFarmerReportRowToPdfLedger(
     date: formatDaybookDate(entry.date || entry.createdAt),
     gatePass: `#${entry.gatePassNo}`,
     manualParchi: formatManualParchi(entry.manualParchiNumber),
-    variety: getGatePassVariety(entry),
+    variety: mapVarietyForEntry(row),
     stockFilter: getRowStockFilter(row),
     customMarka: getRowCustomMarka(row),
     sizes,

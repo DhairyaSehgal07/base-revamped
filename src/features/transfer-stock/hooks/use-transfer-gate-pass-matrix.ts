@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useState } from "react"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
-import { getPreferredBagSizeOrderForTransfer } from "@/features/incoming/utils/incoming-preferences"
+import {
+  getPreferredBagSizeOrderForTransfer,
+  shouldShowStockFilter,
+} from "@/features/incoming/utils/incoming-preferences"
 import type {
   DatePassGroup,
   LocationFilters,
@@ -71,9 +74,12 @@ export function useTransferGatePassMatrix({
     row: "",
   })
   const [gatePassSearch, setGatePassSearch] = useState("")
+  const [stockFilterFilter, setStockFilterFilter] = useState("")
 
   const preferences = usePreferencesStore((state) => state.preferences)
   const commodities = preferences?.commodities ?? []
+  const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
+  const stockFilterOptions = preferences?.stockFilter?.options ?? []
 
   const varietyForSizeOrder = useMemo(() => {
     if (varietyFilterMode === "multi-optional") {
@@ -106,6 +112,9 @@ export function useTransferGatePassMatrix({
       search: gatePassSearch,
       location: locationFilters,
       preferences,
+      ...(stockFilterFilter.trim()
+        ? { stockFilter: stockFilterFilter }
+        : {}),
     }
 
     if (varietyFilterMode === "multi-optional") {
@@ -130,6 +139,7 @@ export function useTransferGatePassMatrix({
     gatePassSearch,
     locationFilters,
     preferences,
+    stockFilterFilter,
   ])
 
   const tableSizes = useMemo(
@@ -168,7 +178,8 @@ export function useTransferGatePassMatrix({
     gatePassSearch.trim() !== "" ||
     locationFilters.chamber !== "" ||
     locationFilters.floor !== "" ||
-    locationFilters.row !== ""
+    locationFilters.row !== "" ||
+    stockFilterFilter.trim() !== ""
 
   const sizesForColumnPicker =
     tableSizes.length > 0 ? tableSizes : allTableSizes
@@ -239,6 +250,7 @@ export function useTransferGatePassMatrix({
     setVarietyFilter("")
     setVarietyVisibility("all")
     setGatePassSearch("")
+    setStockFilterFilter("")
     setLocationFilters({ chamber: "", floor: "", row: "" })
     setSizeVisibility("all")
     setSelectedPassIds(new Set())
@@ -315,6 +327,10 @@ export function useTransferGatePassMatrix({
     setVarietyVisibility,
     gatePassSearch,
     setGatePassSearch,
+    stockFilterFilter,
+    setStockFilterFilter,
+    showStockFilter,
+    stockFilterOptions,
     locationFilters,
     setLocationFilters,
     sizeVisibility,

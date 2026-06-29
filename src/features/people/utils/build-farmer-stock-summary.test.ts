@@ -242,6 +242,32 @@ describe("buildStockSummaryCellBreakdown", () => {
     }),
   ]
 
+  it("includes manual parchi on incoming breakdown lines", () => {
+    const lines = buildStockSummaryCellBreakdown({
+      passes: [
+        createPass({
+          gatePassNo: 18,
+          manualParchiNumber: "P-4521",
+          variety: "Chipsona 1",
+          bagSizes: [
+            {
+              name: "Goli",
+              initialQuantity: 60,
+              currentQuantity: 60,
+              location: { chamber: "2", floor: "3", row: "1" },
+            },
+          ],
+        }),
+      ],
+      stockFilterTab: "all",
+      quantityMode: "current",
+      variety: "Chipsona 1",
+      size: "Goli",
+    })
+
+    expect(lines[0]?.manualParchiNumber).toBe("P-4521")
+  })
+
   it("returns breakdown lines for a variety and size cell", () => {
     const lines = buildStockSummaryCellBreakdown({
       passes,
@@ -362,6 +388,7 @@ describe("buildStockSummaryCellBreakdown", () => {
       quantity: 30,
       gatePassNo: 202,
       reference: "101",
+      manualGatePassNumber: "OGP-55",
     })
   })
 

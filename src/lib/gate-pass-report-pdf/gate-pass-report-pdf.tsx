@@ -8,12 +8,19 @@ import {
 } from "@react-pdf/renderer"
 
 import { formatGatePassReportGeneratedAt } from "@/lib/gate-pass-report-pdf/build-table-report-pdf-data"
-import { chunkGatePassReportRows } from "@/lib/gate-pass-report-pdf/chunk-report-rows"
+import {
+  chunkGatePassReportRows,
+  GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE,
+  GATE_PASS_REPORT_ROWS_PER_PAGE,
+} from "@/lib/gate-pass-report-pdf/chunk-report-rows"
 import { registerGatePassReportPdfFonts } from "@/lib/gate-pass-report-pdf/register-pdf-fonts"
 import type {
   GatePassReportPdfCell,
   GatePassReportPdfColumn,
+  GatePassReportPdfDisplayAlign,
   GatePassReportPdfRow,
+  GatePassReportPdfStackedLine,
+  GatePassReportPdfTableVariant,
   GenerateGatePassReportPdfInput,
 } from "@/lib/gate-pass-report-pdf/types"
 import { COLDOP_BRANDING } from "@/lib/export-report-theme"
@@ -25,6 +32,7 @@ const COLOR = {
   inkSoft: "#71717a",
   inkMuted: "#a1a1aa",
   hairline: "#e4e4e7",
+  hairlineStrong: "#09090b",
   paper: "#ffffff",
   wash: "#f8f9fa",
   accent: "#008235",
@@ -166,19 +174,48 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: "hidden",
   },
+  ledgerTable: {
+    width: "100%",
+    marginBottom: 4,
+  },
   tableHeaderRow: {
     flexDirection: "row",
     backgroundColor: COLOR.wash,
     borderBottomWidth: 1,
     borderBottomColor: COLOR.hairline,
   },
+  ledgerTableHeaderRow: {
+    flexDirection: "row",
+    backgroundColor: COLOR.wash,
+    borderTopWidth: 0.75,
+    borderTopColor: COLOR.hairlineStrong,
+    borderBottomWidth: 1.25,
+    borderBottomColor: COLOR.hairlineStrong,
+    paddingTop: 7,
+    paddingBottom: 7,
+  },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: COLOR.hairline,
   },
+  ledgerTableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: COLOR.hairline,
+    paddingTop: 7.5,
+    paddingBottom: 7.5,
+    alignItems: "center",
+  },
   tableRowGroup: {
     backgroundColor: COLOR.groupFill,
+  },
+  ledgerTableRowGroup: {
+    backgroundColor: COLOR.groupFill,
+    borderTopWidth: 0.75,
+    borderTopColor: COLOR.hairline,
+    paddingTop: 5,
+    paddingBottom: 5,
   },
   tableRowZebra: {
     backgroundColor: COLOR.zebra,
@@ -189,6 +226,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLOR.hairline,
   },
+  ledgerTableFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLOR.accentWash,
+    borderLeftWidth: 3,
+    borderLeftColor: COLOR.accent,
+    borderTopWidth: 0.75,
+    borderTopColor: COLOR.hairlineStrong,
+    paddingTop: 7,
+    paddingBottom: 7,
+    marginTop: -0.5,
+  },
   headerCell: {
     paddingVertical: 4,
     paddingHorizontal: 3,
@@ -197,11 +246,45 @@ const styles = StyleSheet.create({
     color: COLOR.accent,
     fontSize: 6.5,
   },
+  ledgerHeaderCell: {
+    fontSize: 7.5,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+    color: COLOR.ink,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  ledgerHeaderCellCenter: {
+    fontSize: 7.5,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+    color: COLOR.ink,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    textAlign: "center",
+  },
   bodyCell: {
     paddingVertical: 3,
     paddingHorizontal: 3,
     fontSize: 6.5,
     color: COLOR.ink,
+  },
+  ledgerBodyCell: {
+    fontSize: 9,
+    color: COLOR.ink,
+    fontFamily: "Roboto",
+    fontWeight: 400,
+  },
+  ledgerBodyCellBold: {
+    fontSize: 9,
+    color: COLOR.ink,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+  },
+  ledgerBodyCellMuted: {
+    fontSize: 9,
+    color: COLOR.inkMuted,
+    textAlign: "center",
   },
   bodyCellEmpty: {
     color: COLOR.inkMuted,
@@ -214,11 +297,38 @@ const styles = StyleSheet.create({
     color: COLOR.accent,
     fontSize: 6.5,
   },
+  ledgerFooterCell: {
+    fontSize: 9,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+    color: COLOR.ink,
+  },
+  ledgerFooterLabel: {
+    fontSize: 8,
+    fontFamily: "Roboto",
+    fontWeight: 700,
+    color: COLOR.accent,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  stackedCell: {
+    alignItems: "center",
+  },
+  subText: {
+    fontSize: 7,
+    color: COLOR.inkSoft,
+    marginTop: 1.5,
+    fontFamily: "Roboto",
+    fontWeight: 400,
+  },
   alignLeft: {
     textAlign: "left",
   },
   alignRight: {
     textAlign: "right",
+  },
+  alignCenter: {
+    textAlign: "center",
   },
   footer: {
     position: "absolute",
@@ -269,6 +379,102 @@ function getColumnFlex(align: "left" | "right", label: string): number {
   if (align === "right") return 0.7
   if (label.length > 14) return 1.4
   return 1
+}
+
+function getDisplayAlign(
+  column: GatePassReportPdfColumn,
+): GatePassReportPdfDisplayAlign {
+  return column.displayAlign ?? (column.align === "right" ? "right" : "left")
+}
+
+function getFlexAlign(displayAlign: GatePassReportPdfDisplayAlign) {
+  if (displayAlign === "center") return "center"
+  if (displayAlign === "right") return "flex-end"
+  return "flex-start"
+}
+
+function normalizeStack(
+  stack: GatePassReportPdfStackedLine | GatePassReportPdfStackedLine[],
+): GatePassReportPdfStackedLine[] {
+  return Array.isArray(stack) ? stack : [stack]
+}
+
+function renderStackedLines(
+  lines: GatePassReportPdfStackedLine[],
+  isGroupRow: boolean,
+) {
+  return (
+    <View style={styles.stackedCell}>
+      {lines.map((line, index) => (
+        <View key={`${line.main}-${index}`}>
+          <Text
+            style={
+              isGroupRow ? styles.ledgerBodyCellBold : styles.ledgerBodyCellBold
+            }
+          >
+            {line.main}
+          </Text>
+          {line.sub ? <Text style={styles.subText}>{line.sub}</Text> : null}
+        </View>
+      ))}
+    </View>
+  )
+}
+
+function renderPdfDataCell(
+  cell: GatePassReportPdfCell,
+  column: GatePassReportPdfColumn,
+  isGroupRow: boolean,
+  tableVariant: GatePassReportPdfTableVariant,
+) {
+  const displayAlign = getDisplayAlign(column)
+  const flexAlign = getFlexAlign(displayAlign)
+
+  if (tableVariant === "ledger") {
+    if (cell.stack) {
+      return (
+        <View style={{ alignItems: flexAlign, paddingHorizontal: 3 }}>
+          {renderStackedLines(normalizeStack(cell.stack), isGroupRow)}
+        </View>
+      )
+    }
+
+    const textStyle = cell.isEmpty
+      ? styles.ledgerBodyCellMuted
+      : isGroupRow
+        ? styles.ledgerBodyCellBold
+        : styles.ledgerBodyCell
+
+    return (
+      <View style={{ alignItems: flexAlign, paddingHorizontal: 3 }}>
+        <Text
+          style={[
+            textStyle,
+            displayAlign === "center"
+              ? styles.alignCenter
+              : displayAlign === "right"
+                ? styles.alignRight
+                : styles.alignLeft,
+          ]}
+        >
+          {cell.text}
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <Text
+      style={[
+        styles.bodyCell,
+        cell.align === "right" ? styles.alignRight : styles.alignLeft,
+        ...(cell.isEmpty ? [styles.bodyCellEmpty] : []),
+        ...(isGroupRow ? [{ fontFamily: "Roboto", fontWeight: 700 }] : []),
+      ]}
+    >
+      {cell.text}
+    </Text>
+  )
 }
 
 function ReportLetterhead({
@@ -371,37 +577,66 @@ function ReportMetaBlock({
 function ReportTableHeader({
   columns,
   columnFlex,
+  tableVariant,
 }: {
   columns: GatePassReportPdfColumn[]
   columnFlex: number[]
+  tableVariant: GatePassReportPdfTableVariant
 }) {
+  const isLedger = tableVariant === "ledger"
+
   return (
-    <View style={styles.tableHeaderRow}>
-      {columns.map((column, index) => (
-        <View key={`${column.label}-${index}`} style={{ flex: columnFlex[index] }}>
-          <Text
-            style={[
-              styles.headerCell,
-              column.align === "right" ? styles.alignRight : styles.alignLeft,
-            ]}
+    <View style={isLedger ? styles.ledgerTableHeaderRow : styles.tableHeaderRow}>
+      {columns.map((column, index) => {
+        const displayAlign = getDisplayAlign(column)
+
+        return (
+          <View
+            key={`${column.label}-${index}`}
+            style={{
+              flex: columnFlex[index],
+              alignItems: getFlexAlign(displayAlign),
+              paddingHorizontal: isLedger ? 3 : 0,
+            }}
           >
-            {column.label}
-          </Text>
-        </View>
-      ))}
+            <Text
+              style={[
+                isLedger
+                  ? displayAlign === "center"
+                    ? styles.ledgerHeaderCellCenter
+                    : styles.ledgerHeaderCell
+                  : styles.headerCell,
+                displayAlign === "center"
+                  ? styles.alignCenter
+                  : displayAlign === "right"
+                    ? styles.alignRight
+                    : styles.alignLeft,
+              ]}
+            >
+              {column.label}
+            </Text>
+          </View>
+        )
+      })}
     </View>
   )
 }
 
 function ReportTableBody({
   rows,
+  columns,
   columnFlex,
   rowOffset,
+  tableVariant,
 }: {
   rows: GatePassReportPdfRow[]
+  columns: GatePassReportPdfColumn[]
   columnFlex: number[]
   rowOffset: number
+  tableVariant: GatePassReportPdfTableVariant
 }) {
+  const isLedger = tableVariant === "ledger"
+
   return (
     <>
       {rows.map((row, rowIndex) => {
@@ -411,8 +646,10 @@ function ReportTableBody({
           <View
             key={`row-${globalRowIndex}`}
             style={[
-              styles.tableRow,
-              ...(row.isGroupRow ? [styles.tableRowGroup] : []),
+              isLedger ? styles.ledgerTableRow : styles.tableRow,
+              ...(row.isGroupRow
+                ? [isLedger ? styles.ledgerTableRowGroup : styles.tableRowGroup]
+                : []),
               ...(!row.isGroupRow && globalRowIndex % 2 === 1
                 ? [styles.tableRowZebra]
                 : []),
@@ -423,20 +660,12 @@ function ReportTableBody({
                 key={`cell-${globalRowIndex}-${cellIndex}`}
                 style={{ flex: columnFlex[cellIndex] }}
               >
-                <Text
-                  style={[
-                    styles.bodyCell,
-                    cell.align === "right"
-                      ? styles.alignRight
-                      : styles.alignLeft,
-                    ...(cell.isEmpty ? [styles.bodyCellEmpty] : []),
-                    ...(row.isGroupRow
-                      ? [{ fontFamily: "Roboto", fontWeight: 700 }]
-                      : []),
-                  ]}
-                >
-                  {cell.text}
-                </Text>
+                {renderPdfDataCell(
+                  cell,
+                  columns[cellIndex]!,
+                  row.isGroupRow === true,
+                  tableVariant,
+                )}
               </View>
             ))}
           </View>
@@ -448,25 +677,52 @@ function ReportTableBody({
 
 function ReportTableFooter({
   footerCells,
+  columns,
   columnFlex,
+  tableVariant,
 }: {
   footerCells: GatePassReportPdfCell[]
+  columns: GatePassReportPdfColumn[]
   columnFlex: number[]
+  tableVariant: GatePassReportPdfTableVariant
 }) {
+  const isLedger = tableVariant === "ledger"
+
   return (
-    <View style={styles.tableFooterRow}>
-      {footerCells.map((cell, index) => (
-        <View key={`footer-${index}`} style={{ flex: columnFlex[index] }}>
-          <Text
-            style={[
-              styles.footerCell,
-              cell.align === "right" ? styles.alignRight : styles.alignLeft,
-            ]}
+    <View style={isLedger ? styles.ledgerTableFooterRow : styles.tableFooterRow}>
+      {footerCells.map((cell, index) => {
+        const column = columns[index]!
+        const displayAlign = getDisplayAlign(column)
+        const isTotalLabel = index === 0 && isLedger
+
+        return (
+          <View
+            key={`footer-${index}`}
+            style={{
+              flex: columnFlex[index],
+              alignItems: getFlexAlign(displayAlign),
+              paddingHorizontal: isLedger ? 3 : 0,
+            }}
           >
-            {cell.text}
-          </Text>
-        </View>
-      ))}
+            <Text
+              style={[
+                isLedger
+                  ? isTotalLabel
+                    ? styles.ledgerFooterLabel
+                    : styles.ledgerFooterCell
+                  : styles.footerCell,
+                displayAlign === "center"
+                  ? styles.alignCenter
+                  : displayAlign === "right"
+                    ? styles.alignRight
+                    : styles.alignLeft,
+              ]}
+            >
+              {cell.text}
+            </Text>
+          </View>
+        )
+      })}
     </View>
   )
 }
@@ -518,6 +774,7 @@ function GatePassReportPage({
   rowOffset,
   isFirstPage,
   isLastPage,
+  tableVariant = "default",
 }: GenerateGatePassReportPdfInput & {
   rows: GatePassReportPdfRow[]
   pageIndex: number
@@ -528,6 +785,7 @@ function GatePassReportPage({
   const columnFlex = columns.map((column) =>
     getColumnFlex(column.align, column.label),
   )
+  const isLedger = tableVariant === "ledger"
 
   return (
     <Page size="A4" orientation="landscape" style={styles.page}>
@@ -555,15 +813,26 @@ function GatePassReportPage({
         />
       ) : null}
 
-      <View style={styles.table}>
-        <ReportTableHeader columns={columns} columnFlex={columnFlex} />
+      <View style={isLedger ? styles.ledgerTable : styles.table}>
+        <ReportTableHeader
+          columns={columns}
+          columnFlex={columnFlex}
+          tableVariant={tableVariant}
+        />
         <ReportTableBody
           rows={rows}
+          columns={columns}
           columnFlex={columnFlex}
           rowOffset={rowOffset}
+          tableVariant={tableVariant}
         />
         {isLastPage ? (
-          <ReportTableFooter footerCells={footerCells} columnFlex={columnFlex} />
+          <ReportTableFooter
+            footerCells={footerCells}
+            columns={columns}
+            columnFlex={columnFlex}
+            tableVariant={tableVariant}
+          />
         ) : null}
       </View>
 
@@ -573,7 +842,12 @@ function GatePassReportPage({
 }
 
 export default function GatePassReportPdf(props: GenerateGatePassReportPdfInput) {
-  const rowPages = chunkGatePassReportRows(props.rows)
+  const rowsPerPage =
+    props.rowsPerPage ??
+    (props.tableVariant === "ledger"
+      ? GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE
+      : GATE_PASS_REPORT_ROWS_PER_PAGE)
+  const rowPages = chunkGatePassReportRows(props.rows, rowsPerPage)
 
   return (
     <Document
@@ -583,18 +857,18 @@ export default function GatePassReportPdf(props: GenerateGatePassReportPdfInput)
       title={`${props.reportTitle} — ${props.coldStorageName}`}
     >
       {rowPages.map((pageRows, pageIndex) => (
-          <GatePassReportPage
-            key={`page-${pageIndex}`}
-            {...props}
-            rows={pageRows}
-            pageIndex={pageIndex}
-            rowOffset={rowPages
-              .slice(0, pageIndex)
-              .reduce((total, page) => total + page.length, 0)}
-            isFirstPage={pageIndex === 0}
-            isLastPage={pageIndex === rowPages.length - 1}
-          />
-        ))}
+        <GatePassReportPage
+          key={`page-${pageIndex}`}
+          {...props}
+          rows={pageRows}
+          pageIndex={pageIndex}
+          rowOffset={rowPages
+            .slice(0, pageIndex)
+            .reduce((total, page) => total + page.length, 0)}
+          isFirstPage={pageIndex === 0}
+          isLastPage={pageIndex === rowPages.length - 1}
+        />
+      ))}
     </Document>
   )
 }

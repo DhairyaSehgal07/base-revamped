@@ -8,10 +8,15 @@ import type {
 
 import {
   collectUniqueBagSizes,
+  formatOutgoingVarietyBreakdownForExport,
   getGatePassSizeQuantity,
   getGatePassSizeQuantityLines,
   getGatePassTotalBags,
   getGatePassVariety,
+  getOutgoingSizeQuantityDetailLines,
+  getOutgoingSizeQuantityLinesByVariety,
+  getOutgoingVarietyBreakdown,
+  hasMultipleOutgoingVarieties,
   orderBagSizes,
   sumSizeColumn,
   sumTotalBags,
@@ -82,6 +87,72 @@ function createOutgoingPass(
     ],
     ...overrides,
   }
+}
+
+function createMultiVarietyOutgoingPass(): OutgoingDaybookEntry {
+  return createOutgoingPass({
+    variety: "Atlantic",
+    orderDetails: [
+      {
+        size: "Ration",
+        quantityAvailable: 80,
+        quantityIssued: 20,
+        location: { chamber: "1", floor: "1", row: "A" },
+      },
+      {
+        size: "Ration",
+        quantityAvailable: 50,
+        quantityIssued: 15,
+        location: { chamber: "2", floor: "1", row: "B" },
+      },
+      {
+        size: "Goli",
+        quantityAvailable: 10,
+        quantityIssued: 10,
+        location: { chamber: "2", floor: "1", row: "C" },
+      },
+    ],
+    incomingGatePassSnapshots: [
+      {
+        _id: "incoming-1",
+        gatePassNo: 101,
+        variety: "Atlantic",
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 100,
+            currentQuantity: 80,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      },
+      {
+        _id: "incoming-2",
+        gatePassNo: 102,
+        variety: "Chipsona",
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 50,
+            currentQuantity: 50,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "2", floor: "1", row: "B" },
+          },
+          {
+            name: "Goli",
+            initialQuantity: 10,
+            currentQuantity: 10,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "2", floor: "1", row: "C" },
+          },
+        ],
+      },
+    ],
+  })
 }
 
 describe("collectUniqueBagSizes", () => {
@@ -302,6 +373,77 @@ describe("getGatePassSizeQuantityLines", () => {
         locationLabel: "1/1/A",
       },
     ])
+  })
+})
+
+describe("outgoing variety breakdown helpers", () => {
+  const multiVarietyPass = createMultiVarietyOutgoingPass()
+
+  it("returns per-variety totals from order line resolution", () => {
+    expect(getOutgoingVarietyBreakdown(multiVarietyPass)).toEqual([
+      { variety: "Atlantic", quantity: 20 },
+      { variety: "Chipsona", quantity: 25 },
+    ])
+  })
+
+  it("detects multiple varieties from order lines even when entry.variety is set", () => {
+    expect(hasMultipleOutgoingVarieties(multiVarietyPass)).toBe(true)
+    expect(hasMultipleOutgoingVarieties(createOutgoingPass())).toBe(false)
+  })
+
+  it("splits size quantities by variety", () => {
+    expect(
+      getOutgoingSizeQuantityLinesByVariety(multiVarietyPass, "Ration"),
+    ).toEqual([
+      {
+        variety: "Atlantic",
+        quantity: 20,
+        locationLines: [{ quantity: 20, locationLabel: "1/1/A" }],
+      },
+      {
+        variety: "Chipsona",
+        quantity: 15,
+        locationLines: [{ quantity: 15, locationLabel: "2/1/B" }],
+      },
+    ])
+  })
+
+  it("returns variety lines for sizes dispatched from a single variety", () => {
+    expect(
+      getOutgoingSizeQuantityLinesByVariety(multiVarietyPass, "Goli"),
+    ).toEqual([
+      {
+        variety: "Chipsona",
+        quantity: 10,
+        locationLines: [{ quantity: 10, locationLabel: "2/1/C" }],
+      },
+    ])
+  })
+
+  it("flattens size detail lines with location and variety", () => {
+    expect(
+      getOutgoingSizeQuantityDetailLines(multiVarietyPass, "Ration"),
+    ).toEqual([
+      {
+        variety: "Atlantic",
+        quantity: 20,
+        locationLabel: "1/1/A",
+      },
+      {
+        variety: "Chipsona",
+        quantity: 15,
+        locationLabel: "2/1/B",
+      },
+    ])
+  })
+
+  it("formats multi-variety breakdown for export", () => {
+    expect(formatOutgoingVarietyBreakdownForExport(multiVarietyPass)).toBe(
+      "Atlantic (20)\nChipsona (25)",
+    )
+    expect(formatOutgoingVarietyBreakdownForExport(createOutgoingPass())).toBe(
+      "Atlantic",
+    )
   })
 })
 

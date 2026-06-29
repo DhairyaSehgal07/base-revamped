@@ -4,6 +4,8 @@ import type { Cell, Column, Row, Table } from "@tanstack/react-table"
 import type {
   GatePassReportPdfCell,
   GatePassReportPdfData,
+  GatePassReportPdfDisplayAlign,
+  GatePassReportPdfTableVariant,
 } from "@/lib/gate-pass-report-pdf/types"
 
 type ExportCellValue =
@@ -27,6 +29,8 @@ export type BuildTableReportPdfDataOptions<TRow> = {
   dateFrom?: string
   dateTo?: string
   generatedAt?: Date
+  tableVariant?: GatePassReportPdfTableVariant
+  rowsPerPage?: number
   formatDateRangeLabel: (dateFrom?: string, dateTo?: string) => string
   getFilteredLeafRowCount: (table: Table<TRow>) => number
   buildFilterSummaryLines: (table: Table<TRow>) => string[]
@@ -44,6 +48,12 @@ export type BuildTableReportPdfDataOptions<TRow> = {
   isSummableExportColumn: (columnId: string) => boolean
   exportCellValueToDisplay: (cell: ExportCellValue) => string
   footerValuesByColumnId?: ReadonlyMap<string, ExportCellValue>
+  mapExportCellToPdfCell?: (
+    row: Row<TRow>,
+    exportCell: ExportCellValue,
+    column: Column<TRow, unknown>,
+    align: "left" | "right",
+  ) => GatePassReportPdfCell
 }
 
 function toPdfCell(
@@ -67,6 +77,29 @@ function cellFromExportValue(
     align,
     cell.kind === "empty",
   )
+}
+
+function defaultExportCellToPdfCell(
+  exportCell: ExportCellValue,
+  align: "left" | "right",
+  exportCellValueToDisplay: (cell: ExportCellValue) => string,
+): GatePassReportPdfCell {
+  return toPdfCell(
+    exportCellValueToDisplay(exportCell),
+    align,
+    exportCell.kind === "empty",
+  )
+}
+
+function getLedgerDisplayAlign(
+  columnId: string,
+  align: "left" | "right",
+): GatePassReportPdfDisplayAlign | undefined {
+  if (columnId.startsWith("size-") || columnId === "totalBags") {
+    return "center"
+  }
+
+  return align === "right" ? "right" : "left"
 }
 
 function preparePdfColumns<TRow>(
@@ -98,6 +131,8 @@ export function buildTableReportPdfData<TRow>({
   dateFrom,
   dateTo,
   generatedAt = new Date(),
+  tableVariant = "default",
+  rowsPerPage,
   formatDateRangeLabel,
   getFilteredLeafRowCount,
   buildFilterSummaryLines,
@@ -108,6 +143,7 @@ export function buildTableReportPdfData<TRow>({
   isSummableExportColumn,
   exportCellValueToDisplay,
   footerValuesByColumnId,
+  mapExportCellToPdfCell,
 }: BuildTableReportPdfDataOptions<TRow>): GatePassReportPdfData {
   const visibleColumns = table.getVisibleLeafColumns()
   const preparedColumns = preparePdfColumns(
@@ -119,9 +155,14 @@ export function buildTableReportPdfData<TRow>({
   const filteredRows = table.getFilteredRowModel().rows
   const filterSummaryLines = buildFilterSummaryLines(table)
 
-  const columns = preparedColumns.map(({ label, align }) => ({
+  const columns = preparedColumns.map(({ column, label, align }) => ({
     label,
     align,
+    columnId: column.id,
+    displayAlign:
+      tableVariant === "ledger"
+        ? getLedgerDisplayAlign(column.id, align)
+        : undefined,
   }))
 
   const rows = exportRows.map((row) => {
@@ -136,10 +177,14 @@ export function buildTableReportPdfData<TRow>({
           cellsByColumnId.get(column.id),
         )
 
-        return toPdfCell(
-          exportCellValueToDisplay(exportCell),
+        if (mapExportCellToPdfCell) {
+          return mapExportCellToPdfCell(row, exportCell, column, align)
+        }
+
+        return defaultExportCellToPdfCell(
+          exportCell,
           align,
-          exportCell.kind === "empty",
+          exportCellValueToDisplay,
         )
       }),
     }
@@ -174,6 +219,8 @@ export function buildTableReportPdfData<TRow>({
     columns,
     rows,
     footerCells,
+    tableVariant,
+    rowsPerPage,
   }
 }
 

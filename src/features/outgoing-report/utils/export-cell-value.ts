@@ -6,6 +6,13 @@ import type {
   OutgoingReportOrderDetail,
 } from "@/features/outgoing-report/api/types"
 import type { OutgoingQuantityMode } from "@/features/outgoing-report/components/columns"
+import {
+  formatOutgoingReportSizeDetailLineForExport,
+  formatOutgoingReportVarietyBreakdownForExport,
+  getOrderLineQuantity,
+  getOutgoingReportSizeQuantityDetailLines,
+  hasMultipleOutgoingReportVarieties,
+} from "@/features/outgoing-report/utils/report-row-values"
 import type {
   AdvancedFilterCondition,
   AdvancedReportGlobalFilter,
@@ -60,9 +67,7 @@ function getOrderDetailQuantity(
   detail: OutgoingReportOrderDetail,
   quantityMode: OutgoingQuantityMode,
 ) {
-  return quantityMode === "issued"
-    ? detail.quantityIssued
-    : detail.quantityAvailable
+  return getOrderLineQuantity(detail, quantityMode)
 }
 
 function formatOrderDetailText(
@@ -137,6 +142,31 @@ function formatSizeColumnValue(
   quantityMode: OutgoingQuantityMode,
 ): ExportCellValue {
   const size = columnId.replace(/^size-/, "")
+
+  if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
+    const detailLines = getOutgoingReportSizeQuantityDetailLines(
+      row,
+      size,
+      quantityMode,
+    )
+
+    if (!detailLines.length) return { kind: "empty" }
+
+    if (detailLines.length === 1) {
+      return {
+        kind: "text",
+        value: formatOutgoingReportSizeDetailLineForExport(detailLines[0]!),
+      }
+    }
+
+    return {
+      kind: "text",
+      value: detailLines
+        .map((line) => formatOutgoingReportSizeDetailLineForExport(line))
+        .join("\n"),
+    }
+  }
+
   const details = row.orderDetails.filter((detail) => detail.size === size)
 
   if (!details.length) return { kind: "empty" }
@@ -167,6 +197,15 @@ export function formatExportCellValue(
     return row
       ? formatSizeColumnValue(row, columnId, quantityMode)
       : { kind: "empty" }
+  }
+
+  if (columnId === "variety" && row) {
+    if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
+      return {
+        kind: "text",
+        value: formatOutgoingReportVarietyBreakdownForExport(row, quantityMode),
+      }
+    }
   }
 
   if (rawValue == null || rawValue === "") {

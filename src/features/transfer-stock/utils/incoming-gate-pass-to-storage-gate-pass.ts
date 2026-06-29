@@ -46,6 +46,7 @@ export function incomingGatePassToStorageGatePass(
     storageCategory: record.type ?? "",
     bagSizes: record.bagSizes.map(mapBagSize),
     remarks: record.remarks ?? "",
+    stockFilter: record.stockFilter,
   }
 }
 

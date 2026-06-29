@@ -21,6 +21,7 @@ export type StorageGatePass = {
   storageCategory: string
   bagSizes: StorageGatePassBagSlot[]
   remarks: string
+  stockFilter?: string
 }
 
 /** `${passId}\u001f${size}\u001f${bagIndex}` — unit separator avoids `|` in size names */

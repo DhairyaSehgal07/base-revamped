@@ -173,6 +173,39 @@ describe("filterStorageGatePasses", () => {
     )
     expect(withManualParchi).toHaveLength(1)
   })
+
+  it("filters by stock filter when set", () => {
+    const ownedPass: StorageGatePass = {
+      ...samplePass,
+      _id: "pass-owned",
+      stockFilter: "Owned",
+    }
+    const farmerPass: StorageGatePass = {
+      ...samplePass,
+      _id: "pass-farmer",
+      stockFilter: "Farmer",
+    }
+    const noFilterPass: StorageGatePass = {
+      ...samplePass,
+      _id: "pass-none",
+    }
+
+    const passes = [ownedPass, farmerPass, noFilterPass]
+
+    expect(
+      filterStorageGatePasses(passes, { stockFilter: "Owned" })
+    ).toHaveLength(1)
+    expect(
+      filterStorageGatePasses(passes, { stockFilter: "Owned" })[0]?._id
+    ).toBe("pass-owned")
+
+    expect(
+      filterStorageGatePasses(passes, { stockFilter: "Farmer" })
+    ).toHaveLength(1)
+
+    expect(filterStorageGatePasses(passes, { stockFilter: "" })).toHaveLength(3)
+    expect(filterStorageGatePasses(passes, {})).toHaveLength(3)
+  })
 })
 
 describe("groupPassesByDate", () => {

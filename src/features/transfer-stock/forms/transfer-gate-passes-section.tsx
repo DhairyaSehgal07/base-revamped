@@ -4,6 +4,7 @@ import {
   ArrowDown,
   ArrowUp,
   Columns,
+  Filter,
   MapPin,
   Package,
   RotateCcw,
@@ -303,6 +304,17 @@ export function TransferGatePassesSection({
               />
             </div>
           ))}
+
+        {matrix.showStockFilter && matrix.stockFilterOptions.length > 0 && (
+          <MatrixRadioFilter
+            label="Stock filter"
+            value={matrix.stockFilterFilter}
+            options={matrix.stockFilterOptions}
+            onChange={matrix.setStockFilterFilter}
+            icon={Filter}
+            ariaLabel="Stock filter"
+          />
+        )}
 
         {matrix.uniqueLocations.chambers.length > 0 && (
           <MatrixRadioFilter

@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from "react"
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from "react"
 import { ClipboardList, MapPin } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -43,39 +43,62 @@ import { usePreferencesStore } from "@/features/auth/store/use-preferences-store
 import { getStorageGatePassLotNo } from "@/features/transfer-stock/utils/gate-pass-matrix-utils"
 import { cn } from "@/lib/utils"
 
-/** Checkbox + R. Voucher columns before size lanes. */
-const FIXED_COLUMN_COUNT = 2
+/** Checkbox + gate pass + manual gate pass + variety/lot columns before size lanes. */
+const FIXED_COLUMN_COUNT = 4
 
-function sizeLaneIndex(columnIndex: number) {
-  return columnIndex - FIXED_COLUMN_COUNT
-}
-
-function sizeLaneClasses(columnIndex: number, variant: "head" | "cell") {
-  const lane = sizeLaneIndex(columnIndex)
+function sizeLaneClasses(_columnIndex: number, variant: "head" | "cell") {
   return cn(
-    "border-l-2 border-border px-4",
-    variant === "head"
-      ? cn("bg-muted/50 text-center", lane % 2 === 1 && "bg-muted/65")
-      : lane % 2 === 0
-        ? "bg-muted/20"
-        : "bg-muted/35"
+    "border-l border-border/60 px-4",
+    variant === "head" ? "bg-muted/40 text-center" : "bg-transparent"
   )
 }
 
-function stickyCheckboxHeadClass() {
-  return "sticky left-0 z-20 w-12 bg-muted/50 px-2"
+function stickyHeadClass(
+  column: "checkbox" | "gatePassNo" | "manualGatePassNo" | "varietyLot",
+  options?: { edge?: boolean }
+) {
+  return cn(
+    "sticky z-20 bg-muted/40 px-2 py-2 align-bottom",
+    column === "checkbox" && "left-0 w-11",
+    column === "gatePassNo" && "left-11 w-12 min-w-12",
+    column === "manualGatePassNo" && "left-[5.75rem] w-14 min-w-14",
+    column === "varietyLot" && "left-[9.25rem] w-32 min-w-32",
+    options?.edge &&
+      "border-r border-border/60 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.04)]"
+  )
 }
 
-function stickyVoucherHeadClass() {
-  return "sticky left-12 z-20 w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem] border-r border-border bg-muted/50 px-2 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)]"
+function stickyCellClass(
+  column: "checkbox" | "gatePassNo" | "manualGatePassNo" | "varietyLot",
+  options?: { edge?: boolean }
+) {
+  return cn(
+    "sticky z-10 bg-background px-2 transition-colors",
+    "group-hover/row:bg-muted/20 group-data-[selected=true]/row:bg-primary/[0.04]",
+    column === "checkbox" && "left-0 w-11",
+    column === "gatePassNo" && "left-11 w-12 min-w-12",
+    column === "manualGatePassNo" && "left-[5.75rem] w-14 min-w-14",
+    column === "varietyLot" && "left-[9.25rem] w-32 min-w-32",
+    options?.edge &&
+      "border-r border-border/60 shadow-[2px_0_8px_-4px_rgba(0,0,0,0.04)]"
+  )
 }
 
-function stickyCheckboxCellClass() {
-  return "sticky left-0 z-10 bg-background even:bg-muted/15"
-}
-
-function stickyVoucherCellClass() {
-  return "sticky left-12 z-10 w-[5.5rem] min-w-[5.5rem] max-w-[5.5rem] border-r border-border bg-background px-2 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.08)] even:bg-muted/15"
+function ColumnHeader({
+  children,
+  title,
+}: {
+  children: ReactNode
+  title?: string
+}) {
+  return (
+    <span
+      className="block whitespace-normal text-center text-[11px] leading-tight font-medium tracking-wide text-muted-foreground"
+      title={title}
+    >
+      {children}
+    </span>
+  )
 }
 
 function LotNoDisplay({ lotNo }: { lotNo: string }) {
@@ -84,7 +107,7 @@ function LotNoDisplay({ lotNo }: { lotNo: string }) {
   const slashIndex = lotNo.indexOf("/")
   if (slashIndex === -1) {
     return (
-      <span className="truncate font-mono text-xs font-medium tabular-nums text-foreground">
+      <span className="truncate font-mono text-xs tabular-nums text-muted-foreground">
         {lotNo}
       </span>
     )
@@ -96,11 +119,11 @@ function LotNoDisplay({ lotNo }: { lotNo: string }) {
   const totalNum = Number(total)
 
   return (
-    <span className="font-mono text-xs font-medium tabular-nums text-foreground">
+    <span className="font-mono text-xs tabular-nums text-muted-foreground">
       {Number.isNaN(identifierNum)
         ? identifier
         : identifierNum.toLocaleString("en-IN")}
-      <span className="font-normal text-muted-foreground">
+      <span className="text-muted-foreground/70">
         {" / "}
         {Number.isNaN(totalNum) ? total : totalNum.toLocaleString("en-IN")}
       </span>
@@ -108,34 +131,57 @@ function LotNoDisplay({ lotNo }: { lotNo: string }) {
   )
 }
 
-function GatePassVoucherCell({
-  pass,
-  showVarietyLabel = false,
-}: {
-  pass: StorageGatePass
-  showVarietyLabel?: boolean
-}) {
+function GatePassNoCell({ pass }: { pass: StorageGatePass }) {
+  return (
+    <span className="font-mono text-sm font-medium tabular-nums text-foreground">
+      <span className="text-muted-foreground/60">#</span>
+      {pass.gatePassNo.toLocaleString("en-IN")}
+    </span>
+  )
+}
+
+function ManualGatePassNoCell({ pass }: { pass: StorageGatePass }) {
+  const manual =
+    pass.manualParchiNumber?.trim() ||
+    (pass.manualGatePassNumber != null
+      ? String(pass.manualGatePassNumber)
+      : "")
+
+  if (!manual) {
+    return <span className="text-sm text-muted-foreground/50">—</span>
+  }
+
+  return (
+    <span
+      className="block truncate font-mono text-sm tabular-nums text-foreground/90"
+      title={manual}
+    >
+      {manual}
+    </span>
+  )
+}
+
+function VarietyLotCell({ pass }: { pass: StorageGatePass }) {
   const preferences = usePreferencesStore((state) => state.preferences)
-  const marka = useMemo(
+  const lotNo = useMemo(
     () => getStorageGatePassLotNo(pass, preferences),
     [pass, preferences]
   )
   const variety = pass.variety?.trim()
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="font-mono text-sm font-semibold tabular-nums text-primary">
-        #{pass.gatePassNo.toLocaleString("en-IN")}
-      </span>
-      {showVarietyLabel && variety ? (
+    <div className="flex min-w-0 flex-col gap-1">
+      {variety ? (
         <span
-          className="truncate text-xs text-muted-foreground"
+          className="line-clamp-2 text-sm leading-snug text-foreground"
           title={variety}
         >
           {variety}
         </span>
-      ) : null}
-      {marka !== "—" ? <LotNoDisplay lotNo={marka} /> : null}
+      ) : (
+        <span className="text-sm text-muted-foreground/50">—</span>
+      )}
+      {lotNo !== "—" ? <LotNoDisplay lotNo={lotNo} /> : null}
     </div>
   )
 }
@@ -390,35 +436,38 @@ export function TransferGatePassMatrix({
       <Card size="sm" className="overflow-hidden py-0 shadow-sm ring-border/60">
         <CardContent className="overflow-x-auto px-0 py-0">
         <Table className="min-w-max">
-          <TableHeader className="sticky top-0 z-10 bg-muted/50 [&_tr]:border-b [&_tr]:hover:bg-transparent">
+          <TableHeader className="sticky top-0 z-10 border-b border-border/60 bg-muted/40 [&_tr]:hover:bg-transparent">
             <TableRow>
               <TableHead
-                className={cn(
-                  "h-10 px-3 text-muted-foreground",
-                  stickyCheckboxHeadClass()
-                )}
+                className={cn("h-11", stickyHeadClass("checkbox"))}
               >
                 <span className="sr-only">Select voucher</span>
               </TableHead>
+              <TableHead className={cn("h-11", stickyHeadClass("gatePassNo"))}>
+                <ColumnHeader title="Gate pass no.">gp</ColumnHeader>
+              </TableHead>
+              <TableHead
+                className={cn("h-11", stickyHeadClass("manualGatePassNo"))}
+              >
+                <ColumnHeader title="Manual gate pass no.">manual</ColumnHeader>
+              </TableHead>
               <TableHead
                 className={cn(
-                  "h-10 text-muted-foreground",
-                  stickyVoucherHeadClass()
+                  "h-11",
+                  stickyHeadClass("varietyLot", { edge: true })
                 )}
               >
-                <span className="text-xs font-medium text-muted-foreground">
-                  R. Voucher
-                </span>
+                <ColumnHeader title="Variety & lot no.">variety</ColumnHeader>
               </TableHead>
               {visibleSizes.map((sizeName, index) => (
                 <TableHead
                   key={sizeName}
                   className={cn(
-                    "h-10 px-3 text-muted-foreground",
+                    "h-11 px-3 text-muted-foreground",
                     sizeLaneClasses(FIXED_COLUMN_COUNT + index, "head")
                   )}
                 >
-                  <span className="block w-full whitespace-nowrap text-center text-sm font-semibold text-foreground">
+                  <span className="block w-full whitespace-nowrap text-center text-xs font-medium text-foreground">
                     {sizeName}
                   </span>
                 </TableHead>
@@ -431,9 +480,9 @@ export function TransferGatePassMatrix({
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     colSpan={columnCount}
-                    className="bg-muted/30 px-3 py-2"
+                    className="border-b border-border/40 bg-muted/20 px-4 py-2"
                   >
-                    <span className="font-heading text-sm font-semibold text-primary">
+                    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                       {group.dateLabel}
                     </span>
                   </TableCell>
@@ -441,13 +490,13 @@ export function TransferGatePassMatrix({
                 {group.passes.map((pass) => (
                   <TableRow
                     key={pass._id}
-                    className="even:bg-muted/15"
+                    className="group/row border-b border-border/40 transition-colors hover:bg-muted/20"
                     data-selected={selectedPassIds.has(pass._id) || undefined}
                   >
                     <TableCell
                       className={cn(
-                        "overflow-visible px-3 py-2.5 align-top",
-                        stickyCheckboxCellClass()
+                        "overflow-visible py-3 align-top",
+                        stickyCellClass("checkbox")
                       )}
                     >
                       <Checkbox
@@ -458,22 +507,33 @@ export function TransferGatePassMatrix({
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "overflow-visible py-2.5 align-top",
-                        stickyVoucherCellClass()
+                        "overflow-visible py-3 align-top",
+                        stickyCellClass("gatePassNo")
                       )}
                     >
-                      <GatePassVoucherCell
-                        pass={pass}
-                        showVarietyLabel={
-                          varietyFilterMode === "multi-optional"
-                        }
-                      />
+                      <GatePassNoCell pass={pass} />
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "overflow-visible py-3 align-top",
+                        stickyCellClass("manualGatePassNo")
+                      )}
+                    >
+                      <ManualGatePassNoCell pass={pass} />
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "overflow-visible py-3 align-top",
+                        stickyCellClass("varietyLot", { edge: true })
+                      )}
+                    >
+                      <VarietyLotCell pass={pass} />
                     </TableCell>
                     {visibleSizes.map((sizeName, index) => (
                       <TableCell
                         key={sizeName}
                         className={cn(
-                          "overflow-visible py-2.5 align-top",
+                          "overflow-visible py-3 align-top",
                           sizeLaneClasses(FIXED_COLUMN_COUNT + index, "cell")
                         )}
                       >

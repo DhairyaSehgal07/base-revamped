@@ -14,7 +14,9 @@ import {
   getFooterExportValue,
   isSummableExportColumn,
 } from "@/features/incoming-report/utils/export-cell-value"
+import { mapIncomingSizeCellForPdf } from "@/features/incoming-report/utils/map-incoming-pdf-size-cell"
 import { buildTableReportPdfData } from "@/lib/gate-pass-report-pdf/build-table-report-pdf-data"
+import { GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE } from "@/lib/gate-pass-report-pdf/chunk-report-rows"
 import type { GatePassReportPdfData } from "@/lib/gate-pass-report-pdf/types"
 
 export type BuildIncomingReportPdfDataInput = {
@@ -48,6 +50,8 @@ export function buildIncomingReportPdfData({
     dateFrom,
     dateTo,
     generatedAt,
+    tableVariant: "ledger",
+    rowsPerPage: GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE,
     formatDateRangeLabel,
     getFilteredLeafRowCount,
     buildFilterSummaryLines: (reportTable) =>
@@ -61,5 +65,22 @@ export function buildIncomingReportPdfData({
       getFooterExportValue(columnId, rows, quantityMode),
     isSummableExportColumn,
     exportCellValueToDisplay,
+    mapExportCellToPdfCell: (row, exportCell, column, align) => {
+      if (column.id.startsWith("size-") && !row.getIsGrouped()) {
+        return mapIncomingSizeCellForPdf(
+          row.original,
+          column.id,
+          quantityMode,
+          showLocation,
+          align,
+        )
+      }
+
+      return {
+        text: exportCellValueToDisplay(exportCell),
+        align,
+        isEmpty: exportCell.kind === "empty",
+      }
+    },
   })
 }

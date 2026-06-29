@@ -7,8 +7,12 @@ import type {
   OutgoingReportOrderDetail,
 } from "@/features/outgoing-report/api/types"
 import {
+  getOrderLineQuantity,
+  getOutgoingReportSizeQuantityDetailLines,
   getOutgoingReportType,
   getOutgoingReportVariety,
+  getOutgoingReportVarietyBreakdown,
+  hasMultipleOutgoingReportVarieties,
 } from "@/features/outgoing-report/utils/report-row-values"
 
 const numberFormatter = new Intl.NumberFormat("en-IN")
@@ -111,12 +115,6 @@ const reportSumAggregation: AggregationFn<OutgoingGatePassReportRecord> = (
 const aggregateNone = { aggregationFn: reportEmptyAggregation }
 const aggregateSum = { aggregationFn: reportSumAggregation }
 
-const getOrderDetailQuantity = (
-  detail: OutgoingReportOrderDetail,
-  quantityMode: OutgoingQuantityMode,
-) =>
-  quantityMode === "issued" ? detail.quantityIssued : detail.quantityAvailable
-
 const formatLocation = (location?: DaybookLocation) =>
   location
     ? [location.chamber, location.floor, location.row].filter(Boolean).join("-")
@@ -130,7 +128,7 @@ const getOrderSizeQuantity = (
   row.orderDetails
     .filter((detail) => detail.size === sizeName)
     .reduce(
-      (total, detail) => total + getOrderDetailQuantity(detail, quantityMode),
+      (total, detail) => total + getOrderLineQuantity(detail, quantityMode),
       0,
     )
 
@@ -139,7 +137,7 @@ const renderOrderDetailValue = (
   quantityMode: OutgoingQuantityMode,
 ) => {
   const location = formatLocation(detail.location)
-  const quantity = getOrderDetailQuantity(detail, quantityMode)
+  const quantity = getOrderLineQuantity(detail, quantityMode)
 
   return (
     <div className="space-y-0.5 tabular-nums">
@@ -154,7 +152,56 @@ const renderOrderDetailValue = (
   )
 }
 
-const baseColumns: ColumnDef<OutgoingGatePassReportRecord>[] = [
+function renderMultiVarietySizeDetailLine(
+  line: ReturnType<typeof getOutgoingReportSizeQuantityDetailLines>[number],
+) {
+  return (
+    <div className="flex flex-col items-end gap-0.5 tabular-nums">
+      <span className="font-semibold text-foreground">
+        {formatQuantity(line.quantity)}
+      </span>
+      {line.locationLabel ? (
+        <span className="text-xs text-muted-foreground">
+          ({line.locationLabel})
+        </span>
+      ) : null}
+      <span className="text-xs text-muted-foreground">({line.variety})</span>
+    </div>
+  )
+}
+
+function renderVarietyCell(
+  row: OutgoingGatePassReportRecord,
+  quantityMode: OutgoingQuantityMode,
+) {
+  if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
+    const breakdown = getOutgoingReportVarietyBreakdown(row, quantityMode)
+
+    return (
+      <div className="flex min-w-0 flex-col gap-1">
+        {breakdown.map((line) => (
+          <div
+            key={line.variety}
+            className="flex min-w-0 items-baseline justify-between gap-2"
+          >
+            <span className="min-w-0 break-words" title={line.variety}>
+              {line.variety}
+            </span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">
+              {formatQuantity(line.quantity)}
+            </span>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return getOutgoingReportVariety(row) || "-"
+}
+
+const buildBaseColumns = (
+  quantityMode: OutgoingQuantityMode,
+): ColumnDef<OutgoingGatePassReportRecord>[] => [
   {
     id: "name",
     accessorFn: (row) => row.farmerStorageLinkId.name,
@@ -244,10 +291,10 @@ const baseColumns: ColumnDef<OutgoingGatePassReportRecord>[] = [
     id: "variety",
     accessorFn: (row) => getOutgoingReportVariety(row),
     header: "Variety",
-    meta: { filterLabel: "Variety" },
+    meta: { filterLabel: "Variety", wrap: true },
     ...sortText,
     ...aggregateNone,
-    cell: ({ getValue }) => getValue<string>() || "-",
+    cell: ({ row }) => renderVarietyCell(row.original, quantityMode),
   },
   {
     accessorKey: "from",
@@ -376,6 +423,26 @@ function buildOutgoingReportColumns(
 
         if (!details.length) return "-"
 
+        if (hasMultipleOutgoingReportVarieties(row.original, quantityMode)) {
+          const detailLines = getOutgoingReportSizeQuantityDetailLines(
+            row.original,
+            sizeName,
+            quantityMode,
+          )
+
+          if (!detailLines.length) return "-"
+
+          return (
+            <div className="space-y-3">
+              {detailLines.map((line, index) => (
+                <div key={`${line.variety}-${line.locationLabel ?? "none"}-${index}`}>
+                  {renderMultiVarietySizeDetailLine(line)}
+                </div>
+              ))}
+            </div>
+          )
+        }
+
         return (
           <div className="space-y-3">
             {details.map((detail, index) => (
@@ -392,7 +459,7 @@ function buildOutgoingReportColumns(
   )
 
   return [
-    ...baseColumns,
+    ...buildBaseColumns(quantityMode),
     totalBagsColumn,
     ...sizeColumns,
     ...trailingColumns,

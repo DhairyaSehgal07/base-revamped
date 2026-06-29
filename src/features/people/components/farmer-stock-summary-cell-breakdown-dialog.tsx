@@ -50,7 +50,7 @@ export function FarmerStockSummaryCellBreakdownDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(85vh,40rem)] flex-col gap-4 sm:max-w-lg">
+      <DialogContent className="flex max-h-[min(85vh,40rem)] flex-col gap-4 sm:max-w-xl">
         <DialogHeader className="gap-1 text-left">
           <DialogTitle className="font-heading text-base leading-snug font-semibold">
             <span className="text-foreground">Variety: {variety}</span>
@@ -82,19 +82,43 @@ export function FarmerStockSummaryCellBreakdownDialog({
                   >
                     Quantity
                   </TableHead>
-                  <TableHead
-                    className={getHeadClassName(
-                      { numeric: true, align: "right" },
-                      false,
-                    )}
-                  >
-                    Gate pass no.
-                  </TableHead>
                   {quantityMode === "outgoing" ? (
-                    <TableHead className={getHeadClassName(undefined, false)}>
-                      Reference
-                    </TableHead>
-                  ) : null}
+                    <>
+                      <TableHead
+                        className={getHeadClassName(
+                          { numeric: true, align: "right" },
+                          false,
+                        )}
+                      >
+                        Reference
+                      </TableHead>
+                      <TableHead
+                        className={getHeadClassName(
+                          { numeric: true, align: "right" },
+                          false,
+                        )}
+                      >
+                        Gate pass no.
+                      </TableHead>
+                      <TableHead className={getHeadClassName(undefined, false)}>
+                        Manual gate pass no.
+                      </TableHead>
+                    </>
+                  ) : (
+                    <>
+                      <TableHead
+                        className={getHeadClassName(
+                          { numeric: true, align: "right" },
+                          false,
+                        )}
+                      >
+                        Gate pass no.
+                      </TableHead>
+                      <TableHead className={getHeadClassName(undefined, false)}>
+                        Manual parchi
+                      </TableHead>
+                    </>
+                  )}
                 </TableRow>
               </TableHeader>
 
@@ -122,24 +146,53 @@ export function FarmerStockSummaryCellBreakdownDialog({
                     >
                       {bagCountFormatter.format(line.quantity)}
                     </TableCell>
-                    <TableCell
-                      className={cn(
-                        getCellClassName({ numeric: true, align: "right" }),
-                        "font-mono tabular-nums",
-                      )}
-                    >
-                      {line.gatePassNo}
-                    </TableCell>
                     {quantityMode === "outgoing" ? (
-                      <TableCell
-                        className={cn(
-                          getCellClassName(undefined),
-                          "font-mono tabular-nums",
-                        )}
-                      >
-                        {line.reference ?? "—"}
-                      </TableCell>
-                    ) : null}
+                      <>
+                        <TableCell
+                          className={cn(
+                            getCellClassName({ numeric: true, align: "right" }),
+                            "font-mono tabular-nums",
+                          )}
+                        >
+                          {line.gatePassNo}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            getCellClassName({ numeric: true, align: "right" }),
+                            "font-mono tabular-nums",
+                          )}
+                        >
+                          {line.reference ?? "—"}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            getCellClassName(undefined),
+                            "font-mono tabular-nums",
+                          )}
+                        >
+                          {line.manualGatePassNumber ?? "—"}
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell
+                          className={cn(
+                            getCellClassName({ numeric: true, align: "right" }),
+                            "font-mono tabular-nums",
+                          )}
+                        >
+                          {line.gatePassNo}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            getCellClassName(undefined),
+                            "font-mono tabular-nums",
+                          )}
+                        >
+                          {line.manualParchiNumber ?? "—"}
+                        </TableCell>
+                      </>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
