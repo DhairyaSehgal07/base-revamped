@@ -1,15 +1,16 @@
-import type {
-  DaybookLocation,
-  IncomingGatePassSnapshot,
-  OutgoingSnapshotBagSize,
-} from "@/features/daybook/types"
+import type { DaybookLocation } from "@/features/daybook/types"
 import type {
   OutgoingGatePassAuditOrderDetail,
   OutgoingGatePassAuditState,
 } from "@/features/outgoing-edit-history/types"
 
-export const OUTGOING_GATE_PASS_AUDIT_FIELD_LABELS: Record<
+export type DisplayableOutgoingGatePassAuditField = Exclude<
   keyof OutgoingGatePassAuditState,
+  "incomingGatePassSnapshots"
+>
+
+export const OUTGOING_GATE_PASS_AUDIT_FIELD_LABELS: Record<
+  DisplayableOutgoingGatePassAuditField,
   string
 > = {
   date: "Date",
@@ -20,7 +21,6 @@ export const OUTGOING_GATE_PASS_AUDIT_FIELD_LABELS: Record<
   from: "From",
   to: "To",
   orderDetails: "Order details",
-  incomingGatePassSnapshots: "Incoming gate pass snapshots",
 }
 
 function formatNumber(value: number) {
@@ -54,24 +54,8 @@ function formatOrderDetailsSummary(orderDetails: OutgoingGatePassAuditOrderDetai
   return `${orderDetails.length} line${orderDetails.length === 1 ? "" : "s"} · ${formatNumber(totalIssued)} issued`
 }
 
-function formatSnapshotsSummary(snapshots: IncomingGatePassSnapshot[]) {
-  if (snapshots.length === 0) return "-"
-
-  const totalIssued = snapshots.reduce(
-    (sum, snapshot) =>
-      sum +
-      snapshot.bagSizes.reduce(
-        (bagSum, bag) => bagSum + bag.quantityIssued,
-        0
-      ),
-    0
-  )
-
-  return `${snapshots.length} pass${snapshots.length === 1 ? "" : "es"} · ${formatNumber(totalIssued)} issued`
-}
-
 export function formatAuditFieldValue(
-  field: keyof OutgoingGatePassAuditState,
+  field: DisplayableOutgoingGatePassAuditField,
   value: unknown
 ): string {
   if (value == null || value === "") return "-"
@@ -83,10 +67,6 @@ export function formatAuditFieldValue(
       return Array.isArray(value)
         ? formatOrderDetailsSummary(value as OutgoingGatePassAuditOrderDetail[])
         : "-"
-    case "incomingGatePassSnapshots":
-      return Array.isArray(value)
-        ? formatSnapshotsSummary(value as IncomingGatePassSnapshot[])
-        : "-"
     default:
       return String(value)
   }
@@ -95,7 +75,7 @@ export function formatAuditFieldValue(
 export function getOutgoingGatePassAuditChangedFields(
   previousState: OutgoingGatePassAuditState | null | undefined,
   modifiedState: OutgoingGatePassAuditState | null | undefined
-): Array<keyof OutgoingGatePassAuditState> {
+): DisplayableOutgoingGatePassAuditField[] {
   const beforeState = previousState ?? {}
   const afterState = modifiedState ?? {}
 
@@ -104,20 +84,36 @@ export function getOutgoingGatePassAuditChangedFields(
     ...Object.keys(afterState),
   ]) as Set<keyof OutgoingGatePassAuditState>
 
-  return [...fields].filter((field) => {
+  const snapshotsChanged =
+    JSON.stringify(beforeState.incomingGatePassSnapshots ?? []) !==
+    JSON.stringify(afterState.incomingGatePassSnapshots ?? [])
+
+  const orderDetailsChanged =
+    JSON.stringify(beforeState.orderDetails ?? []) !==
+    JSON.stringify(afterState.orderDetails ?? [])
+
+  const changedFields = [...fields].filter((field) => {
+    if (field === "incomingGatePassSnapshots") {
+      return false
+    }
+
     const before = beforeState[field]
     const after = afterState[field]
 
-    if (field === "orderDetails" || field === "incomingGatePassSnapshots") {
-      return JSON.stringify(before ?? []) !== JSON.stringify(after ?? [])
+    if (field === "orderDetails") {
+      return orderDetailsChanged
     }
 
     return before !== after
-  })
+  }) as DisplayableOutgoingGatePassAuditField[]
+
+  if (snapshotsChanged && !orderDetailsChanged && !changedFields.includes("orderDetails")) {
+    changedFields.push("orderDetails")
+  }
+
+  return changedFields
 }
 
 export function formatAuditLocation(location: DaybookLocation) {
   return formatLocation(location)
 }
-
-export type { OutgoingSnapshotBagSize }

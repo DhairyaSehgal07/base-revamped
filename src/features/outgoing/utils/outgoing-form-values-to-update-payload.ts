@@ -64,6 +64,10 @@ export function buildUpdateOutgoingGatePassPayload(
     payload.remarks = current.remarks.trim()
   }
 
+  if (current.stockFilter.trim() !== baseline.stockFilter.trim()) {
+    payload.stockFilter = current.stockFilter.trim()
+  }
+
   if (!allocationsEqual(current.allocations, baseline.allocations)) {
     payload.incomingGatePasses = groupItemsIntoIncomingGatePasses(items, passes)
   }

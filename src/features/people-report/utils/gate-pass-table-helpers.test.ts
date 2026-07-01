@@ -11,6 +11,7 @@ import {
   formatOutgoingVarietyBreakdownForExport,
   getGatePassSizeQuantity,
   getGatePassSizeQuantityLines,
+  getGatePassStockFilter,
   getGatePassTotalBags,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
@@ -282,6 +283,21 @@ describe("getGatePassVariety", () => {
         }),
       ),
     ).toBe("Atlantic")
+  })
+})
+
+describe("getGatePassStockFilter", () => {
+  it("returns stock filter for incoming and outgoing entries", () => {
+    expect(
+      getGatePassStockFilter(createIncomingPass({ stockFilter: "Owned" })),
+    ).toBe("Owned")
+    expect(
+      getGatePassStockFilter(createOutgoingPass({ stockFilter: "Farmer" })),
+    ).toBe("Farmer")
+  })
+
+  it("returns em dash when stock filter is absent", () => {
+    expect(getGatePassStockFilter(createOutgoingPass())).toBe("—")
   })
 })
 

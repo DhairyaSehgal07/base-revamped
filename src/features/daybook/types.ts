@@ -72,6 +72,7 @@ export type OutgoingDaybookEntry = {
   _id: string
   gatePassNo: number
   manualParchiNumber?: string | number
+  stockFilter?: string
   truckNumber?: string
   from?: string
   to?: string

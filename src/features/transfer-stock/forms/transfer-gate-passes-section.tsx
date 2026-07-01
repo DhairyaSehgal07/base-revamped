@@ -53,6 +53,8 @@ type TransferGatePassesSectionProps = {
   passesOverride?: StorageGatePass[]
   passesLoading?: boolean
   passesError?: Error | null
+  /** When set, locks the matrix to this stock filter (hides stock filter dropdown). */
+  stockFilter?: string
 }
 
 export function TransferGatePassesSection({
@@ -66,6 +68,7 @@ export function TransferGatePassesSection({
   passesOverride,
   passesLoading: passesLoadingOverride,
   passesError: passesErrorOverride,
+  stockFilter,
 }: TransferGatePassesSectionProps) {
   const hookResult = useStorageGatePassesForFarmer(
     passesOverride != null ? "" : fromFarmerStorageLinkId
@@ -80,6 +83,7 @@ export function TransferGatePassesSection({
     allocations,
     onAllocationsChange,
     varietyFilterMode,
+    stockFilter,
   })
 
   if (!fromFarmerStorageLinkId) {
@@ -222,10 +226,14 @@ export function TransferGatePassesSection({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 gap-2"
+                    className="h-10 max-w-56 gap-2"
+                    title={matrix.varietyVisibilityLabel}
+                    aria-label={`Varieties: ${matrix.varietyVisibilityLabel}`}
                   >
-                    <Package className="size-4" />
-                    Varieties
+                    <Package className="size-4 shrink-0" />
+                    <span className="truncate">
+                      {matrix.varietyVisibilityLabel}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

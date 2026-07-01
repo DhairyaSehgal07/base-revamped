@@ -14,6 +14,7 @@ const allocationKeyA = allocationKey(PASS_A, "25-30", 0)
 
 const baseline: OutgoingEditFormValues = {
   farmerStorageLinkId: FARMER_LINK_ID,
+  stockFilter: "Farmer",
   manualGatePassNumber: 56,
   date: "2026-06-21T10:30:00.000Z",
   from: "Cold Storage A",
@@ -84,6 +85,19 @@ describe("buildUpdateOutgoingGatePassPayload", () => {
       buildUpdateOutgoingGatePassPayload(current, baseline, items, passes)
     ).toEqual({
       remarks: "Updated remarks only",
+    })
+  })
+
+  it("includes stockFilter when it changes", () => {
+    const current: OutgoingEditFormValues = {
+      ...baseline,
+      stockFilter: "Owned",
+    }
+
+    expect(
+      buildUpdateOutgoingGatePassPayload(current, baseline, items, passes)
+    ).toEqual({
+      stockFilter: "Owned",
     })
   })
 })

@@ -11,13 +11,21 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
+import {
+  shouldShowStockFilter,
+  toComboboxOptions,
+} from "@/features/incoming/utils/incoming-preferences"
 import { OutgoingSummarySheet } from "@/features/outgoing/forms/outgoing-summary-sheet"
 import { useCreateOutgoingForm } from "@/features/outgoing/forms/use-create-outgoing-form"
-import {
-  outgoingFormSchema,
-  type OutgoingFormValues,
-} from "@/features/outgoing/schemas/outgoing-form-schema"
+import type { OutgoingFormValues } from "@/features/outgoing/schemas/outgoing-form-schema"
 import { buildCreateOutgoingGatePassPayload } from "@/features/outgoing/utils/outgoing-form-values-to-create-payload"
 import { useCreateOutgoingGatePass } from "@/features/outgoing/api/use-create-outgoing-gate-pass"
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
@@ -51,6 +59,24 @@ import {
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
+}
+
+function OutgoingGatePassesStockFilterPrompt() {
+  return (
+    <Card size="sm" className="py-0 ring-border/60">
+      <CardContent className="px-0 py-0">
+        <Empty className="border-0 py-10">
+          <EmptyHeader>
+            <EmptyTitle>Select a stock filter</EmptyTitle>
+            <EmptyDescription>
+              Choose a stock filter above to view incoming gate passes for this
+              outgoing pass.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </CardContent>
+    </Card>
+  )
 }
 
 type OutgoingReviewSheetProps = {
@@ -99,6 +125,26 @@ function OutgoingReviewSheet({
 const CreateOutgoingForm = () => {
   const navigate = useNavigate()
   const { mutateAsync: createOutgoingGatePass } = useCreateOutgoingGatePass()
+  const preferences = usePreferencesStore((state) => state.preferences)
+  const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
+
+  const schemaConfig = useMemo(
+    () => ({ requireStockFilter: showStockFilter }),
+    [showStockFilter]
+  )
+
+  const stockFilterOptions = useMemo(
+    () => toComboboxOptions(preferences?.stockFilter?.options ?? []),
+    [preferences?.stockFilter?.options]
+  )
+
+  const [stockFilterSearch, setStockFilterSearch] = useState("")
+  const [stockFilterComboboxOpen, setStockFilterComboboxOpen] = useState(false)
+
+  const sortedStockFilters = useMemo(
+    () => filterAndSortOptions(stockFilterSearch, stockFilterOptions),
+    [stockFilterSearch, stockFilterOptions]
+  )
 
   const {
     data: farmerStorageLinks = [],
@@ -128,15 +174,19 @@ const CreateOutgoingForm = () => {
   function resetComboboxState() {
     setFarmerSearch("")
     setFarmerComboboxOpen(false)
+    setStockFilterSearch("")
+    setStockFilterComboboxOpen(false)
   }
 
   const {
     form,
+    formSchema,
     nextVoucherNumber,
     isLoadingVoucherNumber,
     isVoucherNumberError,
     isGatePassNumberReady,
   } = useCreateOutgoingForm({
+    schemaConfig,
     onOpenReview: () => setReviewOpen(true),
     onCloseReview: () => setReviewOpen(false),
     onSubmitConfirmed: async (values, items, passes) => {
@@ -240,6 +290,9 @@ const CreateOutgoingForm = () => {
                           onValueChange={(value) => {
                             field.handleChange(value)
                             form.setFieldValue("allocations", {})
+                            form.setFieldValue("stockFilter", "")
+                            setStockFilterSearch("")
+                            setStockFilterComboboxOpen(false)
                           }}
                           onBlur={field.handleBlur}
                           isInvalid={isInvalid}
@@ -278,6 +331,49 @@ const CreateOutgoingForm = () => {
                     )
                   }}
                 </form.Field>
+
+                {showStockFilter ? (
+                  <form.Field
+                    name="stockFilter"
+                    validators={{ onChange: formSchema.shape.stockFilter }}
+                  >
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="outgoing-stock-filter">
+                            Stock filter
+                          </FieldLabel>
+                          <SearchableOptionCombobox
+                            id="outgoing-stock-filter"
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              form.setFieldValue("allocations", {})
+                            }}
+                            onBlur={field.handleBlur}
+                            isInvalid={isInvalid}
+                            placeholder="Search stock filters..."
+                            emptyMessage="No stock filters found."
+                            options={stockFilterOptions}
+                            sortedOptions={sortedStockFilters}
+                            search={stockFilterSearch}
+                            setSearch={setStockFilterSearch}
+                            open={stockFilterComboboxOpen}
+                            setOpen={setStockFilterComboboxOpen}
+                          />
+                          <FieldDescription>
+                            Required before selecting incoming gate passes.
+                          </FieldDescription>
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
 
                 <form.Field name="date">
                   {(field) => {
@@ -442,8 +538,15 @@ const CreateOutgoingForm = () => {
             </FieldSet>
 
             <form.Subscribe
-              selector={(state) => state.values.farmerStorageLinkId}
-              children={(farmerStorageLinkId) => (
+              selector={(state) => ({
+                farmerStorageLinkId: state.values.farmerStorageLinkId,
+                stockFilter: state.values.stockFilter,
+              })}
+              children={({ farmerStorageLinkId, stockFilter }) => {
+                const canShowGatePasses =
+                  !showStockFilter || stockFilter.trim().length > 0
+
+                return (
                 <FieldSet>
                   <FieldLegend className="font-heading text-base font-semibold">
                     Incoming gate pass
@@ -452,21 +555,29 @@ const CreateOutgoingForm = () => {
                     Select vouchers and quantities to mark as outgoing.
                   </FieldDescription>
                   <div className="mt-5">
+                    {!canShowGatePasses ? (
+                      <OutgoingGatePassesStockFilterPrompt />
+                    ) : (
                     <form.Field name="allocations">
                       {(allocField) => (
                         <TransferGatePassesSection
-                          key={farmerStorageLinkId || "no-farmer"}
+                          key={`${farmerStorageLinkId || "no-farmer"}-${stockFilter}`}
                           varietyFilterMode="multi-optional"
                           fromFarmerStorageLinkId={farmerStorageLinkId}
                           allocations={allocField.state.value}
                           onAllocationsChange={allocField.handleChange}
                           farmerPromptLabel="farmer"
+                          stockFilter={
+                            showStockFilter ? stockFilter : undefined
+                          }
                         />
                       )}
                     </form.Field>
+                    )}
                   </div>
                 </FieldSet>
-              )}
+                )
+              }}
             />
 
             <FieldSet>
@@ -537,7 +648,7 @@ const CreateOutgoingForm = () => {
           isSubmitting: state.isSubmitting,
         })}
         children={({ values, canSubmit, isSubmitting }) => {
-          const parsed = outgoingFormSchema.safeParse(values)
+          const parsed = formSchema.safeParse(values)
           const farmerId = parsed.success
             ? parsed.data.farmerStorageLinkId
             : values.farmerStorageLinkId

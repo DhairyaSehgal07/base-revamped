@@ -43,10 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { DAYBOOK_PAGE_SIZE_OPTIONS } from "@/features/daybook/search"
-import type {
-  IncomingGatePassSnapshot,
-  OutgoingSnapshotBagSize,
-} from "@/features/daybook/types"
+import type { IncomingGatePassSnapshot } from "@/features/daybook/types"
 import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
 import { useOutgoingGatePassEdits } from "@/features/outgoing-edit-history/api/use-outgoing-gate-pass-edits"
 import {
@@ -56,13 +53,17 @@ import {
 import type {
   OutgoingGatePassAudit,
   OutgoingGatePassAuditOrderDetail,
-  OutgoingGatePassAuditState,
 } from "@/features/outgoing-edit-history/types"
+import {
+  buildAlignedOrderDetailRows,
+  resolveRefGatePassNo,
+} from "@/features/outgoing-edit-history/utils/audit-order-details"
 import {
   formatAuditFieldValue,
   formatAuditLocation,
   getOutgoingGatePassAuditChangedFields,
   OUTGOING_GATE_PASS_AUDIT_FIELD_LABELS,
+  type DisplayableOutgoingGatePassAuditField,
 } from "@/features/outgoing-edit-history/utils/format-audit-field-value"
 import { cn } from "@/lib/utils"
 import { Route } from "@/routes/_authenticated/outgoing.edit-history"
@@ -85,22 +86,52 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("en-IN").format(value)
 }
 
-function AuditOrderDetailsTable({
-  orderDetails,
+function AuditOrderDetailRef({
+  refGatePassNo,
 }: {
-  orderDetails: readonly OutgoingGatePassAuditOrderDetail[]
+  refGatePassNo: number | null
 }) {
-  if (orderDetails.length === 0) {
-    return <span>-</span>
+  if (refGatePassNo === null) {
+    return <span>—</span>
   }
 
   return (
+    <span className="inline-flex items-center gap-1.5 font-mono text-sm tabular-nums text-foreground">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-primary" />
+      #{formatNumber(refGatePassNo)}
+    </span>
+  )
+}
+
+function AuditOrderDetailsTable({
+  rows,
+  snapshots,
+  side,
+}: {
+  rows: Array<{
+    key: string
+    line: OutgoingGatePassAuditOrderDetail | null
+  }>
+  snapshots: readonly IncomingGatePassSnapshot[]
+  side: "before" | "after"
+}) {
+  if (rows.length === 0) {
+    return <span>-</span>
+  }
+
+  const textClass =
+    side === "before" ? "text-muted-foreground" : "text-foreground"
+
+  return (
     <div className="overflow-x-auto rounded-lg border border-border/50 bg-background">
-      <table className="w-full min-w-[560px] caption-bottom text-sm">
+      <table className={cn("w-full min-w-[640px] caption-bottom text-sm", textClass)}>
         <thead className="border-b border-border/50 bg-muted/50">
           <tr>
             <th className="h-10 px-3 text-left text-xs font-medium text-muted-foreground">
               Commodity
+            </th>
+            <th className="h-10 px-3 text-left text-xs font-medium text-muted-foreground">
+              Ref
             </th>
             <th className="h-10 px-3 text-left text-xs font-medium text-muted-foreground">
               Size
@@ -117,124 +148,88 @@ function AuditOrderDetailsTable({
           </tr>
         </thead>
         <tbody>
-          {orderDetails.map((line, index) => (
-            <tr
-              key={`${line.variety ?? "line"}-${line.size}-${line.location.chamber}-${line.location.floor}-${line.location.row}-${index}`}
-              className="border-b border-border/40 last:border-0"
-            >
-              <td className="px-3 py-2.5 font-medium text-foreground">
-                {line.variety ?? "-"}
-              </td>
-              <td className="px-3 py-2.5 text-foreground">{line.size}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                {formatNumber(line.quantityAvailable)}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-medium text-foreground">
-                {formatNumber(line.quantityIssued)}
-              </td>
-              <td className="px-3 py-2.5 text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  {formatAuditLocation(line.location)}
-                </span>
-              </td>
-            </tr>
-          ))}
+          {rows.map(({ key, line }) => {
+            const refGatePassNo = resolveRefGatePassNo(snapshots, line)
+
+            return (
+              <tr
+                key={key}
+                className="border-b border-border/40 last:border-0"
+              >
+                <td className="px-3 py-2.5 font-medium">
+                  {line ? (line.variety ?? "-") : "-"}
+                </td>
+                <td className="px-3 py-2.5">
+                  {line ? (
+                    <AuditOrderDetailRef refGatePassNo={refGatePassNo} />
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="px-3 py-2.5">{line?.size ?? "-"}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums">
+                  {line ? formatNumber(line.quantityAvailable) : "-"}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums font-medium">
+                  {line ? formatNumber(line.quantityIssued) : "-"}
+                </td>
+                <td className="px-3.5 py-2.5">
+                  {line ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      {formatAuditLocation(line.location)}
+                    </span>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
-function AuditSnapshotBagSizesTable({
-  bagSizes,
+function AuditOrderDetailsChange({
+  audit,
 }: {
-  bagSizes: readonly OutgoingSnapshotBagSize[]
+  audit: OutgoingGatePassAudit
 }) {
-  if (bagSizes.length === 0) {
-    return <span>-</span>
-  }
+  const beforeLines = audit.previousState?.orderDetails ?? []
+  const afterLines = audit.modifiedState?.orderDetails ?? []
+  const alignedRows = buildAlignedOrderDetailRows(beforeLines, afterLines)
+  const beforeSnapshots =
+    audit.previousState?.incomingGatePassSnapshots ?? []
+  const afterSnapshots = audit.modifiedState?.incomingGatePassSnapshots ?? []
+
+  const beforeRows = alignedRows.map(({ key, beforeLine }) => ({
+    key,
+    line: beforeLine,
+  }))
+  const afterRows = alignedRows.map(({ key, afterLine }) => ({
+    key,
+    line: afterLine,
+  }))
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border/50 bg-background">
-      <table className="w-full min-w-[560px] caption-bottom text-sm">
-        <thead className="border-b border-border/50 bg-muted/50">
-          <tr>
-            <th className="h-10 px-3 text-left text-xs font-medium text-muted-foreground">
-              Size
-            </th>
-            <th className="h-10 px-3 text-right text-xs font-medium text-muted-foreground">
-              Current
-            </th>
-            <th className="h-10 px-3 text-right text-xs font-medium text-muted-foreground">
-              Initial
-            </th>
-            <th className="h-10 px-3 text-right text-xs font-medium text-muted-foreground">
-              Issued
-            </th>
-            <th className="h-10 px-3 text-left text-xs font-medium text-muted-foreground">
-              Location
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {bagSizes.map((slot, index) => (
-            <tr
-              key={`${slot.name}-${slot.location.chamber}-${slot.location.floor}-${slot.location.row}-${index}`}
-              className="border-b border-border/40 last:border-0"
-            >
-              <td className="px-3 py-2.5 font-medium text-foreground">
-                {slot.name}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-medium text-foreground">
-                {formatNumber(slot.currentQuantity)}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                {formatNumber(slot.initialQuantity)}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums font-medium text-foreground">
-                {formatNumber(slot.quantityIssued)}
-              </td>
-              <td className="px-3 py-2.5 text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
-                  {formatAuditLocation(slot.location)}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function AuditIncomingSnapshotsTable({
-  snapshots,
-}: {
-  snapshots: readonly IncomingGatePassSnapshot[]
-}) {
-  if (snapshots.length === 0) {
-    return <span>-</span>
-  }
-
-  return (
-    <div className="space-y-3">
-      {snapshots.map((snapshot) => (
-        <div
-          key={snapshot._id}
-          className="rounded-lg border border-border/50 bg-background"
-        >
-          <div className="border-b border-border/50 bg-muted/30 px-3 py-2 text-sm">
-            <span className="font-medium text-foreground">
-              Gate pass #{formatNumber(snapshot.gatePassNo)}
-            </span>
-            <span className="text-muted-foreground"> · {snapshot.variety}</span>
-          </div>
-          <AuditSnapshotBagSizesTable bagSizes={snapshot.bagSizes} />
-        </div>
-      ))}
-    </div>
+    <>
+      <TableCell className="whitespace-normal align-top text-muted-foreground">
+        <AuditOrderDetailsTable
+          rows={beforeRows}
+          snapshots={beforeSnapshots}
+          side="before"
+        />
+      </TableCell>
+      <TableCell className="whitespace-normal align-top text-foreground">
+        <AuditOrderDetailsTable
+          rows={afterRows}
+          snapshots={afterSnapshots}
+          side="after"
+        />
+      </TableCell>
+    </>
   )
 }
 
@@ -242,25 +237,9 @@ function AuditFieldValue({
   field,
   value,
 }: {
-  field: keyof OutgoingGatePassAuditState
+  field: DisplayableOutgoingGatePassAuditField
   value: unknown
 }) {
-  if (field === "orderDetails" && Array.isArray(value)) {
-    return (
-      <AuditOrderDetailsTable
-        orderDetails={value as OutgoingGatePassAuditOrderDetail[]}
-      />
-    )
-  }
-
-  if (field === "incomingGatePassSnapshots" && Array.isArray(value)) {
-    return (
-      <AuditIncomingSnapshotsTable
-        snapshots={value as IncomingGatePassSnapshot[]}
-      />
-    )
-  }
-
   return <>{formatAuditFieldValue(field, value)}</>
 }
 
@@ -328,18 +307,24 @@ function AuditChangeTable({ audit }: { audit: OutgoingGatePassAudit }) {
               <TableCell className="align-top font-medium text-foreground">
                 {OUTGOING_GATE_PASS_AUDIT_FIELD_LABELS[field]}
               </TableCell>
-              <TableCell className="whitespace-normal align-top text-muted-foreground">
-                <AuditFieldValue
-                  field={field}
-                  value={audit.previousState?.[field]}
-                />
-              </TableCell>
-              <TableCell className="whitespace-normal align-top text-foreground">
-                <AuditFieldValue
-                  field={field}
-                  value={audit.modifiedState?.[field]}
-                />
-              </TableCell>
+              {field === "orderDetails" ? (
+                <AuditOrderDetailsChange audit={audit} />
+              ) : (
+                <>
+                  <TableCell className="whitespace-normal align-top text-muted-foreground">
+                    <AuditFieldValue
+                      field={field}
+                      value={audit.previousState?.[field]}
+                    />
+                  </TableCell>
+                  <TableCell className="whitespace-normal align-top text-foreground">
+                    <AuditFieldValue
+                      field={field}
+                      value={audit.modifiedState?.[field]}
+                    />
+                  </TableCell>
+                </>
+              )}
             </TableRow>
           ))}
         </TableBody>

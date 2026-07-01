@@ -14,6 +14,7 @@ import {
   collectUniqueBagSizes,
   getGatePassSizeQuantity,
   getGatePassSizeQuantityLines,
+  getGatePassStockFilter,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
   getOutgoingVarietyBreakdown,
@@ -183,10 +184,8 @@ function getRowVarietyGroupingValue(row: FarmerReportTableRow): string {
 
 function getRowStockFilterGroupingValue(row: FarmerReportTableRow): string {
   if (row.kind === "opening-balance") return "Opening Balance"
-  if (row.entry && isIncomingDaybookEntry(row.entry)) {
-    return row.entry.stockFilter?.trim() || "—"
-  }
-  return "—"
+  if (!row.entry) return "—"
+  return getGatePassStockFilter(row.entry)
 }
 
 function emptyGroupedAggregatedCell() {
@@ -308,9 +307,7 @@ function buildFarmerReportColumnsForSizes(
     staticColumns.push({
       id: "stockFilter",
       accessorFn: (row) =>
-        row.entry && isIncomingDaybookEntry(row.entry)
-          ? row.entry.stockFilter?.trim() || "—"
-          : "—",
+        row.entry ? getGatePassStockFilter(row.entry) : "—",
       header: "Filter",
       meta: { groupable: true, filterLabel: "Stock filter" },
       enableGrouping: true,
@@ -323,9 +320,7 @@ function buildFarmerReportColumnsForSizes(
           return <span className="text-muted-foreground">—</span>
         }
 
-        const stockFilter = isIncomingDaybookEntry(row.original.entry)
-          ? row.original.entry.stockFilter?.trim() || "—"
-          : "—"
+        const stockFilter = getGatePassStockFilter(row.original.entry)
 
         return (
           <span className="block min-w-0" title={stockFilter}>

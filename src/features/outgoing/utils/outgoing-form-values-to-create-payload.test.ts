@@ -14,6 +14,7 @@ const PASS_B = "674a1b2c3d4e5f6789012347"
 const baseValues: OutgoingFormValues = {
   farmerStorageLinkId: FARMER_ID,
   date: "2026-06-21T10:30:00.000Z",
+  stockFilter: "",
   manualGatePassNumber: 55,
   from: "Cold Storage A",
   to: "Mandi Delhi",
@@ -261,5 +262,25 @@ describe("buildCreateOutgoingGatePassPayload", () => {
     expect(payload.idempotencyKey).toBe("outgoing-gp-2026-06-21-001")
     expect(payload.manualParchiNumber).toBe(55)
     expect(payload.remarks).toBe("Morning dispatch")
+  })
+
+  it("includes stockFilter when set on form values", () => {
+    const payload = buildCreateOutgoingGatePassPayload(
+      { ...baseValues, stockFilter: "Owned" },
+      [
+        {
+          storageGatePassId: PASS_A,
+          gatePassNo: 12,
+          bagSize: "25-30",
+          bagIndex: 0,
+          quantity: 10,
+          location: { chamber: "C1", floor: "F1", row: "R1" },
+        },
+      ],
+      passes,
+      101
+    )
+
+    expect(payload.stockFilter).toBe("Owned")
   })
 })

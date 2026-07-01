@@ -25,6 +25,7 @@ import {
   formatOutgoingVarietyBreakdownForExport,
   getGatePassTotalBags,
   getGatePassSizeQuantityLines,
+  getGatePassStockFilter,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
   hasMultipleOutgoingVarieties,
@@ -257,8 +258,7 @@ function mapSizeValueForEntry(
 
 function getRowStockFilter(row: FarmerReportTableRow): string {
   if (row.kind === "opening-balance" || !row.entry) return "—"
-  if (!isIncomingDaybookEntry(row.entry)) return "—"
-  return row.entry.stockFilter?.trim() || "—"
+  return getGatePassStockFilter(row.entry)
 }
 
 function getRowCustomMarka(row: FarmerReportTableRow): string {

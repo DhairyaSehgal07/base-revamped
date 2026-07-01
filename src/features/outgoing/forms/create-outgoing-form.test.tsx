@@ -50,6 +50,11 @@ vi.mock('@/features/transfer-stock/forms/transfer-gate-passes-section', () => ({
   }) => mockTransferGatePassesSection(props),
 }));
 
+vi.mock('@/features/auth/store/use-preferences-store', () => ({
+  usePreferencesStore: (selector: (state: unknown) => unknown) =>
+    selector({ preferences: null }),
+}));
+
 vi.mock('@/features/daybook/components/daybook-back-button', () => ({
   DaybookBackButton: () => <div data-testid="daybook-back-button" />,
 }));

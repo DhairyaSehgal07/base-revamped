@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import {
   getPreferredBagSizeOrderForTransfer,
@@ -39,6 +39,14 @@ function isVarietyVisible(
   return visibility === "all" || visibility.has(variety)
 }
 
+export function formatVarietyVisibilityLabel(
+  visibility: VarietyVisibility
+): string {
+  if (visibility === "all") return "All"
+  if (visibility.size === 0) return "None"
+  return [...visibility].sort((a, b) => a.localeCompare(b)).join(", ")
+}
+
 function resolveVisibleSizes(
   tableSizes: string[],
   visibility: SizeVisibility
@@ -47,11 +55,30 @@ function resolveVisibleSizes(
   return tableSizes.filter((size) => visibility.has(size))
 }
 
+function getPassesForVarietyScope(
+  passes: StorageGatePass[],
+  varietyFilterMode: VarietyFilterMode,
+  varietyVisibility: VarietyVisibility,
+  varietyFilter: string
+): StorageGatePass[] {
+  if (varietyFilterMode === "multi-optional") {
+    if (varietyVisibility === "all") return passes
+    return filterStorageGatePasses(passes, {
+      varieties: [...varietyVisibility],
+    })
+  }
+
+  if (!varietyFilter.trim()) return []
+  return filterStorageGatePasses(passes, { variety: varietyFilter })
+}
+
 type UseTransferGatePassMatrixOptions = {
   allPasses: StorageGatePass[]
   allocations: Record<string, number>
   onAllocationsChange: (next: Record<string, number>) => void
   varietyFilterMode?: VarietyFilterMode
+  /** When set, locks the matrix to this stock filter and hides the filter control. */
+  stockFilter?: string
 }
 
 export function useTransferGatePassMatrix({
@@ -59,6 +86,7 @@ export function useTransferGatePassMatrix({
   allocations,
   onAllocationsChange,
   varietyFilterMode = "single-required",
+  stockFilter: controlledStockFilter,
 }: UseTransferGatePassMatrixOptions) {
   const [voucherSort, setVoucherSort] = useState<VoucherSort>("asc")
   const [varietyFilter, setVarietyFilter] = useState("")
@@ -80,6 +108,10 @@ export function useTransferGatePassMatrix({
   const commodities = preferences?.commodities ?? []
   const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
   const stockFilterOptions = preferences?.stockFilter?.options ?? []
+  const isStockFilterControlled = controlledStockFilter !== undefined
+  const effectiveStockFilter = isStockFilterControlled
+    ? controlledStockFilter.trim()
+    : stockFilterFilter.trim()
 
   const varietyForSizeOrder = useMemo(() => {
     if (varietyFilterMode === "multi-optional") {
@@ -102,19 +134,46 @@ export function useTransferGatePassMatrix({
     [allPasses]
   )
 
-  const uniqueLocations = useMemo(
-    () => getUniqueLocationValues(allPasses),
-    [allPasses]
+  const varietyScopedPasses = useMemo(
+    () =>
+      getPassesForVarietyScope(
+        allPasses,
+        varietyFilterMode,
+        varietyVisibility,
+        varietyFilter
+      ),
+    [allPasses, varietyFilterMode, varietyVisibility, varietyFilter]
   )
+
+  const uniqueLocations = useMemo(
+    () => getUniqueLocationValues(varietyScopedPasses),
+    [varietyScopedPasses]
+  )
+
+  useEffect(() => {
+    setLocationFilters((prev) => {
+      const chamberValid =
+        !prev.chamber || uniqueLocations.chambers.includes(prev.chamber)
+      const floorValid =
+        !prev.floor || uniqueLocations.floors.includes(prev.floor)
+      const rowValid = !prev.row || uniqueLocations.rows.includes(prev.row)
+
+      if (chamberValid && floorValid && rowValid) return prev
+
+      return {
+        chamber: chamberValid ? prev.chamber : "",
+        floor: floorValid ? prev.floor : "",
+        row: rowValid ? prev.row : "",
+      }
+    })
+  }, [uniqueLocations])
 
   const filteredPasses = useMemo(() => {
     const base = {
       search: gatePassSearch,
       location: locationFilters,
       preferences,
-      ...(stockFilterFilter.trim()
-        ? { stockFilter: stockFilterFilter }
-        : {}),
+      ...(effectiveStockFilter ? { stockFilter: effectiveStockFilter } : {}),
     }
 
     if (varietyFilterMode === "multi-optional") {
@@ -139,7 +198,7 @@ export function useTransferGatePassMatrix({
     gatePassSearch,
     locationFilters,
     preferences,
-    stockFilterFilter,
+    effectiveStockFilter,
   ])
 
   const tableSizes = useMemo(
@@ -179,7 +238,12 @@ export function useTransferGatePassMatrix({
     locationFilters.chamber !== "" ||
     locationFilters.floor !== "" ||
     locationFilters.row !== "" ||
-    stockFilterFilter.trim() !== ""
+    (!isStockFilterControlled && stockFilterFilter.trim() !== "")
+
+  const varietyVisibilityLabel = useMemo(
+    () => formatVarietyVisibilityLabel(varietyVisibility),
+    [varietyVisibility]
+  )
 
   const sizesForColumnPicker =
     tableSizes.length > 0 ? tableSizes : allTableSizes
@@ -325,11 +389,13 @@ export function useTransferGatePassMatrix({
     setVarietyFilter,
     varietyVisibility,
     setVarietyVisibility,
+    varietyVisibilityLabel,
     gatePassSearch,
     setGatePassSearch,
     stockFilterFilter,
     setStockFilterFilter,
-    showStockFilter,
+    showStockFilter: showStockFilter && !isStockFilterControlled,
+    isStockFilterControlled,
     stockFilterOptions,
     locationFilters,
     setLocationFilters,

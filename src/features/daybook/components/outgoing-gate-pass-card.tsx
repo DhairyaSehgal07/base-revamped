@@ -399,6 +399,20 @@ export function OutgoingGatePassCard({ entry }: OutgoingGatePassCardProps) {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {entry.stockFilter && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "max-w-36 truncate text-xs",
+                isNull
+                  ? "border-border/40 bg-muted/40 text-muted-foreground"
+                  : "bg-background"
+              )}
+              title={entry.stockFilter}
+            >
+              {entry.stockFilter}
+            </Badge>
+          )}
           <Badge
             variant="outline"
             className={cn(

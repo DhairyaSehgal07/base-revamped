@@ -1,10 +1,13 @@
 import { useForm } from "@tanstack/react-form"
 import { useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { incomingGatePassesByFarmerLinkQueryKey } from "@/features/incoming/api/use-incoming-gate-passes-by-farmer-link"
 import type { IncomingGatePassRecord } from "@/features/incoming/types/api"
-import { outgoingFormSchema } from "@/features/outgoing/schemas/outgoing-form-schema"
+import {
+  createOutgoingFormSchema,
+  type OutgoingFormSchemaConfig,
+} from "@/features/outgoing/schemas/outgoing-form-schema"
 import type { OutgoingFormValues } from "@/features/outgoing/types"
 import {
   defaultSubmitMeta,
@@ -21,6 +24,7 @@ import { useNextGatePassNumber } from "@/hooks/use-next-gate-pass-number"
 export type { OutgoingFormValues }
 
 type UseCreateOutgoingFormOptions = {
+  schemaConfig: OutgoingFormSchemaConfig
   onOpenReview?: () => void
   onCloseReview?: () => void
   onResetComboboxState?: () => void
@@ -31,9 +35,14 @@ type UseCreateOutgoingFormOptions = {
   ) => Promise<void>
 }
 
-export function useCreateOutgoingForm(options: UseCreateOutgoingFormOptions = {}) {
+export function useCreateOutgoingForm(options: UseCreateOutgoingFormOptions) {
   const queryClient = useQueryClient()
   const [todayIso] = useState(() => new Date().toISOString())
+
+  const formSchema = useMemo(
+    () => createOutgoingFormSchema(options.schemaConfig),
+    [options.schemaConfig]
+  )
 
   const {
     nextNumber: nextVoucherNumber,
@@ -50,6 +59,7 @@ export function useCreateOutgoingForm(options: UseCreateOutgoingFormOptions = {}
     defaultValues: {
       farmerStorageLinkId: "",
       date: todayIso,
+      stockFilter: "",
       manualGatePassNumber: undefined as number | undefined,
       from: "",
       to: "",
@@ -58,12 +68,12 @@ export function useCreateOutgoingForm(options: UseCreateOutgoingFormOptions = {}
       allocations: {} as Record<string, number>,
     },
     validators: {
-      onChange: outgoingFormSchema,
-      onSubmit: outgoingFormSchema,
+      onChange: formSchema,
+      onSubmit: formSchema,
     },
     onSubmitMeta: defaultSubmitMeta,
     onSubmit: async ({ value, meta }) => {
-      const parsed = outgoingFormSchema.parse(value)
+      const parsed = formSchema.parse(value)
 
       if ((meta as OutgoingSubmitMeta).submitAction === "review") {
         options.onOpenReview?.()
@@ -91,6 +101,7 @@ export function useCreateOutgoingForm(options: UseCreateOutgoingFormOptions = {}
 
   return {
     form,
+    formSchema,
     nextVoucherNumber,
     isLoadingVoucherNumber,
     isVoucherNumberError,

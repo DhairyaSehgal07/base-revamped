@@ -296,6 +296,9 @@ const buildBaseColumns = (
     ...aggregateNone,
     cell: ({ row }) => renderVarietyCell(row.original, quantityMode),
   },
+]
+
+const routeColumns: ColumnDef<OutgoingGatePassReportRecord>[] = [
   {
     accessorKey: "from",
     header: "From",
@@ -321,6 +324,15 @@ const buildBaseColumns = (
     cell: ({ getValue }) => getValue<string | undefined>() || "-",
   },
 ]
+
+const stockFilterColumn: ColumnDef<OutgoingGatePassReportRecord> = {
+  accessorKey: "stockFilter",
+  header: "Stock filter",
+  meta: { filterLabel: "Stock filter" },
+  ...sortText,
+  ...aggregateNone,
+  cell: ({ getValue }) => getValue<string | undefined>() || "-",
+}
 
 const totalBagsColumn: ColumnDef<OutgoingGatePassReportRecord> = {
   accessorKey: "totalBags",
@@ -387,13 +399,15 @@ export function collectOutgoingReportOrderSizeNames(
 function getOutgoingReportColumnCacheKey(
   sizes: string[],
   quantityMode: OutgoingQuantityMode,
+  showStockFilter: boolean,
 ) {
-  return `${sizes.join("\0")}|${quantityMode}`
+  return `${sizes.join("\0")}|${quantityMode}|sf:${showStockFilter}`
 }
 
 function buildOutgoingReportColumns(
   sizes: string[],
   quantityMode: OutgoingQuantityMode,
+  showStockFilter: boolean,
 ): ColumnDef<OutgoingGatePassReportRecord>[] {
   const sizeColumns: ColumnDef<OutgoingGatePassReportRecord>[] = sizes.map(
     (sizeName) => ({
@@ -460,6 +474,8 @@ function buildOutgoingReportColumns(
 
   return [
     ...buildBaseColumns(quantityMode),
+    ...(showStockFilter ? [stockFilterColumn] : []),
+    ...routeColumns,
     totalBagsColumn,
     ...sizeColumns,
     ...trailingColumns,
@@ -469,14 +485,15 @@ function buildOutgoingReportColumns(
 export function getOutgoingReportColumns(
   rows: OutgoingGatePassReportRecord[],
   quantityMode: OutgoingQuantityMode = "issued",
+  showStockFilter = false,
 ): ColumnDef<OutgoingGatePassReportRecord>[] {
   const sizes = collectOutgoingReportOrderSizeNames(rows)
-  const cacheKey = getOutgoingReportColumnCacheKey(sizes, quantityMode)
+  const cacheKey = getOutgoingReportColumnCacheKey(sizes, quantityMode, showStockFilter)
   const cached = columnCache.get(cacheKey)
 
   if (cached) return cached
 
-  const columns = buildOutgoingReportColumns(sizes, quantityMode)
+  const columns = buildOutgoingReportColumns(sizes, quantityMode, showStockFilter)
   columnCache.set(cacheKey, columns)
 
   return columns

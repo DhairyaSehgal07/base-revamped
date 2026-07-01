@@ -12,21 +12,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
 import { DaybookBackButton } from "@/features/daybook/components/daybook-back-button"
 import type { OutgoingDaybookEntry } from "@/features/daybook/types"
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
 import { resolveFarmerStorageLinkId } from "@/features/daybook/utils/resolve-farmer-storage-link-id"
+import {
+  shouldShowStockFilter,
+  toComboboxOptions,
+} from "@/features/incoming/utils/incoming-preferences"
 import { useOutgoingDaybookEntry } from "@/features/outgoing/api/use-outgoing-daybook-entry"
 import { useFarmerStorageLinks } from "@/features/people/api/use-farmer-storage-links"
 import { useUpdateOutgoingGatePass } from "@/features/outgoing/api/use-update-outgoing-gate-pass"
 import { OutgoingSummarySheet } from "@/features/outgoing/forms/outgoing-summary-sheet"
 import { useEditOutgoingGatePassForm } from "@/features/outgoing/forms/use-edit-outgoing-gate-pass"
-import {
-  outgoingEditFormSchema,
-  type OutgoingEditFormValues,
-} from "@/features/outgoing/schemas/outgoing-edit-form-schema"
+import type { OutgoingEditFormValues } from "@/features/outgoing/schemas/outgoing-edit-form-schema"
 import { outgoingDaybookEntryToAllocations } from "@/features/outgoing/utils/outgoing-daybook-entry-to-allocations"
 import { outgoingDaybookEntryToEditFormValues } from "@/features/outgoing/utils/outgoing-daybook-entry-to-edit-form-values"
 import { mergeOutgoingSnapshotPasses } from "@/features/outgoing/utils/merge-outgoing-snapshot-passes"
@@ -46,6 +54,10 @@ import {
 } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  SearchableOptionCombobox,
+  filterAndSortOptions,
+} from "@/components/searchable-option-combobox"
+import {
   numericInputProps,
   normalizeUppercase,
   parseOptionalNumber,
@@ -54,6 +66,24 @@ import {
 
 function isFieldInvalid(meta: { isTouched: boolean; isValid: boolean }) {
   return meta.isTouched && !meta.isValid
+}
+
+function OutgoingGatePassesStockFilterPrompt() {
+  return (
+    <Card size="sm" className="py-0 ring-border/60">
+      <CardContent className="px-0 py-0">
+        <Empty className="border-0 py-10">
+          <EmptyHeader>
+            <EmptyTitle>Select a stock filter</EmptyTitle>
+            <EmptyDescription>
+              Choose a stock filter above to view incoming gate passes for this
+              outgoing pass.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </CardContent>
+    </Card>
+  )
 }
 
 function EditOutgoingFormLayout({ children }: { children: ReactNode }) {
@@ -86,10 +116,32 @@ function EditOutgoingFormLoaded({
 }: EditOutgoingFormLoadedProps) {
   const navigate = useNavigate()
   const [reviewOpen, setReviewOpen] = useState(false)
+  const preferences = usePreferencesStore((state) => state.preferences)
+  const showStockFilter = shouldShowStockFilter(preferences?.stockFilter)
+
+  const schemaConfig = useMemo(
+    () => ({ requireStockFilter: showStockFilter }),
+    [showStockFilter]
+  )
+
+  const stockFilterOptions = useMemo(
+    () => toComboboxOptions(preferences?.stockFilter?.options ?? []),
+    [preferences?.stockFilter?.options]
+  )
+
+  const [stockFilterSearch, setStockFilterSearch] = useState("")
+  const [stockFilterComboboxOpen, setStockFilterComboboxOpen] = useState(false)
+
+  const sortedStockFilters = useMemo(
+    () => filterAndSortOptions(stockFilterSearch, stockFilterOptions),
+    [stockFilterSearch, stockFilterOptions]
+  )
+
   const { mutateAsync: updateOutgoingGatePass, isPending: isSaving } =
     useUpdateOutgoingGatePass()
 
-  const { form } = useEditOutgoingGatePassForm({
+  const { form, formSchema } = useEditOutgoingGatePassForm({
+    schemaConfig,
     defaultValues,
     resolveStoragePasses: () => storagePasses,
     onOpenReview: () => setReviewOpen(true),
@@ -210,6 +262,49 @@ function EditOutgoingFormLoaded({
                   }}
                 </form.Field>
 
+                {showStockFilter ? (
+                  <form.Field
+                    name="stockFilter"
+                    validators={{ onChange: formSchema.shape.stockFilter }}
+                  >
+                    {(field) => {
+                      const isInvalid = isFieldInvalid(field.state.meta)
+                      return (
+                        <Field data-invalid={isInvalid}>
+                          <FieldLabel htmlFor="edit-outgoing-stock-filter">
+                            Stock filter
+                          </FieldLabel>
+                          <SearchableOptionCombobox
+                            id="edit-outgoing-stock-filter"
+                            name={field.name}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              field.handleChange(value)
+                              form.setFieldValue("allocations", {})
+                            }}
+                            onBlur={field.handleBlur}
+                            isInvalid={isInvalid}
+                            placeholder="Search stock filters..."
+                            emptyMessage="No stock filters found."
+                            options={stockFilterOptions}
+                            sortedOptions={sortedStockFilters}
+                            search={stockFilterSearch}
+                            setSearch={setStockFilterSearch}
+                            open={stockFilterComboboxOpen}
+                            setOpen={setStockFilterComboboxOpen}
+                          />
+                          <FieldDescription>
+                            Required before selecting incoming gate passes.
+                          </FieldDescription>
+                          {isInvalid && (
+                            <FieldError errors={field.state.meta.errors} />
+                          )}
+                        </Field>
+                      )
+                    }}
+                  </form.Field>
+                ) : null}
+
                 <form.Field name="manualGatePassNumber">
                   {(field) => {
                     const isInvalid = isFieldInvalid(field.state.meta)
@@ -326,6 +421,13 @@ function EditOutgoingFormLoaded({
               </FieldGroup>
             </FieldSet>
 
+            <form.Subscribe
+              selector={(state) => state.values.stockFilter}
+              children={(stockFilter) => {
+                const canShowGatePasses =
+                  !showStockFilter || stockFilter.trim().length > 0
+
+                return (
             <FieldSet>
               <FieldLegend className="font-heading text-base font-semibold">
                 Incoming gate pass
@@ -334,10 +436,13 @@ function EditOutgoingFormLoaded({
                 Adjust vouchers and quantities for this outgoing pass.
               </FieldDescription>
               <div className="mt-5">
+                {!canShowGatePasses ? (
+                  <OutgoingGatePassesStockFilterPrompt />
+                ) : (
                 <form.Field name="allocations">
                   {(allocField) => (
                     <TransferGatePassesSection
-                      key={farmerStorageLinkId}
+                      key={`${farmerStorageLinkId}-${stockFilter}`}
                       varietyFilterMode="multi-optional"
                       allocationMode="edit"
                       baselineAllocations={baselineAllocations}
@@ -347,11 +452,16 @@ function EditOutgoingFormLoaded({
                       farmerPromptLabel="farmer"
                       passesOverride={storagePasses}
                       passesLoading={false}
+                      stockFilter={showStockFilter ? stockFilter : undefined}
                     />
                   )}
                 </form.Field>
+                )}
               </div>
             </FieldSet>
+                )
+              }}
+            />
 
             <FieldSet>
               <FieldLegend className="font-heading text-base font-semibold">
@@ -417,7 +527,7 @@ function EditOutgoingFormLoaded({
           isSubmitting: state.isSubmitting,
         })}
         children={({ values, canSubmit, isSubmitting }) => {
-          const parsed = outgoingEditFormSchema.safeParse(values)
+          const parsed = formSchema.safeParse(values)
           const farmerId = parsed.success
             ? parsed.data.farmerStorageLinkId
             : values.farmerStorageLinkId

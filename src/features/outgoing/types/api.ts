@@ -23,6 +23,7 @@ export type CreateOutgoingGatePassPayload = {
   gatePassNo: number
   date: string
   incomingGatePasses: CreateOutgoingGatePassIncomingPayload[]
+  stockFilter?: string
   manualParchiNumber?: number
   from?: string
   to?: string
@@ -37,6 +38,7 @@ export type OutgoingGatePassRecord = {
   createdBy?: DaybookCreatedBy
   incomingGatePassSnapshots?: IncomingGatePassSnapshot[]
   gatePassNo: number
+  stockFilter?: string
   manualParchiNumber?: number
   date: string
   from?: string
@@ -60,6 +62,7 @@ export type CreateOutgoingGatePassResponse = {
 
 export type UpdateOutgoingGatePassPayload = {
   date?: string
+  stockFilter?: string
   manualParchiNumber?: number
   from?: string
   to?: string

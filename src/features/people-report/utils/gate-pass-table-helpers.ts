@@ -212,6 +212,10 @@ export function getGatePassVariety(entry: DaybookEntry): string {
   return "—"
 }
 
+export function getGatePassStockFilter(entry: DaybookEntry): string {
+  return entry.stockFilter?.trim() || "—"
+}
+
 export function getGatePassSizeQuantity(
   entry: DaybookEntry,
   size: string,

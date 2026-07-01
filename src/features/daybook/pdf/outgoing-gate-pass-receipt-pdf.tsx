@@ -415,7 +415,6 @@ function OutgoingGatePassReceiptPage({
   isNull,
   nulledBy,
   orderRows,
-  totalAvailable,
   totalIssued,
   remarks,
 }: OutgoingGatePassReceiptPdfProps) {
@@ -590,7 +589,6 @@ function OutgoingGatePassReceiptPage({
               Location
             </Text>
             <Text style={[styles.colRef, styles.colTextHeader]}>Ref</Text>
-            <Text style={[styles.colNumeric, styles.colTextHeader]}>Avail</Text>
             <Text style={[styles.colNumeric, styles.colTextHeader]}>
               Issued
             </Text>
@@ -617,9 +615,6 @@ function OutgoingGatePassReceiptPage({
                 {row.refGatePassNo !== null ? `#${row.refGatePassNo}` : "—"}
               </Text>
               <Text style={[styles.colNumeric, styles.colTextData]}>
-                {row.availableQty.toLocaleString("en-IN")}
-              </Text>
-              <Text style={[styles.colNumeric, styles.colTextData]}>
                 {row.issuedQty.toLocaleString("en-IN")}
               </Text>
             </View>
@@ -630,9 +625,6 @@ function OutgoingGatePassReceiptPage({
             <Text style={[styles.colVariety, styles.colTextTotal]} />
             <Text style={[styles.colLocation, styles.colTextTotal]} />
             <Text style={[styles.colRef, styles.colTextTotal]} />
-            <Text style={[styles.colNumeric, styles.colTextTotal]}>
-              {totalAvailable.toLocaleString("en-IN")}
-            </Text>
             <Text style={[styles.colNumeric, styles.colTextTotal]}>
               {totalIssued.toLocaleString("en-IN")}
             </Text>

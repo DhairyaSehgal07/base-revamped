@@ -266,4 +266,27 @@ describe("buildFarmerStockLedgerPdfData", () => {
     expect(incomingRow.stockFilter).toBe("Own Stock")
     expect(incomingRow.customMarka).toBe("TS-42")
   })
+
+  it("maps outgoing stock filter when enabled", () => {
+    const entries: DaybookEntry[] = [
+      createOutgoingPass({
+        stockFilter: "Farmer",
+      }),
+    ]
+    const sections = buildFarmerReportSections(entries)
+
+    const result = buildFarmerStockLedgerPdfData({
+      entries,
+      sections,
+      summaries: { ...EMPTY_SUMMARIES, totalOutgoingBags: 40 },
+      commodities: [],
+      search,
+      showStockFilter: true,
+      showCustomMarka: false,
+    })
+
+    const outgoingRow = result.outgoingLedger[0]
+    expectLeafRow(outgoingRow)
+    expect(outgoingRow.stockFilter).toBe("Farmer")
+  })
 })

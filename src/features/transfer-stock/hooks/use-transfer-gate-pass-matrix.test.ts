@@ -1,7 +1,10 @@
 import { act, renderHook } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { useTransferGatePassMatrix } from "@/features/transfer-stock/hooks/use-transfer-gate-pass-matrix"
+import {
+  formatVarietyVisibilityLabel,
+  useTransferGatePassMatrix,
+} from "@/features/transfer-stock/hooks/use-transfer-gate-pass-matrix"
 import type { StorageGatePass } from "@/features/transfer-stock/types/storage-gate-pass"
 
 vi.mock("@/features/auth/store/use-preferences-store", () => ({
@@ -9,7 +12,16 @@ vi.mock("@/features/auth/store/use-preferences-store", () => ({
     selector({ preferences: { commodities: [] } }),
 }))
 
-function makePass(id: string, variety: string, gatePassNo: number): StorageGatePass {
+function makePass(
+  id: string,
+  variety: string,
+  gatePassNo: number,
+  location: { chamber: string; floor: string; row: string } = {
+    chamber: "A",
+    floor: "1",
+    row: "R1",
+  }
+): StorageGatePass {
   return {
     _id: id,
     farmerStorageLinkId: "674a1b2c3d4e5f6789012345",
@@ -24,9 +36,9 @@ function makePass(id: string, variety: string, gatePassNo: number): StorageGateP
         currentQuantity: 40,
         initialQuantity: 40,
         bagType: "LENO",
-        chamber: "A",
-        floor: "1",
-        row: "R1",
+        chamber: location.chamber,
+        floor: location.floor,
+        row: location.row,
       },
     ],
     remarks: "",
@@ -99,5 +111,182 @@ describe("useTransferGatePassMatrix", () => {
     )
     expect(visiblePasses).toHaveLength(1)
     expect(visiblePasses[0]?.variety).toBe("Chipsona")
+  })
+
+  it("scopes location filter options to the selected variety in multi-optional mode", () => {
+    const passes = [
+      makePass("pass-chipsona", "Chipsona", 10, {
+        chamber: "4",
+        floor: "2",
+        row: "B",
+      }),
+      makePass("pass-kufri", "Kufri Jyoti", 11, {
+        chamber: "1",
+        floor: "1",
+        row: "A",
+      }),
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "multi-optional",
+      })
+    )
+
+    expect(result.current.uniqueLocations.chambers).toEqual(["1", "4"])
+
+    act(() => {
+      result.current.setVarietyVisibility(new Set(["Chipsona"]))
+    })
+
+    expect(result.current.uniqueLocations.chambers).toEqual(["4"])
+    expect(result.current.uniqueLocations.floors).toEqual(["2"])
+    expect(result.current.uniqueLocations.rows).toEqual(["B"])
+  })
+
+  it("scopes location filter options to the selected variety in single-required mode", () => {
+    const passes = [
+      makePass("pass-chipsona", "Chipsona", 10, {
+        chamber: "4",
+        floor: "2",
+        row: "B",
+      }),
+      makePass("pass-kufri", "Kufri Jyoti", 11, {
+        chamber: "1",
+        floor: "1",
+        row: "A",
+      }),
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "single-required",
+      })
+    )
+
+    expect(result.current.uniqueLocations.chambers).toEqual([])
+
+    act(() => {
+      result.current.setVarietyFilter("Kufri Jyoti")
+    })
+
+    expect(result.current.uniqueLocations.chambers).toEqual(["1"])
+    expect(result.current.uniqueLocations.rows).toEqual(["A"])
+  })
+
+  it("clears stale location filters when the variety selection changes", () => {
+    const passes = [
+      makePass("pass-chipsona", "Chipsona", 10, {
+        chamber: "4",
+        floor: "2",
+        row: "B",
+      }),
+      makePass("pass-kufri", "Kufri Jyoti", 11, {
+        chamber: "1",
+        floor: "1",
+        row: "A",
+      }),
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "multi-optional",
+      })
+    )
+
+    act(() => {
+      result.current.setLocationFilters({
+        chamber: "1",
+        floor: "",
+        row: "",
+      })
+      result.current.setVarietyVisibility(new Set(["Chipsona"]))
+    })
+
+    expect(result.current.locationFilters.chamber).toBe("")
+  })
+
+  it("exposes a readable label for the variety visibility trigger", () => {
+    const passes = [
+      makePass("pass-chipsona", "Chipsona", 10),
+      makePass("pass-kufri", "Kufri Jyoti", 11),
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "multi-optional",
+      })
+    )
+
+    expect(result.current.varietyVisibilityLabel).toBe("All")
+
+    act(() => {
+      result.current.setVarietyVisibility(new Set(["Chipsona"]))
+    })
+
+    expect(result.current.varietyVisibilityLabel).toBe("Chipsona")
+
+    act(() => {
+      result.current.setVarietyVisibility(
+        new Set(["Kufri Jyoti", "Chipsona"])
+      )
+    })
+
+    expect(result.current.varietyVisibilityLabel).toBe("Chipsona, Kufri Jyoti")
+  })
+})
+
+describe("formatVarietyVisibilityLabel", () => {
+  it("formats all, none, and selected variety labels", () => {
+    expect(formatVarietyVisibilityLabel("all")).toBe("All")
+    expect(formatVarietyVisibilityLabel(new Set())).toBe("None")
+    expect(formatVarietyVisibilityLabel(new Set(["Kufri Jyoti"]))).toBe(
+      "Kufri Jyoti"
+    )
+    expect(
+      formatVarietyVisibilityLabel(new Set(["Kufri Jyoti", "Chipsona"]))
+    ).toBe("Chipsona, Kufri Jyoti")
+  })
+})
+
+describe("useTransferGatePassMatrix controlled stockFilter", () => {
+  it("applies a fixed stock filter and hides the stock filter control", () => {
+    const passes = [
+      {
+        ...makePass("pass-owned", "Kufri Jyoti", 10),
+        stockFilter: "Owned",
+      },
+      {
+        ...makePass("pass-farmer", "Kufri Jyoti", 11),
+        stockFilter: "Farmer",
+      },
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "multi-optional",
+        stockFilter: "Owned",
+      })
+    )
+
+    expect(result.current.showStockFilter).toBe(false)
+    expect(result.current.isStockFilterControlled).toBe(true)
+    expect(result.current.displayGroups).toHaveLength(1)
+    expect(result.current.displayGroups[0]?.passes[0]?._id).toBe("pass-owned")
   })
 })

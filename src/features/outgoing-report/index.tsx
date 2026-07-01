@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
+import { shouldShowStockFilter } from "@/features/incoming/utils/incoming-preferences"
 import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
 
 import {
@@ -55,9 +56,13 @@ const OutgoingReportPage = () => {
   const deferredSearchQuery = useDeferredValue(searchQuery)
 
   const coldStorageName = useColdStorageStore((s) => s.coldStorage?.name)
+  const stockFilterPreference = usePreferencesStore(
+    (state) => state.preferences?.stockFilter,
+  )
   const showViewFilters = usePreferencesStore(
     (state) => state.preferences?.showViewFilters ?? false,
   )
+  const showStockFilter = shouldShowStockFilter(stockFilterPreference)
   const { data, error, isFetching, isLoading, refetch } =
     useOutgoingGatePassReport(appliedParams)
 
@@ -75,8 +80,8 @@ const OutgoingReportPage = () => {
     [deferredSearchQuery, searchIndex],
   )
   const tableColumns = useMemo(
-    () => getOutgoingReportColumns(reportRows, quantityMode),
-    [quantityMode, reportRows],
+    () => getOutgoingReportColumns(reportRows, quantityMode, showStockFilter),
+    [quantityMode, reportRows, showStockFilter],
   )
 
   const handleTableReady = useCallback(

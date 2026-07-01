@@ -27,6 +27,7 @@ export type OutgoingGatePassReportRecord = {
   from?: string
   to?: string
   truckNumber?: string
+  stockFilter?: string
   remarks?: string
   orderDetails: OutgoingReportOrderDetail[]
   totalBags: number

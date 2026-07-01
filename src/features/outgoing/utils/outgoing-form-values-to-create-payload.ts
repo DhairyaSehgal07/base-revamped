@@ -61,6 +61,10 @@ export function buildCreateOutgoingGatePassPayload(
     payload.manualParchiNumber = values.manualGatePassNumber
   }
 
+  if (values.stockFilter.trim()) {
+    payload.stockFilter = values.stockFilter.trim()
+  }
+
   if (from) {
     payload.from = from
   }

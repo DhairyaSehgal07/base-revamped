@@ -184,6 +184,9 @@ function OutgoingReviewSummary({
             value={formatReviewDate(values.date)}
             icon={Calendar}
           />
+          {values.stockFilter?.trim() ? (
+            <DetailRow label="Stock filter" value={values.stockFilter.trim()} />
+          ) : null}
           {values.manualGatePassNumber != null ? (
             <DetailRow
               label="Manual GP no."

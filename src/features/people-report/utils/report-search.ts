@@ -14,7 +14,6 @@ export type FarmerReportSearchIndex = {
 function buildFarmerReportSearchText(entry: DaybookEntry): string {
   const incomingFields = isIncomingDaybookEntry(entry)
     ? [
-        entry.stockFilter,
         entry.customMarka,
         ...(entry.bagSizes ?? []).flatMap((bag) => [
           bag.name,
@@ -32,6 +31,7 @@ function buildFarmerReportSearchText(entry: DaybookEntry): string {
     String(entry.gatePassNo),
     entry.manualParchiNumber,
     getGatePassVariety(entry),
+    entry.stockFilter,
     ...incomingFields,
     entry.remarks,
     entry.truckNumber,

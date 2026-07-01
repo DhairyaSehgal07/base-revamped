@@ -250,7 +250,6 @@ const styles = StyleSheet.create({
   col1: { flex: 2 },
   col2: { flex: 2 },
   col3: { flex: 1, textAlign: "right" },
-  col4: { flex: 1, textAlign: "right" },
   colTextHeader: {
     fontSize: 7.5,
     fontFamily: "Roboto",
@@ -406,7 +405,6 @@ function IncomingGatePassReceiptPage({
   variety,
   date,
   totalInitialQuantity,
-  totalCurrentQuantity,
   createdBy,
   truckNo,
   bagRows,
@@ -493,8 +491,7 @@ function IncomingGatePassReceiptPage({
             <Text style={[styles.col2, styles.colTextHeader]}>
               Storage Location
             </Text>
-            <Text style={[styles.col3, styles.colTextHeader]}>Current Qty</Text>
-            <Text style={[styles.col4, styles.colTextHeader]}>Initial Qty</Text>
+            <Text style={[styles.col3, styles.colTextHeader]}>Quantity</Text>
           </View>
 
           {bagRows.map((row, index) => (
@@ -508,9 +505,6 @@ function IncomingGatePassReceiptPage({
               <Text style={[styles.col1, styles.colTextData]}>{row.bagSize}</Text>
               <Text style={[styles.col2, styles.colTextMuted]}>{row.location}</Text>
               <Text style={[styles.col3, styles.colTextData]}>
-                {row.currentQty.toLocaleString("en-IN")}
-              </Text>
-              <Text style={[styles.col4, styles.colTextData]}>
                 {row.initialQty.toLocaleString("en-IN")}
               </Text>
             </View>
@@ -520,9 +514,6 @@ function IncomingGatePassReceiptPage({
             <Text style={[styles.col1, styles.colTextTotalAccent]}>Total</Text>
             <Text style={[styles.col2, styles.colTextTotal]} />
             <Text style={[styles.col3, styles.colTextTotal]}>
-              {totalCurrentQuantity.toLocaleString("en-IN")}
-            </Text>
-            <Text style={[styles.col4, styles.colTextTotal]}>
               {totalInitialQuantity.toLocaleString("en-IN")}
             </Text>
           </View>

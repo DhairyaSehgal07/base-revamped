@@ -23,6 +23,7 @@ function buildOutgoingReportSearchText(
     row.date,
     getOutgoingReportType(row),
     getOutgoingReportVariety(row),
+    row.stockFilter,
     row.from,
     row.to,
     row.remarks,

@@ -79,6 +79,11 @@ vi.mock("@/features/daybook/components/daybook-back-button", () => ({
   DaybookBackButton: () => <div data-testid="daybook-back-button" />,
 }))
 
+vi.mock("@/features/auth/store/use-preferences-store", () => ({
+  usePreferencesStore: (selector: (state: unknown) => unknown) =>
+    selector({ preferences: null }),
+}))
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
