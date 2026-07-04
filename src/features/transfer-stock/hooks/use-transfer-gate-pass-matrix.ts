@@ -134,16 +134,26 @@ export function useTransferGatePassMatrix({
     [allPasses]
   )
 
-  const varietyScopedPasses = useMemo(
-    () =>
-      getPassesForVarietyScope(
-        allPasses,
-        varietyFilterMode,
-        varietyVisibility,
-        varietyFilter
-      ),
-    [allPasses, varietyFilterMode, varietyVisibility, varietyFilter]
-  )
+  const varietyScopedPasses = useMemo(() => {
+    let passes = getPassesForVarietyScope(
+      allPasses,
+      varietyFilterMode,
+      varietyVisibility,
+      varietyFilter
+    )
+    if (effectiveStockFilter) {
+      passes = filterStorageGatePasses(passes, {
+        stockFilter: effectiveStockFilter,
+      })
+    }
+    return passes
+  }, [
+    allPasses,
+    varietyFilterMode,
+    varietyVisibility,
+    varietyFilter,
+    effectiveStockFilter,
+  ])
 
   const uniqueLocations = useMemo(
     () => getUniqueLocationValues(varietyScopedPasses),

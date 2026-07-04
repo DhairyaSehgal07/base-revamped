@@ -146,17 +146,17 @@ function VarietyCell({ row }: { row: FarmerReportTableRow }) {
     return (
       <div className="flex min-w-0 flex-col gap-1">
         {breakdown.map((line) => (
-          <div
+          <span
             key={line.variety}
-            className="flex min-w-0 items-baseline justify-between gap-2"
+            className="block min-w-0 break-words"
+            title={`${line.variety} (${formatQuantity(line.quantity)})`}
           >
-            <span className="min-w-0 break-words" title={line.variety}>
-              {line.variety}
+            <span className="font-medium text-foreground">{line.variety}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {" "}
+              ({formatQuantity(line.quantity)})
             </span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">
-              {formatQuantity(line.quantity)}
-            </span>
-          </div>
+          </span>
         ))}
       </div>
     )

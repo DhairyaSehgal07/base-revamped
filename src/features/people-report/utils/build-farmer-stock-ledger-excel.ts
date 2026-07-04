@@ -7,6 +7,7 @@ import type {
   PdfLedgerLeafRow,
   PdfLedgerSizeValue,
 } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
+import { formatPdfVarietyValue } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data"
 import type { LedgerExportColumn } from "@/features/people-report/utils/export-cell-value"
 import type { StockSummaryMatrix } from "@/features/people/utils/build-farmer-stock-summary"
 import {
@@ -56,7 +57,7 @@ const FILLS = {
 
 const ALIGN_LEFT = {
   horizontal: "left",
-  vertical: "middle",
+  vertical: "top",
   wrapText: true,
 } satisfies Partial<ExcelJS.Alignment>
 
@@ -119,37 +120,58 @@ export type ExcelBodyRow = {
   isTotalsRow?: boolean
 }
 
-class ColumnWidthTracker {
-  private readonly widths: number[]
+const LEDGER_EXCEL_COLUMN_WIDTHS: Record<string, number> = {
+  date: 14,
+  gatePassNo: 11,
+  manualParchiNumber: 14,
+  variety: 12,
+  stockFilter: 10,
+  customMarka: 10,
+  rowBags: 11,
+  totalBags: 14,
+  remarks: 16,
+}
 
-  constructor(headers: string[]) {
-    this.widths = headers.map((header) => {
-      const longestHeaderWord = header
-        .split(/\s+/)
-        .reduce((max, word) => Math.max(max, word.length), 0)
-      return Math.max(10, longestHeaderWord + 2)
-    })
+const DEFAULT_LEDGER_COLUMN_WIDTH = 10
+const LEDGER_SIZE_COLUMN_WIDTH = 12
+const ROW_LINE_HEIGHT = 15
+const MIN_BODY_ROW_HEIGHT = 18
+
+export function getFixedLedgerColumnWidths(
+  exportColumns: LedgerExportColumn[],
+): number[] {
+  return exportColumns.map((column) => {
+    if (column.id.startsWith("size-")) return LEDGER_SIZE_COLUMN_WIDTH
+    return LEDGER_EXCEL_COLUMN_WIDTHS[column.id] ?? DEFAULT_LEDGER_COLUMN_WIDTH
+  })
+}
+
+function estimateWrappedLineCount(text: string, columnWidth: number): number {
+  const charsPerLine = Math.max(4, Math.floor(columnWidth))
+  return text.split("\n").reduce((total, line) => {
+    if (line.length === 0) return total + 1
+    return total + Math.ceil(line.length / charsPerLine)
+  }, 0)
+}
+
+function calculateBodyRowHeight(
+  values: Array<string | number>,
+  columnWidths: number[],
+): number {
+  let maxLines = 1
+
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index]
+    if (typeof value !== "string" || value === "" || value === "—") continue
+
+    const lines = estimateWrappedLineCount(
+      value,
+      columnWidths[index] ?? DEFAULT_LEDGER_COLUMN_WIDTH,
+    )
+    maxLines = Math.max(maxLines, lines)
   }
 
-  observeRow(values: Array<string | number>) {
-    for (let index = 0; index < values.length; index++) {
-      const cell = values[index]
-      if (cell === "" || cell == null) continue
-
-      const length =
-        typeof cell === "number"
-          ? cell.toLocaleString("en-IN").length
-          : getStringCellDisplayLength(String(cell))
-
-      if (length > this.widths[index] - 2) {
-        this.widths[index] = Math.min(40, length + 2)
-      }
-    }
-  }
-
-  finalize(): number[] {
-    return this.widths
-  }
+  return Math.max(MIN_BODY_ROW_HEIGHT, maxLines * ROW_LINE_HEIGHT + 3)
 }
 
 export function getLedgerColumnLayoutFromExportColumns(
@@ -275,18 +297,6 @@ function formatPdfSizeValue(value: PdfLedgerSizeValue | null | undefined): strin
   if (!value) return "—"
   if (value.type === "stacked") return `${value.main}\n${value.sub}`
   return value.value
-}
-
-function getStringCellDisplayLength(value: string): number {
-  return value
-    .split("\n")
-    .reduce((max, line) => Math.max(max, line.length), 0)
-}
-
-function rowHasStackedSizeCell(values: Array<string | number>): boolean {
-  return values.some(
-    (value) => typeof value === "string" && value.includes("\n"),
-  )
 }
 
 function parseLocaleNumber(value: string): number | null {
@@ -415,7 +425,9 @@ export function getLeafCellValue(
     case "manualParchiNumber":
       return leaf.manualParchi
     case "variety":
-      return leaf.suppressedGroupColumns.includes("variety") ? "" : leaf.variety
+      return leaf.suppressedGroupColumns.includes("variety")
+        ? ""
+        : formatPdfVarietyValue(leaf.variety)
     case "stockFilter":
       return leaf.suppressedGroupColumns.includes("stockFilter")
         ? ""
@@ -500,9 +512,9 @@ function styleBodyRow(
   dataRow: ExcelBodyRow,
   columnCount: number,
   dataRowCounter: number,
+  columnWidths: number[],
 ) {
-  const hasStackedSizeCell = rowHasStackedSizeCell(dataRow.values)
-  excelRow.height = hasStackedSizeCell ? 32 : 18
+  excelRow.height = calculateBodyRowHeight(dataRow.values, columnWidths)
 
   const rowFill = dataRow.isSectionTitle
     ? FILLS.section
@@ -549,7 +561,7 @@ function addStyledBodyRows(
   worksheet: ExcelJS.Worksheet,
   dataRows: ExcelBodyRow[],
   columnCount: number,
-  widthTracker: ColumnWidthTracker,
+  columnWidths: number[],
   previewRows: ExcelPreviewRow[],
 ) {
   if (dataRows.length === 0) return
@@ -559,8 +571,7 @@ function addStyledBodyRows(
 
   for (let index = 0; index < dataRows.length; index++) {
     const dataRow = dataRows[index]
-    widthTracker.observeRow(dataRow.values)
-    styleBodyRow(excelRows[index], dataRow, columnCount, dataRowCounter)
+    styleBodyRow(excelRows[index], dataRow, columnCount, dataRowCounter, columnWidths)
     previewRows.push(dataRow)
 
     if (!dataRow.isGroupedOrAggregatedRow || dataRow.isTotalsRow) {
@@ -575,11 +586,10 @@ function addBodyRow(
   worksheet: ExcelJS.Worksheet,
   dataRow: ExcelBodyRow,
   columnCount: number,
-  widthTracker: ColumnWidthTracker,
+  columnWidths: number[],
 ) {
   const excelRow = worksheet.addRow(dataRow.values)
-  widthTracker.observeRow(dataRow.values)
-  styleBodyRow(excelRow, dataRow, columnCount, 0)
+  styleBodyRow(excelRow, dataRow, columnCount, 0, columnWidths)
 }
 
 function addColumnHeaderRow(worksheet: ExcelJS.Worksheet, headers: string[]) {
@@ -616,10 +626,10 @@ function addStockSummaryRows(
   matrix: StockSummaryMatrix,
   sizeColumns: string[],
   columnCount: number,
-  widthTracker: ColumnWidthTracker,
+  columnWidths: number[],
 ): ExcelPreviewStockSummary {
   const summaryTitle = createSectionTitleRow("Stock Summary", columnCount)
-  addBodyRow(worksheet, summaryTitle, columnCount, widthTracker)
+  addBodyRow(worksheet, summaryTitle, columnCount, columnWidths)
 
   const summaryHeaders = ["Varieties", ...sizeColumns, "Total"]
   const previewDataRows: Array<Array<string | number>> = []
@@ -654,7 +664,7 @@ function addStockSummaryRows(
       ),
       isGroupedOrAggregatedRow: false,
     }
-    addBodyRow(worksheet, row, columnCount, widthTracker)
+    addBodyRow(worksheet, row, columnCount, columnWidths)
   }
 
   const footerValues: Array<string | number> = ["Bag Total"]
@@ -865,7 +875,7 @@ export async function buildFarmerStockLedgerExcelPackage({
   const { exportColumns, layout } = getExportLayout(reportData)
   const columnCount = layout.headers.length
   const lastColumnLetter = columnIndexToLetter(columnCount)
-  const widthTracker = new ColumnWidthTracker(layout.headers)
+  const columnWidths = getFixedLedgerColumnWidths(exportColumns)
 
   const incomingBody = ledgerItemsToBodyRows(
     reportData.incomingLedger,
@@ -964,10 +974,10 @@ export async function buildFarmerStockLedgerExcelPackage({
     reportData.stockSummary,
     reportData.sizeColumns,
     columnCount,
-    widthTracker,
+    columnWidths,
   )
 
-  addBodyRow(worksheet, incomingSection, columnCount, widthTracker)
+  addBodyRow(worksheet, incomingSection, columnCount, columnWidths)
   previewRows.push(incomingSection)
 
   addColumnHeaderRow(worksheet, layout.headers)
@@ -976,7 +986,7 @@ export async function buildFarmerStockLedgerExcelPackage({
     worksheet,
     incomingBody,
     columnCount,
-    widthTracker,
+    columnWidths,
     previewRows,
   )
 
@@ -984,7 +994,7 @@ export async function buildFarmerStockLedgerExcelPackage({
 
   worksheet.addRow([])
 
-  addBodyRow(worksheet, outgoingSection, columnCount, widthTracker)
+  addBodyRow(worksheet, outgoingSection, columnCount, columnWidths)
   previewRows.push(outgoingSection)
 
   addColumnHeaderRow(worksheet, layout.headers)
@@ -993,7 +1003,7 @@ export async function buildFarmerStockLedgerExcelPackage({
     worksheet,
     outgoingBody,
     columnCount,
-    widthTracker,
+    columnWidths,
     previewRows,
   )
 
@@ -1001,7 +1011,7 @@ export async function buildFarmerStockLedgerExcelPackage({
 
   worksheet.columns = layout.headers.map((header, index) => ({
     key: header,
-    width: widthTracker.finalize()[index],
+    width: columnWidths[index],
   }))
 
   worksheet.pageSetup = {

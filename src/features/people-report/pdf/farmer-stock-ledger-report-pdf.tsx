@@ -13,6 +13,7 @@ import {
 import type {
   FarmerStockLedgerPdfData,
   PdfLedgerItem,
+  PdfLedgerVarietyValue,
 } from "@/features/people-report/utils/build-farmer-stock-ledger-pdf-data";
 import {
   getExportLayout,
@@ -23,14 +24,24 @@ import type { LedgerExportColumn } from "@/features/people-report/utils/export-c
 import type { StockSummaryMatrix } from "@/features/people/utils/build-farmer-stock-summary";
 
 Font.register({
-  family: "Roboto",
+  family: "Inter",
   fonts: [
     {
-      src: "https://fonts.gstatic.com/s/roboto/v20/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf",
+      src: "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf",
       fontWeight: 400,
     },
     {
-      src: "https://fonts.gstatic.com/s/roboto/v20/KFOlCnqEu92Fr1MmWUlfChc9AMP6lbBP.ttf",
+      src: "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZg.ttf",
+      fontWeight: 700,
+    },
+  ],
+});
+
+Font.register({
+  family: "Outfit",
+  fonts: [
+    {
+      src: "https://fonts.gstatic.com/s/outfit/v15/QGYyz_MVcBeNP4NjuGObqx1XmO1I4deyC4E.ttf",
       fontWeight: 700,
     },
   ],
@@ -48,11 +59,11 @@ const COLOR = {
   inkSoft: "#71717a",
   inkMuted: "#a1a1aa",
   hairline: "#e4e4e7",
-  hairlineStrong: "#09090b",
+  hairlineStrong: "#27272a",
   paper: "#ffffff",
-  wash: "#f8f9fa",
-  accent: "#008235",
-  accentWash: "#ecfdf5",
+  wash: "#f4f4f5",
+   accent: "#008235",
+  accentWash: "#dcfce7",
   borderLight: "#f4f4f5",
 };
 
@@ -61,7 +72,7 @@ const styles = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 48,
     paddingHorizontal: 34,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 400,
     backgroundColor: COLOR.paper,
     color: COLOR.ink,
@@ -101,15 +112,15 @@ const styles = StyleSheet.create({
   logoFallbackText: {
     color: COLOR.paper,
     fontSize: 20,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
   },
   storageName: {
-    fontSize: 24,
-    fontFamily: "Roboto",
+    fontSize: 28,
+    fontFamily: "Outfit",
     fontWeight: 700,
     color: COLOR.ink,
-    letterSpacing: -0.5,
+    letterSpacing: -0.75,
     textAlign: "center",
   },
   storageMeta: {
@@ -122,11 +133,11 @@ const styles = StyleSheet.create({
   },
   reportTitleHeader: {
     fontSize: 11,
-    color: COLOR.accent,
+    color: COLOR.inkSoft,
     textTransform: "uppercase",
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     marginTop: 8,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     textAlign: "center",
   },
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
   docRefValue: {
     fontSize: 9,
     color: COLOR.ink,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     letterSpacing: 0.3,
     marginTop: 2,
@@ -183,12 +194,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1.2,
     marginBottom: 6,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
   },
   farmerName: {
     fontSize: 16,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     letterSpacing: -0.3,
@@ -201,7 +212,7 @@ const styles = StyleSheet.create({
   },
   farmerMobile: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     marginTop: 4,
@@ -236,12 +247,12 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 9,
     color: COLOR.inkSoft,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
   },
   statMainVal: {
     fontSize: 11,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     marginBottom: 2,
@@ -265,7 +276,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 10.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textTransform: "uppercase",
@@ -307,20 +318,20 @@ const styles = StyleSheet.create({
   },
   sumCellHeaderLeft: {
     fontSize: 8.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
   },
   sumCellHeader: {
     fontSize: 8.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textAlign: "right",
   },
   sumCellVar: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
   },
@@ -331,56 +342,56 @@ const styles = StyleSheet.create({
   },
   sumCellValueGreen: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.accent,
     textAlign: "right",
   },
   sumCellTotalBlack: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textAlign: "right",
   },
-  table: { width: "100%", marginBottom: 4 },
+  table: {
+    width: "100%",
+    marginBottom: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLOR.hairline,
+    overflow: "hidden",
+  },
   tableHeaderRow: {
     flexDirection: "row",
     backgroundColor: COLOR.wash,
-    borderTopWidth: 0.75,
-    borderTopColor: COLOR.ink,
-    borderBottomWidth: 1.25,
-    borderBottomColor: COLOR.ink,
-    paddingTop: 7,
-    paddingBottom: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: COLOR.hairline,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   tableRow: {
     flexDirection: "row",
-    borderBottomWidth: 0.5,
+    borderBottomWidth: 1,
     borderBottomColor: COLOR.hairline,
-    paddingTop: 7.5,
-    paddingBottom: 7.5,
-    alignItems: "center",
+    paddingTop: 9,
+    paddingBottom: 9,
+    alignItems: "flex-start",
   },
-  tableRowAlt: { backgroundColor: "#fafafa" },
   highlightRow: {
     backgroundColor: COLOR.accentWash,
     borderLeftWidth: 3,
     borderLeftColor: COLOR.accent,
   },
   groupRow: {
-    backgroundColor: "#f4f4f5",
-    borderTopWidth: 0.75,
-    borderTopColor: COLOR.hairline,
-    borderBottomWidth: 0.5,
-    borderBottomColor: COLOR.hairline,
+    backgroundColor: COLOR.wash,
     paddingTop: 5,
     paddingBottom: 5,
     alignItems: "center",
   },
   groupLabel: {
     fontSize: 9.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
   },
@@ -389,14 +400,22 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: COLOR.accent,
     borderTopWidth: 0.75,
-    borderTopColor: COLOR.ink,
-    paddingTop: 7,
-    paddingBottom: 7,
-    marginTop: -0.5,
+    borderTopColor: COLOR.hairlineStrong,
+    borderBottomWidth: 0,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  footerTotalLabel: {
+    fontSize: 9,
+    fontFamily: "Inter",
+    fontWeight: 700,
+    color: COLOR.accent,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
   },
   tableCellHeader: {
     fontSize: 7.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textTransform: "uppercase",
@@ -404,7 +423,7 @@ const styles = StyleSheet.create({
   },
   tableCellHeaderCenter: {
     fontSize: 7.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textTransform: "uppercase",
@@ -415,7 +434,7 @@ const styles = StyleSheet.create({
   tableCellData: {
     fontSize: 9,
     color: COLOR.ink,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 400,
   },
   tableCellMono: {
@@ -427,13 +446,13 @@ const styles = StyleSheet.create({
   tableCellBold: {
     fontSize: 9,
     color: COLOR.ink,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
   },
   tableCellAccent: {
     fontSize: 9,
     color: COLOR.accent,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
   },
   tableCellMuted: {
@@ -441,22 +460,57 @@ const styles = StyleSheet.create({
     color: COLOR.inkMuted,
     textAlign: "center",
   },
-  stackedCell: { alignItems: "center" },
-  stackedHeaderCell: { alignItems: "center", justifyContent: "center" },
+  ledgerCellBase: {
+    alignItems: "flex-start",
+    justifyContent: "center",
+    paddingVertical: 1,
+    paddingLeft: 8,
+    paddingRight: 8,
+  },
+  ledgerCellCenter: {
+    alignItems: "center",
+  },
+  ledgerHeaderDate: {
+    paddingLeft: 8,
+  },
+  ledgerCellRemarks: {
+    paddingRight: 8,
+  },
+  stackedHeaderCell: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  varietyBreakdownLine: {
+    fontSize: 9,
+    lineHeight: 1.35,
+  },
+  varietyBreakdownLineSpacing: {
+    marginBottom: 2,
+  },
+  varietyBreakdownName: {
+    color: COLOR.ink,
+    fontFamily: "Inter",
+    fontWeight: 700,
+  },
+  varietyBreakdownQty: {
+    color: COLOR.inkSoft,
+    fontFamily: "Inter",
+    fontWeight: 400,
+  },
   subText: {
     fontSize: 7,
     color: COLOR.inkSoft,
     marginTop: 1.5,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 400,
   },
   totalsRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   totalsLabel: {
     fontSize: 8,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.accent,
     textTransform: "uppercase",
@@ -464,14 +518,14 @@ const styles = StyleSheet.create({
   },
   totalsValue: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textAlign: "center",
   },
   totalsSizeValue: {
     fontSize: 9,
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.ink,
     textAlign: "center",
@@ -506,7 +560,7 @@ const styles = StyleSheet.create({
   footerBrandLogo: { width: 11, height: 11, marginRight: 5 },
   footerBrandText: { fontSize: 7, color: COLOR.inkMuted, letterSpacing: 0.4 },
   footerBrandHighlight: {
-    fontFamily: "Roboto",
+    fontFamily: "Inter",
     fontWeight: 700,
     color: COLOR.inkSoft,
   },
@@ -556,10 +610,96 @@ function getDynamicColumnWidths(
   );
 }
 
+function isLedgerEmptyValue(value: string | number): boolean {
+  return value === "" || value === "—";
+}
+
 function formatLedgerCellDisplay(value: string | number): string {
-  if (value === "" || value === "—") return "—";
+  if (isLedgerEmptyValue(value)) return "";
   if (typeof value === "number") return value.toLocaleString("en-IN");
   return value;
+}
+
+function isNumericLedgerColumn(column: LedgerExportColumn): boolean {
+  return (
+    column.id.startsWith("size-") ||
+    column.id === "rowBags" ||
+    column.id === "totalBags"
+  );
+}
+
+function getLedgerDataCellContainerStyle(
+  column: LedgerExportColumn,
+  width: string,
+  depthPadding: number,
+) {
+  return [
+    styles.ledgerCellBase,
+    ...(isNumericLedgerColumn(column) ? [styles.ledgerCellCenter] : []),
+    ...(column.id === "remarks" ? [styles.ledgerCellRemarks] : []),
+    { width, paddingLeft: depthPadding },
+  ];
+}
+
+function getLedgerHeaderCellContainerStyle(
+  column: LedgerExportColumn,
+  width: string,
+) {
+  return [
+    styles.ledgerCellBase,
+    ...(isNumericLedgerColumn(column) ? [styles.ledgerCellCenter] : []),
+    ...(column.id === "date" ? [styles.ledgerHeaderDate] : []),
+    ...(column.id === "remarks" ? [styles.ledgerCellRemarks] : []),
+    { width },
+  ];
+}
+
+function renderVarietyLedgerCell(
+  variety: PdfLedgerVarietyValue | null,
+  column: LedgerExportColumn,
+  columnWidths: Record<string, string>,
+  depthPadding: number,
+) {
+  const width = columnWidths[column.id] ?? "8%";
+  const containerStyle = getLedgerDataCellContainerStyle(
+    column,
+    width,
+    depthPadding,
+  );
+
+  if (!variety) {
+    return <View key={column.id} style={containerStyle} />;
+  }
+
+  if (variety.type === "plain") {
+    const display =
+      variety.value === "" || variety.value === "—" ? "" : variety.value;
+
+    return (
+      <View key={column.id} style={containerStyle}>
+        {display ? <Text style={styles.tableCellBold}>{display}</Text> : null}
+      </View>
+    );
+  }
+
+  return (
+    <View key={column.id} style={containerStyle}>
+      {variety.lines.map((line, index) => (
+        <Text
+          key={line.variety}
+          style={[
+            styles.varietyBreakdownLine,
+            ...(index < variety.lines.length - 1
+              ? [styles.varietyBreakdownLineSpacing]
+              : []),
+          ]}
+        >
+          <Text style={styles.varietyBreakdownName}>{line.variety}</Text>
+          <Text style={styles.varietyBreakdownQty}> ({line.quantity})</Text>
+        </Text>
+      ))}
+    </View>
+  );
 }
 
 function renderLedgerDataCell(
@@ -570,63 +710,73 @@ function renderLedgerDataCell(
   options: {
     isGroup?: boolean;
     isOpeningBalance?: boolean;
+    isFooterTotal?: boolean;
     depthPadding?: number;
   } = {},
 ) {
   const width = columnWidths[column.id] ?? "8%";
-  const isNumeric =
-    column.id.startsWith("size-") ||
-    column.id === "rowBags" ||
-    column.id === "totalBags";
   const depthPadding =
     columnIndex === 0 && options.depthPadding ? options.depthPadding : 0;
+  const containerStyle = getLedgerDataCellContainerStyle(
+    column,
+    width,
+    depthPadding,
+  );
 
-  if (typeof value === "string" && value.includes("\n")) {
+  if (
+    typeof value === "string" &&
+    value.includes("\n") &&
+    column.id.startsWith("size-")
+  ) {
     const [main, sub] = value.split("\n");
     return (
-      <View
-        key={column.id}
-        style={{
-          width,
-          alignItems: isNumeric ? "center" : "flex-start",
-          paddingLeft: depthPadding,
-        }}
-      >
-        <View style={styles.stackedCell}>
-          <Text style={styles.tableCellBold}>{main}</Text>
-          <Text style={styles.subText}>{sub}</Text>
-        </View>
+      <View key={column.id} style={containerStyle}>
+        <Text style={styles.tableCellBold}>{main}</Text>
+        <Text style={styles.subText}>{sub}</Text>
       </View>
     );
   }
 
   const display = formatLedgerCellDisplay(value);
   const textStyle =
-    columnIndex === 0 && options.isGroup
-      ? styles.groupLabel
-      : columnIndex === 0 && options.isOpeningBalance
-        ? styles.tableCellAccent
+    columnIndex === 0 && options.isFooterTotal
+      ? styles.footerTotalLabel
+      : columnIndex === 0 && options.isGroup
+        ? styles.groupLabel
+        : columnIndex === 0 && options.isOpeningBalance
+          ? styles.tableCellAccent
         : column.id === "gatePassNo" || column.id === "manualParchiNumber"
           ? styles.tableCellMono
           : column.id === "variety" ||
               column.id === "rowBags" ||
               column.id === "totalBags"
             ? styles.tableCellBold
-            : display === "—"
-              ? styles.tableCellMuted
-              : styles.tableCellData;
+            : styles.tableCellData;
 
   return (
+    <View key={column.id} style={containerStyle}>
+      {display ? <Text style={textStyle}>{display}</Text> : null}
+    </View>
+  );
+}
+
+function LedgerTableHeaderRow({
+  exportColumns,
+  columnWidths,
+  fixed,
+}: {
+  exportColumns: LedgerExportColumn[];
+  columnWidths: Record<string, string>;
+  fixed?: boolean;
+}) {
+  return (
     <View
-      key={column.id}
-      style={{
-        width,
-        alignItems: isNumeric ? "center" : "flex-start",
-        paddingLeft: depthPadding,
-        paddingRight: column.id === "remarks" ? 6 : 0,
-      }}
+      style={styles.tableHeaderRow}
+      {...(fixed ? { fixed: true, minPresenceAhead: 28 } : {})}
     >
-      <Text style={textStyle}>{display}</Text>
+      {exportColumns.map((column) =>
+        renderLedgerHeaderCell(column, columnWidths),
+      )}
     </View>
   );
 }
@@ -636,25 +786,20 @@ function renderLedgerHeaderCell(
   columnWidths: Record<string, string>,
 ) {
   const width = columnWidths[column.id] ?? "8%";
-  const isNumeric =
-    column.id.startsWith("size-") ||
-    column.id === "rowBags" ||
-    column.id === "totalBags";
   const isGatePass = column.id === "gatePassNo";
   const isManualParchi = column.id === "manualParchiNumber";
+  const isStockFilter = column.id === "stockFilter";
+  const isCustomMarka = column.id === "customMarka";
   const isRowBags = column.id === "rowBags";
   const isCumulativeTotal = column.id === "totalBags";
+  const isStackedHeader = isRowBags || isCumulativeTotal;
+  const containerStyle = [
+    ...getLedgerHeaderCellContainerStyle(column, width),
+    ...(isStackedHeader ? [styles.stackedHeaderCell] : []),
+  ];
 
   return (
-    <View
-      key={column.id}
-      style={{
-        width,
-        alignItems: isNumeric ? "center" : "flex-start",
-        paddingLeft: column.id === "date" ? 6 : 0,
-        paddingRight: column.id === "remarks" ? 6 : 0,
-      }}
-    >
+    <View key={column.id} style={containerStyle}>
       {isGatePass ? (
         <>
           <Text style={styles.tableCellHeader}>Gate</Text>
@@ -665,20 +810,32 @@ function renderLedgerHeaderCell(
           <Text style={styles.tableCellHeader}>Manual</Text>
           <Text style={styles.tableCellHeader}>Parchi</Text>
         </>
+      ) : isStockFilter ? (
+        <>
+          <Text style={styles.tableCellHeader}>Stock</Text>
+          <Text style={styles.tableCellHeader}>Filter</Text>
+        </>
+      ) : isCustomMarka ? (
+        <>
+          <Text style={styles.tableCellHeader}>Custom</Text>
+          <Text style={styles.tableCellHeader}>Marka</Text>
+        </>
       ) : isRowBags ? (
-        <View style={styles.stackedHeaderCell}>
+        <>
           <Text style={styles.tableCellHeaderCenter}>Total</Text>
           <Text style={styles.tableCellHeaderCenter}>Bags</Text>
-        </View>
+        </>
       ) : isCumulativeTotal ? (
-        <View style={styles.stackedHeaderCell}>
+        <>
           <Text style={styles.tableCellHeaderCenter}>Cumulative</Text>
           <Text style={styles.tableCellHeaderCenter}>Total</Text>
-        </View>
+        </>
       ) : (
         <Text
           style={
-            isNumeric ? styles.tableCellHeaderCenter : styles.tableCellHeader
+            isNumericLedgerColumn(column)
+              ? styles.tableCellHeaderCenter
+              : styles.tableCellHeader
           }
         >
           {column.header}
@@ -792,17 +949,13 @@ function LedgerTable({
   );
   const columnWidths = getDynamicColumnWidths(exportColumns);
 
-  const getRowStyle = (row: PdfLedgerItem, index: number) => {
+  const getRowStyle = (row: PdfLedgerItem) => {
     if (row.kind === "group") {
       return [styles.tableRow, styles.groupRow];
     }
 
     if (row.isOpeningBalance) {
       return [styles.tableRow, styles.highlightRow];
-    }
-
-    if (index % 2 === 1) {
-      return [styles.tableRow, styles.tableRowAlt];
     }
 
     return [styles.tableRow];
@@ -818,19 +971,31 @@ function LedgerTable({
 
   return (
     <View style={styles.table}>
-      <View style={styles.tableHeaderRow}>
-        {exportColumns.map((column) =>
-          renderLedgerHeaderCell(column, columnWidths),
-        )}
-      </View>
+      <LedgerTableHeaderRow
+        exportColumns={exportColumns}
+        columnWidths={columnWidths}
+        fixed
+      />
 
       {data.map((row, index) => (
-        <View key={getRowKey(row, index)} style={getRowStyle(row, index)}>
+        <View key={getRowKey(row, index)} wrap={false} style={getRowStyle(row)}>
           {exportColumns.map((column, columnIndex) => {
             const depthPadding =
               row.kind === "group"
                 ? 8 + row.depth * 10
                 : 6 + row.depth * 8;
+
+            if (column.id === "variety" && row.kind === "leaf") {
+              return renderVarietyLedgerCell(
+                row.suppressedGroupColumns.includes("variety")
+                  ? null
+                  : row.variety,
+                column,
+                columnWidths,
+                depthPadding,
+              );
+            }
+
             const value =
               row.kind === "group"
                 ? getGroupCellValue(row, column, columnIndex)
@@ -847,7 +1012,7 @@ function LedgerTable({
       ))}
 
       {data.length > 0 ? (
-        <View style={[styles.totalsRow, styles.highlightFooterRow]}>
+        <View wrap={false} style={[styles.totalsRow, styles.highlightFooterRow]}>
           {exportColumns.map((column, columnIndex) => {
             let value: string | number = "";
 
@@ -856,9 +1021,9 @@ function LedgerTable({
             } else if (column.id.startsWith("size-")) {
               const size = column.id.replace(/^size-/, "");
               const sizeTotal = footerSizeTotals[size] ?? 0;
-              value = sizeTotal !== 0 ? sizeTotal : "—";
+              value = sizeTotal !== 0 ? sizeTotal : "";
             } else if (column.id === "rowBags") {
-              value = rowBagsTotal > 0 ? rowBagsTotal : "—";
+              value = rowBagsTotal > 0 ? rowBagsTotal : "";
             } else if (column.id === "totalBags") {
               value = closingBalance;
             }
@@ -868,7 +1033,10 @@ function LedgerTable({
               column,
               columnIndex,
               columnWidths,
-              { isGroup: columnIndex === 0 },
+              {
+                isGroup: columnIndex === 0,
+                isFooterTotal: columnIndex === 0,
+              },
             );
           })}
         </View>
@@ -922,7 +1090,38 @@ function CenteredLetterhead({
   );
 }
 
-function FarmerStockLedgerPage({
+function LedgerReportFooter({ coldopLogo }: { coldopLogo?: string }) {
+  return (
+    <View style={styles.footer} fixed>
+      <View style={styles.footerRule} />
+      <View style={styles.footerRow}>
+        <View style={styles.footerColLeft}>
+          <Text style={styles.footerDisclosure}>Computer-generated ledger.</Text>
+        </View>
+        <View style={styles.footerColCenter}>
+          <View style={styles.footerBrand}>
+            {coldopLogo ? (
+              <Image src={coldopLogo} style={styles.footerBrandLogo} />
+            ) : null}
+            <Text style={styles.footerBrandText}>
+              Powered by <Text style={styles.footerBrandHighlight}>Coldop</Text>
+            </Text>
+          </View>
+        </View>
+        <View style={styles.footerColRight}>
+          <Text
+            style={styles.footerPage}
+            render={({ pageNumber, totalPages }) =>
+              `Page ${pageNumber} of ${totalPages}`
+            }
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function FarmerStockLedgerCoverPage({
   coldStorageName,
   coldStorageAddress,
   coldStorageLogo,
@@ -931,27 +1130,12 @@ function FarmerStockLedgerPage({
   stats,
   stockSummary,
   sizeColumns,
-  exportColumns,
-  incomingLedger,
-  outgoingLedger,
-  incomingFooterSizes,
-  outgoingFooterSizes,
-  incomingClosingBalance,
-  outgoingClosingBalance,
-  showStockFilter,
-  showCustomMarka,
   generatedAt,
 }: FarmerStockLedgerReportProps) {
   const farmerAddressLines = farmer.address.split("\n").join("\n");
-  const ledgerExport: LedgerExportContext = {
-    exportColumns,
-    sizeColumns,
-    showStockFilter,
-    showCustomMarka,
-  };
 
   return (
-    <Page size="A4" orientation="landscape" style={styles.page}>
+    <Page size="A4" orientation="landscape" style={styles.page} wrap>
       <CenteredLetterhead
         storageName={coldStorageName}
         storageLocation={coldStorageAddress}
@@ -1031,7 +1215,29 @@ function FarmerStockLedgerPage({
       </View>
       <SummaryTable matrix={stockSummary} sizeColumns={sizeColumns} />
 
-      <View style={styles.sectionHeaderRow} break>
+      <LedgerReportFooter coldopLogo={coldopLogo} />
+    </Page>
+  );
+}
+
+function FarmerStockLedgerIncomingPage({
+  coldopLogo,
+  incomingLedger,
+  ledgerExport,
+  incomingFooterSizes,
+  incomingClosingBalance,
+  stats,
+}: {
+  coldopLogo?: string;
+  incomingLedger: PdfLedgerItem[];
+  ledgerExport: LedgerExportContext;
+  incomingFooterSizes: Record<string, number>;
+  incomingClosingBalance: number;
+  stats: FarmerStockLedgerReportProps["stats"];
+}) {
+  return (
+    <Page size="A4" orientation="landscape" style={styles.page} wrap>
+      <View style={styles.sectionHeaderRow}>
         <View style={styles.sectionTick} />
         <Text style={styles.sectionTitle}>Incoming Details</Text>
         <View style={styles.sectionRule} />
@@ -1047,7 +1253,29 @@ function FarmerStockLedgerPage({
         />
       </View>
 
-      <View style={[styles.sectionHeaderRow, styles.outgoingSectionHeader]}>
+      <LedgerReportFooter coldopLogo={coldopLogo} />
+    </Page>
+  );
+}
+
+function FarmerStockLedgerOutgoingPage({
+  coldopLogo,
+  outgoingLedger,
+  ledgerExport,
+  outgoingFooterSizes,
+  outgoingClosingBalance,
+  stats,
+}: {
+  coldopLogo?: string;
+  outgoingLedger: PdfLedgerItem[];
+  ledgerExport: LedgerExportContext;
+  outgoingFooterSizes: Record<string, number>;
+  outgoingClosingBalance: number;
+  stats: FarmerStockLedgerReportProps["stats"];
+}) {
+  return (
+    <Page size="A4" orientation="landscape" style={styles.page} wrap>
+      <View style={styles.sectionHeaderRow}>
         <View style={styles.sectionTick} />
         <Text style={styles.sectionTitle}>Outgoing Details</Text>
         <View style={styles.sectionRule} />
@@ -1061,33 +1289,39 @@ function FarmerStockLedgerPage({
         rowBagsTotal={stats.outgoingBags}
       />
 
-      <View style={styles.footer} fixed>
-        <View style={styles.footerRule} />
-        <View style={styles.footerRow}>
-          <View style={styles.footerColLeft}>
-            <Text style={styles.footerDisclosure}>Computer-generated ledger.</Text>
-          </View>
-          <View style={styles.footerColCenter}>
-            <View style={styles.footerBrand}>
-              {coldopLogo ? (
-                <Image src={coldopLogo} style={styles.footerBrandLogo} />
-              ) : null}
-              <Text style={styles.footerBrandText}>
-                Powered by <Text style={styles.footerBrandHighlight}>Coldop</Text>
-              </Text>
-            </View>
-          </View>
-          <View style={styles.footerColRight}>
-            <Text
-              style={styles.footerPage}
-              render={({ pageNumber, totalPages }) =>
-                `Page ${pageNumber} of ${totalPages}`
-              }
-            />
-          </View>
-        </View>
-      </View>
+      <LedgerReportFooter coldopLogo={coldopLogo} />
     </Page>
+  );
+}
+
+function FarmerStockLedgerPages(props: FarmerStockLedgerReportProps) {
+  const ledgerExport: LedgerExportContext = {
+    exportColumns: props.exportColumns,
+    sizeColumns: props.sizeColumns,
+    showStockFilter: props.showStockFilter,
+    showCustomMarka: props.showCustomMarka,
+  };
+
+  return (
+    <>
+      <FarmerStockLedgerCoverPage {...props} />
+      <FarmerStockLedgerIncomingPage
+        coldopLogo={props.coldopLogo}
+        incomingLedger={props.incomingLedger}
+        ledgerExport={ledgerExport}
+        incomingFooterSizes={props.incomingFooterSizes}
+        incomingClosingBalance={props.incomingClosingBalance}
+        stats={props.stats}
+      />
+      <FarmerStockLedgerOutgoingPage
+        coldopLogo={props.coldopLogo}
+        outgoingLedger={props.outgoingLedger}
+        ledgerExport={ledgerExport}
+        outgoingFooterSizes={props.outgoingFooterSizes}
+        outgoingClosingBalance={props.outgoingClosingBalance}
+        stats={props.stats}
+      />
+    </>
   );
 }
 
@@ -1099,7 +1333,7 @@ export default function FarmerStockLedgerReport(props: FarmerStockLedgerReportPr
       subject="Farmer Stock Ledger"
       title={`${props.coldStorageName} - Ledger`}
     >
-      <FarmerStockLedgerPage {...props} />
+      <FarmerStockLedgerPages {...props} />
     </Document>
   );
 }

@@ -9,6 +9,7 @@ import type {
 import { buildFarmerReportSections } from "./build-farmer-report-sections"
 import {
   buildFarmerStockLedgerPdfData,
+  formatPdfVarietyValue,
   type PdfLedgerItem,
   type PdfLedgerLeafRow,
 } from "./build-farmer-stock-ledger-pdf-data"
@@ -288,5 +289,95 @@ describe("buildFarmerStockLedgerPdfData", () => {
     const outgoingRow = result.outgoingLedger[0]
     expectLeafRow(outgoingRow)
     expect(outgoingRow.stockFilter).toBe("Farmer")
+  })
+
+  it("maps multi-variety outgoing rows with a full breakdown", () => {
+    const entries: DaybookEntry[] = [
+      createOutgoingPass({
+        variety: "Atlantic",
+        orderDetails: [
+          {
+            size: "Ration",
+            quantityAvailable: 80,
+            quantityIssued: 20,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+          {
+            size: "Ration",
+            quantityAvailable: 50,
+            quantityIssued: 15,
+            location: { chamber: "2", floor: "1", row: "B" },
+          },
+          {
+            size: "Goli",
+            quantityAvailable: 10,
+            quantityIssued: 10,
+            location: { chamber: "2", floor: "1", row: "C" },
+          },
+        ],
+        incomingGatePassSnapshots: [
+          {
+            _id: "incoming-1",
+            gatePassNo: 101,
+            variety: "Atlantic",
+            bagSizes: [
+              {
+                name: "Ration",
+                initialQuantity: 100,
+                currentQuantity: 80,
+                type: "RECEIPT",
+                quantityIssued: 0,
+                location: { chamber: "1", floor: "1", row: "A" },
+              },
+            ],
+          },
+          {
+            _id: "incoming-2",
+            gatePassNo: 102,
+            variety: "Chipsona",
+            bagSizes: [
+              {
+                name: "Ration",
+                initialQuantity: 50,
+                currentQuantity: 50,
+                type: "RECEIPT",
+                quantityIssued: 0,
+                location: { chamber: "2", floor: "1", row: "B" },
+              },
+              {
+                name: "Goli",
+                initialQuantity: 10,
+                currentQuantity: 10,
+                type: "RECEIPT",
+                quantityIssued: 0,
+                location: { chamber: "2", floor: "1", row: "C" },
+              },
+            ],
+          },
+        ],
+      }),
+    ]
+    const sections = buildFarmerReportSections(entries)
+
+    const result = buildFarmerStockLedgerPdfData({
+      entries,
+      sections,
+      summaries: { ...EMPTY_SUMMARIES, totalOutgoingBags: 45 },
+      commodities,
+      search,
+    })
+
+    const outgoingRow = result.outgoingLedger[0]
+    expectLeafRow(outgoingRow)
+    expect(outgoingRow.variety).toEqual({
+      type: "breakdown",
+      lines: [
+        { variety: "Atlantic", quantity: "20" },
+        { variety: "Chipsona", quantity: "25" },
+      ],
+    })
+    expect(formatPdfVarietyValue(outgoingRow.variety)).toBe(
+      "Atlantic (20)\nChipsona (25)",
+    )
   })
 })

@@ -22,12 +22,12 @@ import { getFarmerReportColumnsForSizes } from "@/features/people-report/compone
 import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
 import {
   collectUniqueBagSizes,
-  formatOutgoingVarietyBreakdownForExport,
   getGatePassTotalBags,
   getGatePassSizeQuantityLines,
   getGatePassStockFilter,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
+  getOutgoingVarietyBreakdown,
   hasMultipleOutgoingVarieties,
   orderBagSizes,
   sumSizeColumn,
@@ -37,11 +37,26 @@ export type PdfLedgerSizeValue =
   | { type: "stacked"; main: string; sub: string }
   | { type: "plain"; value: string }
 
+export type PdfLedgerVarietyValue =
+  | {
+      type: "breakdown"
+      lines: Array<{ variety: string; quantity: string }>
+    }
+  | { type: "plain"; value: string }
+
+export function formatPdfVarietyValue(value: PdfLedgerVarietyValue): string {
+  if (value.type === "plain") return value.value
+
+  return value.lines
+    .map((line) => `${line.variety} (${line.quantity})`)
+    .join("\n")
+}
+
 export type PdfLedgerRow = {
   date: string
   gatePass: string
   manualParchi: string
-  variety: string
+  variety: PdfLedgerVarietyValue
   stockFilter: string
   customMarka: string
   sizes: Record<string, PdfLedgerSizeValue | null>
@@ -197,17 +212,25 @@ function mapOutgoingSizeValueForEntry(
   }
 }
 
-function mapVarietyForEntry(row: FarmerReportTableRow): string {
-  if (row.kind === "opening-balance" || !row.entry) return "—"
+function mapVarietyForEntry(row: FarmerReportTableRow): PdfLedgerVarietyValue {
+  if (row.kind === "opening-balance" || !row.entry) {
+    return { type: "plain", value: "—" }
+  }
 
   if (
     isOutgoingDaybookEntry(row.entry) &&
     hasMultipleOutgoingVarieties(row.entry)
   ) {
-    return formatOutgoingVarietyBreakdownForExport(row.entry)
+    return {
+      type: "breakdown",
+      lines: getOutgoingVarietyBreakdown(row.entry).map((line) => ({
+        variety: line.variety,
+        quantity: formatQuantity(line.quantity),
+      })),
+    }
   }
 
-  return getGatePassVariety(row.entry)
+  return { type: "plain", value: getGatePassVariety(row.entry) }
 }
 
 function mapSizeValueForEntry(
@@ -303,7 +326,7 @@ export function mapFarmerReportRowToPdfLedger(
       date: "Opening Balance",
       gatePass: "—",
       manualParchi: "—",
-      variety: "—",
+      variety: { type: "plain", value: "—" },
       stockFilter: "—",
       customMarka: "—",
       sizes,

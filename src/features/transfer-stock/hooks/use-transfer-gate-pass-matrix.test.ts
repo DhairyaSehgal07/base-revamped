@@ -289,4 +289,39 @@ describe("useTransferGatePassMatrix controlled stockFilter", () => {
     expect(result.current.displayGroups).toHaveLength(1)
     expect(result.current.displayGroups[0]?.passes[0]?._id).toBe("pass-owned")
   })
+
+  it("scopes location filter options to the controlled stock filter", () => {
+    const passes = [
+      {
+        ...makePass("pass-owned", "Chipsona", 10, {
+          chamber: "4",
+          floor: "2",
+          row: "B",
+        }),
+        stockFilter: "Owned",
+      },
+      {
+        ...makePass("pass-farmer", "Chipsona", 11, {
+          chamber: "1",
+          floor: "1",
+          row: "A",
+        }),
+        stockFilter: "Farmer",
+      },
+    ]
+
+    const { result } = renderHook(() =>
+      useTransferGatePassMatrix({
+        allPasses: passes,
+        allocations: {},
+        onAllocationsChange: vi.fn(),
+        varietyFilterMode: "multi-optional",
+        stockFilter: "Owned",
+      })
+    )
+
+    expect(result.current.uniqueLocations.chambers).toEqual(["4"])
+    expect(result.current.uniqueLocations.floors).toEqual(["2"])
+    expect(result.current.uniqueLocations.rows).toEqual(["B"])
+  })
 })
