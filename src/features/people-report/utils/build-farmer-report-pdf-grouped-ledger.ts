@@ -13,8 +13,19 @@ import {
 
 import { farmerReportSortingFns } from "@/features/people-report/components/columns"
 import { FARMER_REPORT_DEFAULT_SORTING } from "@/features/people-report/components/data-table"
-import type { FarmerReportTableRow } from "@/features/people-report/utils/build-farmer-report-sections"
+import type {
+  FarmerReportSectionMode,
+  FarmerReportTableRow,
+} from "@/features/people-report/utils/build-farmer-report-sections"
+import {
+  applyRunningTotalsInDisplayOrder,
+  getFarmerReportRowKey,
+  getFarmerReportSectionStartingBalance,
+} from "@/features/people-report/utils/build-farmer-report-sections"
 import { collectExportRows } from "@/features/people-report/utils/export-cell-value"
+import {
+  getOrderedRowsForRunningTotals,
+} from "@/features/people-report/utils/report-display-order"
 import {
   mapFarmerReportRowToPdfLedger,
   type PdfLedgerGroupRow,
@@ -44,6 +55,7 @@ function mapTableRowToPdfItem(
   row: Row<FarmerReportTableRow>,
   sizeColumns: string[],
   grouping: GroupingState,
+  runningTotalByRowKey: Map<string, number>,
 ): PdfLedgerItem | null {
   if (row.getIsGrouped()) {
     const columnId = row.groupingColumnId
@@ -72,7 +84,11 @@ function mapTableRowToPdfItem(
   }
 
   const leafRow: PdfLedgerLeafRow = {
-    ...mapFarmerReportRowToPdfLedger(row.original, sizeColumns),
+    ...mapFarmerReportRowToPdfLedger(
+      row.original,
+      sizeColumns,
+      runningTotalByRowKey.get(getFarmerReportRowKey(row.original)),
+    ),
     kind: "leaf",
     depth: row.depth,
     suppressedGroupColumns: getSuppressedGroupColumns(grouping, row.depth),
@@ -85,9 +101,10 @@ function flattenTableRows(
   rows: Row<FarmerReportTableRow>[],
   sizeColumns: string[],
   grouping: GroupingState,
+  runningTotalByRowKey: Map<string, number>,
 ): PdfLedgerItem[] {
   return rows
-    .map((row) => mapTableRowToPdfItem(row, sizeColumns, grouping))
+    .map((row) => mapTableRowToPdfItem(row, sizeColumns, grouping, runningTotalByRowKey))
     .filter((item): item is PdfLedgerItem => item !== null)
 }
 
@@ -97,6 +114,7 @@ export type BuildPdfGroupedLedgerItemsInput = {
   grouping: GroupingState
   sorting?: SortingState
   sizeColumns: string[]
+  sectionMode: FarmerReportSectionMode
 }
 
 export type BuildPdfGroupedLedgerItemsResult = {
@@ -137,19 +155,13 @@ export function buildPdfGroupedLedgerItems({
   grouping,
   sorting = FARMER_REPORT_DEFAULT_SORTING,
   sizeColumns,
+  sectionMode,
 }: BuildPdfGroupedLedgerItemsInput): BuildPdfGroupedLedgerItemsResult {
   const isGroupingActive = grouping.length > 0
 
-  const openingBalanceRows: PdfLedgerLeafRow[] = isGroupingActive
-    ? rows
-        .filter((row) => row.kind === "opening-balance")
-        .map((row) => ({
-          ...mapFarmerReportRowToPdfLedger(row, sizeColumns),
-          kind: "leaf" as const,
-          depth: 0,
-          suppressedGroupColumns: [],
-        }))
-    : []
+  const openingBalanceSourceRows = rows.filter(
+    (row) => row.kind === "opening-balance",
+  )
 
   const groupableData = isGroupingActive
     ? rows.filter((row) => row.kind !== "opening-balance")
@@ -162,10 +174,34 @@ export function buildPdfGroupedLedgerItems({
     sorting,
   )
 
+  const runningTotalByRowKey = applyRunningTotalsInDisplayOrder(
+    getOrderedRowsForRunningTotals(
+      openingBalanceSourceRows,
+      table.getRowModel().rows,
+      isGroupingActive,
+    ),
+    sectionMode,
+    getFarmerReportSectionStartingBalance(rows, sectionMode),
+  )
+
+  const openingBalanceRows: PdfLedgerLeafRow[] = isGroupingActive
+    ? openingBalanceSourceRows.map((row) => ({
+        ...mapFarmerReportRowToPdfLedger(
+          row,
+          sizeColumns,
+          runningTotalByRowKey.get(getFarmerReportRowKey(row)),
+        ),
+        kind: "leaf" as const,
+        depth: 0,
+        suppressedGroupColumns: [],
+      }))
+    : []
+
   const items = flattenTableRows(
     table.getRowModel().rows,
     sizeColumns,
     grouping,
+    runningTotalByRowKey,
   )
 
   return { openingBalanceRows, items }
@@ -175,22 +211,45 @@ export function buildPdfGroupedLedgerItemsFromTable(
   table: Table<FarmerReportTableRow>,
   sizeColumns: string[],
   sectionRows: FarmerReportTableRow[],
+  sectionMode: FarmerReportSectionMode,
 ): BuildPdfGroupedLedgerItemsResult {
   const grouping = table.getState().grouping
   const isGroupingActive = grouping.length > 0
+  const exportRows = collectExportRows(table)
+
+  const openingBalanceSourceRows = sectionRows.filter(
+    (row) => row.kind === "opening-balance",
+  )
+
+  const runningTotalByRowKey = applyRunningTotalsInDisplayOrder(
+    getOrderedRowsForRunningTotals(
+      openingBalanceSourceRows,
+      exportRows,
+      isGroupingActive,
+    ),
+    sectionMode,
+    getFarmerReportSectionStartingBalance(sectionRows, sectionMode),
+  )
 
   const openingBalanceRows: PdfLedgerLeafRow[] = isGroupingActive
-    ? sectionRows
-        .filter((row) => row.kind === "opening-balance")
-        .map((row) => ({
-          ...mapFarmerReportRowToPdfLedger(row, sizeColumns),
-          kind: "leaf" as const,
-          depth: 0,
-          suppressedGroupColumns: [],
-        }))
+    ? openingBalanceSourceRows.map((row) => ({
+        ...mapFarmerReportRowToPdfLedger(
+          row,
+          sizeColumns,
+          runningTotalByRowKey.get(getFarmerReportRowKey(row)),
+        ),
+        kind: "leaf" as const,
+        depth: 0,
+        suppressedGroupColumns: [],
+      }))
     : []
 
-  const items = flattenTableRows(collectExportRows(table), sizeColumns, grouping)
+  const items = flattenTableRows(
+    exportRows,
+    sizeColumns,
+    grouping,
+    runningTotalByRowKey,
+  )
 
   return { openingBalanceRows, items }
 }

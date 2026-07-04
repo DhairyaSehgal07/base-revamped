@@ -316,7 +316,9 @@ function computeExportStats(entries: DaybookEntry[]): FarmerStockLedgerPdfData["
 export function mapFarmerReportRowToPdfLedger(
   row: FarmerReportTableRow,
   sizeColumns: string[],
+  runningTotalOverride?: number,
 ): PdfLedgerRow {
+  const runningTotal = runningTotalOverride ?? row.runningTotal
   const sizes = Object.fromEntries(
     sizeColumns.map((size) => [size, mapSizeValueForEntry(row, size)]),
   ) as Record<string, PdfLedgerSizeValue | null>
@@ -331,7 +333,7 @@ export function mapFarmerReportRowToPdfLedger(
       customMarka: "—",
       sizes,
       rowBags: formatQuantity(getFarmerReportRowBagTotal(row)),
-      total: formatQuantity(row.runningTotal),
+      total: formatQuantity(runningTotal),
       remarks: "—",
       isOpeningBalance: true,
     }
@@ -347,7 +349,7 @@ export function mapFarmerReportRowToPdfLedger(
     customMarka: getRowCustomMarka(row),
     sizes,
     rowBags: formatQuantity(getFarmerReportRowBagTotal(row)),
-    total: formatQuantity(row.runningTotal),
+    total: formatQuantity(runningTotal),
     remarks: entry.remarks?.trim() || "—",
   }
 }
@@ -409,6 +411,7 @@ export function buildFarmerStockLedgerPdfData({
         incomingTable,
         sizeColumns,
         sections.incoming,
+        "incoming",
       )
     : buildPdfGroupedLedgerItems({
         rows: sections.incoming,
@@ -416,6 +419,7 @@ export function buildFarmerStockLedgerPdfData({
         grouping,
         sorting: resolvedIncomingSorting,
         sizeColumns,
+        sectionMode: "incoming",
       })
 
   const outgoingResult = outgoingTable
@@ -423,6 +427,7 @@ export function buildFarmerStockLedgerPdfData({
         outgoingTable,
         sizeColumns,
         sections.outgoing,
+        "outgoing",
       )
     : buildPdfGroupedLedgerItems({
         rows: sections.outgoing,
@@ -430,6 +435,7 @@ export function buildFarmerStockLedgerPdfData({
         grouping,
         sorting: resolvedOutgoingSorting,
         sizeColumns,
+        sectionMode: "outgoing",
       })
 
   const stats = computeExportStats(entries)
@@ -441,7 +447,11 @@ export function buildFarmerStockLedgerPdfData({
 
   const outgoingClosingBalance =
     sections.outgoing.length > 0
-      ? sections.outgoing[sections.outgoing.length - 1]!.runningTotal
+      ? (sections.outgoing
+          .filter((row) => row.kind === "gate-pass")
+          .at(-1)?.runningTotal ??
+        sections.outgoing.at(-1)?.runningTotal ??
+        0)
       : 0
 
   return {

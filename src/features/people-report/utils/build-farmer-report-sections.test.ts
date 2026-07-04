@@ -7,6 +7,7 @@ import type {
 } from "@/features/daybook/types"
 
 import {
+  applyRunningTotalsInDisplayOrder,
   buildFarmerReportRows,
   buildFarmerReportSections,
   splitFarmerReportEntries,
@@ -255,5 +256,82 @@ describe("buildFarmerReportSections", () => {
     expect(sections.outgoing).toHaveLength(1)
     expect(sections.outgoing[0]?.kind).toBe("gate-pass")
     expect(sections.outgoing[0]?.runningTotal).toBe(-30)
+  })
+})
+
+describe("applyRunningTotalsInDisplayOrder", () => {
+  it("recomputes outgoing totals for grouped display order", () => {
+    const rows: DaybookEntry[] = [
+      createIncomingPass({
+        gatePassNo: 1,
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 100,
+            currentQuantity: 100,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      }),
+      createOutgoingPass({
+        _id: "outgoing-atlantic",
+        gatePassNo: 2,
+        createdAt: "2026-02-01T10:00:00.000Z",
+        variety: "Atlantic",
+        orderDetails: [
+          {
+            size: "Ration",
+            quantityAvailable: 100,
+            quantityIssued: 10,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      }),
+      createOutgoingPass({
+        _id: "outgoing-cardinal",
+        gatePassNo: 3,
+        createdAt: "2026-03-01T10:00:00.000Z",
+        variety: "Cardinal",
+        orderDetails: [
+          {
+            size: "Ration",
+            quantityAvailable: 90,
+            quantityIssued: 20,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      }),
+      createOutgoingPass({
+        _id: "outgoing-atlantic-2",
+        gatePassNo: 4,
+        createdAt: "2026-04-01T10:00:00.000Z",
+        variety: "Atlantic",
+        orderDetails: [
+          {
+            size: "Ration",
+            quantityAvailable: 70,
+            quantityIssued: 5,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      }),
+    ]
+
+    const sections = buildFarmerReportSections(rows)
+    const openingBalance = sections.outgoing[0]!
+    const atlanticPass = sections.outgoing[1]!
+    const cardinalPass = sections.outgoing[2]!
+    const atlanticPass2 = sections.outgoing[3]!
+
+    const totals = applyRunningTotalsInDisplayOrder(
+      [openingBalance, cardinalPass, atlanticPass, atlanticPass2],
+      "outgoing",
+      100,
+    )
+
+    expect(totals.get("opening-balance")).toBe(100)
+    expect(totals.get("outgoing-cardinal")).toBe(80)
+    expect(totals.get("outgoing-atlantic")).toBe(70)
+    expect(totals.get("outgoing-atlantic-2")).toBe(65)
   })
 })

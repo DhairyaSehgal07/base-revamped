@@ -30,6 +30,52 @@ export function getFarmerReportRowBagTotal(row: FarmerReportTableRow): number {
   return row.rowBags
 }
 
+export function getFarmerReportRowKey(row: FarmerReportTableRow): string {
+  if (row.kind === "opening-balance") return "opening-balance"
+
+  return row.entry?._id ?? `gate-pass-${row.entry?.gatePassNo ?? "unknown"}`
+}
+
+export function getFarmerReportSectionStartingBalance(
+  rows: FarmerReportTableRow[],
+  mode: FarmerReportSectionMode,
+): number {
+  if (mode === "incoming") return 0
+
+  const openingRow = rows.find((row) => row.kind === "opening-balance")
+  return openingRow?.runningTotal ?? 0
+}
+
+/** Recompute running totals for the order rows are shown in the table. */
+export function applyRunningTotalsInDisplayOrder(
+  orderedRows: FarmerReportTableRow[],
+  mode: FarmerReportSectionMode,
+  startingBalance = getFarmerReportSectionStartingBalance(orderedRows, mode),
+): Map<string, number> {
+  const totals = new Map<string, number>()
+  let runningTotal = startingBalance
+
+  for (const row of orderedRows) {
+    if (row.kind === "opening-balance") {
+      totals.set(getFarmerReportRowKey(row), startingBalance)
+      runningTotal = startingBalance
+      continue
+    }
+
+    const rowBags = getFarmerReportRowBagTotal(row)
+
+    if (mode === "incoming") {
+      runningTotal += rowBags
+    } else {
+      runningTotal -= rowBags
+    }
+
+    totals.set(getFarmerReportRowKey(row), runningTotal)
+  }
+
+  return totals
+}
+
 export type FarmerReportSectionMode = "incoming" | "outgoing"
 
 export type FarmerReportSections = {

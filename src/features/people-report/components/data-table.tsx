@@ -36,7 +36,12 @@ import type {
   FarmerReportSectionMode,
   FarmerReportTableRow,
 } from "@/features/people-report/utils/build-farmer-report-sections"
+import {
+  applyRunningTotalsInDisplayOrder,
+  getFarmerReportSectionStartingBalance,
+} from "@/features/people-report/utils/build-farmer-report-sections"
 import { getStoredFarmerReportColumnState } from "@/features/people-report/utils/report-column-preferences"
+import { getOrderedRowsForRunningTotals } from "@/features/people-report/utils/report-display-order"
 import {
   advancedReportGlobalFilterFn,
   type AdvancedReportGlobalFilter,
@@ -58,6 +63,14 @@ import {
 export const FARMER_REPORT_DEFAULT_SORTING: SortingState = [
   { id: "date", desc: false },
 ]
+
+export type FarmerReportTableMeta = {
+  runningTotalByRowKey?: Map<string, number>
+}
+
+export const RunningTotalsContext = React.createContext<Map<string, number>>(
+  new Map(),
+)
 
 export type FarmerReportViewState = {
   columnFilters: ColumnFiltersState
@@ -350,6 +363,20 @@ export function DataTable({
   const visibleColumns = table.getVisibleLeafColumns()
   const hasDataRows = pinnedTableRows.length > 0 || rows.length > 0
 
+  const runningTotalByRowKey = React.useMemo(
+    () =>
+      applyRunningTotalsInDisplayOrder(
+        getOrderedRowsForRunningTotals(
+          pinnedTableRows.map((row) => row.original),
+          rows,
+          isGroupingActive,
+        ),
+        sectionMode,
+        getFarmerReportSectionStartingBalance(data, sectionMode),
+      ),
+    [data, isGroupingActive, pinnedTableRows, rows, sectionMode],
+  )
+
   const handleTableScroll = React.useCallback(() => {
     if (scrollRafRef.current !== null) return
 
@@ -393,12 +420,13 @@ export function DataTable({
   }, [table])
 
   return (
-    <div
-      className={cn(
-        "min-w-0 overflow-hidden",
-        flush ? "rounded-none border-0" : "rounded-lg border border-border",
-      )}
-    >
+    <RunningTotalsContext.Provider value={runningTotalByRowKey}>
+      <div
+        className={cn(
+          "min-w-0 overflow-hidden",
+          flush ? "rounded-none border-0" : "rounded-lg border border-border",
+        )}
+      >
       <div
         ref={scrollContainerRef}
         onScroll={handleTableScroll}
@@ -482,6 +510,7 @@ export function DataTable({
           ) : null}
         </Table>
       </div>
-    </div>
+      </div>
+    </RunningTotalsContext.Provider>
   )
 }

@@ -83,6 +83,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       columns,
       grouping: [],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     expect(result.openingBalanceRows).toHaveLength(0)
@@ -139,6 +140,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       columns,
       grouping: ["variety"],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     const groupRows = result.items.filter((item) => item.kind === "group")
@@ -182,6 +184,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       columns,
       grouping: ["variety", "stockFilter"],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     const groupRows = result.items.filter((item) => item.kind === "group")
@@ -221,6 +224,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       columns,
       grouping: ["variety"],
       sizeColumns,
+      sectionMode: "outgoing",
     })
 
     expect(result.openingBalanceRows).toHaveLength(1)
@@ -252,6 +256,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       grouping: [],
       sorting: [{ id: "gatePassNo", desc: true }],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     const gatePasses = result.items
@@ -284,6 +289,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       grouping: ["variety"],
       sorting: [{ id: "gatePassNo", desc: true }],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     const leafGatePasses = result.items
@@ -329,6 +335,7 @@ describe("buildPdfGroupedLedgerItems", () => {
       columns,
       grouping: ["variety"],
       sizeColumns,
+      sectionMode: "incoming",
     })
 
     const groupRow = result.items.find((item) => item.kind === "group")

@@ -73,7 +73,10 @@ function buildFooterCellContent(
   }
 
   if (columnId === "totalBags") {
-    const closingBalance = rows[rows.length - 1]?.runningTotal ?? 0
+    const closingBalance =
+      gatePassRows.length > 0
+        ? (gatePassRows[gatePassRows.length - 1]?.runningTotal ?? 0)
+        : (getOpeningBalanceRow(rows)?.runningTotal ?? 0)
     return (
       <span className="tabular-nums font-semibold text-foreground">
         {formatQuantity(closingBalance)}

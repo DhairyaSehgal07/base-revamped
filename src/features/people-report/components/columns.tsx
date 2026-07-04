@@ -1,13 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import { memo } from "react"
-import type { ColumnDef, SortingFn } from "@tanstack/react-table"
+import { memo, useContext } from "react"
+import type { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
 
+import { RunningTotalsContext } from "@/features/people-report/components/data-table"
 import type { CommodityPreference } from "@/features/auth/types"
 import type { DaybookEntry } from "@/features/daybook/types"
 import { isIncomingDaybookEntry, isOutgoingDaybookEntry } from "@/features/daybook/types"
 import { formatDaybookDate, formatManualParchi, formatQuantity } from "@/features/daybook/utils/format"
 import {
   getFarmerReportRowBagTotal,
+  getFarmerReportRowKey,
   type FarmerReportTableRow,
 } from "@/features/people-report/utils/build-farmer-report-sections"
 import {
@@ -63,7 +65,20 @@ function getRowSizeSortValue(
 }
 
 function RunningTotalCell({ value }: { value: number }) {
-  return <span className="tabular-nums">{formatQuantity(value)}</span>
+  return (
+    <span className="tabular-nums font-medium text-foreground">
+      {formatQuantity(value)}
+    </span>
+  )
+}
+
+function CumulativeTotalCell({ row }: { row: Row<FarmerReportTableRow> }) {
+  const runningTotalByRowKey = useContext(RunningTotalsContext)
+  const rowKey = getFarmerReportRowKey(row.original)
+  const value =
+    runningTotalByRowKey.get(rowKey) ?? row.original.runningTotal
+
+  return <RunningTotalCell value={value} />
 }
 
 function SizeQuantityCell({
@@ -427,9 +442,7 @@ function buildFarmerReportColumnsForSizes(
       sortingFn: farmerReportNumericSortingFn,
       aggregationFn: noGroupAggregation,
       aggregatedCell: emptyGroupedAggregatedCell,
-      cell: ({ row }) => (
-        <RunningTotalCell value={row.original.runningTotal} />
-      ),
+      cell: ({ row }) => <CumulativeTotalCell row={row} />,
     },
     {
       id: "remarks",
