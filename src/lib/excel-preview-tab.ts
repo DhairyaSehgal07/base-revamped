@@ -1,35 +1,35 @@
 export type ExcelPreviewRow = {
-  values: Array<string | number>
-  boldByColumn?: boolean[]
-  isGroupedOrAggregatedRow?: boolean
-  isSectionTitle?: boolean
-  isTotalsRow?: boolean
-}
+  values: Array<string | number>;
+  boldByColumn?: boolean[];
+  isGroupedOrAggregatedRow?: boolean;
+  isSectionTitle?: boolean;
+  isTotalsRow?: boolean;
+};
 
 export type ExcelPreviewStockSummary = {
-  headers: string[]
-  rows: Array<Array<string | number>>
-  footer: Array<string | number>
-}
+  headers: string[];
+  rows: Array<Array<string | number>>;
+  footer: Array<string | number>;
+};
 
 export type ExcelPreviewData = {
-  title: string
-  subtitle: string
-  dateLabel: string
-  exportedRowCount: number
-  headers: string[]
-  rows: ExcelPreviewRow[]
-  totals?: Array<string | number>
-  metaLines?: string[]
-  stockSummary?: ExcelPreviewStockSummary
-}
+  title: string;
+  subtitle: string;
+  dateLabel: string;
+  exportedRowCount: number;
+  headers: string[];
+  rows: ExcelPreviewRow[];
+  totals?: Array<string | number>;
+  metaLines?: string[];
+  stockSummary?: ExcelPreviewStockSummary;
+};
 
 export type ExcelPreviewUrls = {
-  blobUrl: string
-}
+  blobUrl: string;
+};
 
 /** Cap HTML preview rows so large ledgers stay responsive in the browser tab. */
-export const EXCEL_PREVIEW_MAX_ROWS = 400
+export const EXCEL_PREVIEW_MAX_ROWS = 400;
 
 const PREVIEW_LOADING_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -71,61 +71,58 @@ const PREVIEW_LOADING_HTML = `<!DOCTYPE html>
     <span>Generating Excel preview…</span>
   </div>
 </body>
-</html>`
+</html>`;
 
 function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function escapeHtmlWithLineBreaks(value: string): string {
-  return escapeHtml(value).replace(/\n/g, "<br />")
+  return escapeHtml(value).replace(/\n/g, '<br />');
 }
 
 function formatCellValue(value: string | number | undefined): string {
-  if (value == null || value === "") return ""
-  if (typeof value === "number") {
-    return value.toLocaleString("en-IN")
+  if (value == null || value === '') return '';
+  if (typeof value === 'number') {
+    return value.toLocaleString('en-IN');
   }
-  return String(value)
+  return String(value);
 }
 
-function renderLedgerTableBodyRows(
-  rows: ExcelPreviewRow[],
-  columnCount: number,
-): string {
+function renderLedgerTableBodyRows(rows: ExcelPreviewRow[], columnCount: number): string {
   return rows
     .map((row) => {
       if (row.isSectionTitle) {
-        return `<tr class="section-row"><td colspan="${columnCount}">${escapeHtml(String(row.values[0] ?? ""))}</td></tr>`
+        return `<tr class="section-row"><td colspan="${columnCount}">${escapeHtml(String(row.values[0] ?? ''))}</td></tr>`;
       }
 
       const rowClass = row.isTotalsRow
-        ? "total-row"
+        ? 'total-row'
         : row.isGroupedOrAggregatedRow
-          ? "group-row"
-          : ""
+          ? 'group-row'
+          : '';
 
       const cells = row.values
         .map((value, index) => {
-          const isNumeric = typeof value === "number"
-          const bold = row.boldByColumn?.[index] ? " strong" : ""
-          const align = isNumeric ? " num" : ""
-          const formatted = formatCellValue(value)
+          const isNumeric = typeof value === 'number';
+          const bold = row.boldByColumn?.[index] ? ' strong' : '';
+          const align = isNumeric ? ' num' : '';
+          const formatted = formatCellValue(value);
           const cellHtml =
-            typeof value === "string" && value.includes("\n")
+            typeof value === 'string' && value.includes('\n')
               ? escapeHtmlWithLineBreaks(formatted)
-              : escapeHtml(formatted)
-          return `<td class="${bold}${align}">${cellHtml}</td>`
+              : escapeHtml(formatted);
+          return `<td class="${bold}${align}">${cellHtml}</td>`;
         })
-        .join("")
+        .join('');
 
-      return `<tr class="${rowClass}">${cells}</tr>`
+      return `<tr class="${rowClass}">${cells}</tr>`;
     })
-    .join("")
+    .join('');
 }
 
 function buildLedgerTableHtml(
@@ -133,88 +130,71 @@ function buildLedgerTableHtml(
   headerCells: string,
   columnCount: number,
 ): string {
-  if (rows.length === 0) return ""
+  if (rows.length === 0) return '';
 
   return `<div class="table-wrap">
       <table>
         <thead><tr>${headerCells}</tr></thead>
         <tbody>${renderLedgerTableBodyRows(rows, columnCount)}</tbody>
       </table>
-    </div>`
+    </div>`;
 }
 
-function buildPreviewHtml(
-  preview: ExcelPreviewData,
-  downloadFileName: string,
-): string {
-  const metaLines = preview.metaLines ?? []
-  const columnCount = preview.headers.length
-  const headerCells = preview.headers
-    .map((header) => `<th>${escapeHtml(header)}</th>`)
-    .join("")
+function buildPreviewHtml(preview: ExcelPreviewData, downloadFileName: string): string {
+  const metaLines = preview.metaLines ?? [];
+  const columnCount = preview.headers.length;
+  const headerCells = preview.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
 
-  const totalRows = preview.rows.length
+  const totalRows = preview.rows.length;
   const rowsForPreview =
     totalRows > EXCEL_PREVIEW_MAX_ROWS
       ? preview.rows.slice(0, EXCEL_PREVIEW_MAX_ROWS)
-      : preview.rows
+      : preview.rows;
 
   const outgoingSectionIndex = rowsForPreview.findIndex(
-    (row) =>
-      row.isSectionTitle &&
-      String(row.values[0] ?? "").startsWith("Outgoing"),
-  )
+    (row) => row.isSectionTitle && String(row.values[0] ?? '').startsWith('Outgoing'),
+  );
 
   const incomingRows =
-    outgoingSectionIndex === -1
-      ? rowsForPreview
-      : rowsForPreview.slice(0, outgoingSectionIndex)
+    outgoingSectionIndex === -1 ? rowsForPreview : rowsForPreview.slice(0, outgoingSectionIndex);
   const outgoingRows =
-    outgoingSectionIndex === -1 ? [] : rowsForPreview.slice(outgoingSectionIndex)
+    outgoingSectionIndex === -1 ? [] : rowsForPreview.slice(outgoingSectionIndex);
 
-  const incomingTableHtml = buildLedgerTableHtml(
-    incomingRows,
-    headerCells,
-    columnCount,
-  )
-  const outgoingTableHtml = buildLedgerTableHtml(
-    outgoingRows,
-    headerCells,
-    columnCount,
-  )
+  const incomingTableHtml = buildLedgerTableHtml(incomingRows, headerCells, columnCount);
+  const outgoingTableHtml = buildLedgerTableHtml(outgoingRows, headerCells, columnCount);
 
   const ledgerTablesHtml =
     outgoingTableHtml.length > 0
       ? `<section class="ledger-block">${incomingTableHtml}</section>
     <section class="ledger-block">${outgoingTableHtml}</section>`
-      : incomingTableHtml
+      : incomingTableHtml;
 
   const previewTruncationNotice =
     totalRows > EXCEL_PREVIEW_MAX_ROWS
-      ? `<p class="meta-line">Showing first ${EXCEL_PREVIEW_MAX_ROWS.toLocaleString("en-IN")} of ${totalRows.toLocaleString("en-IN")} ledger rows. Download the Excel file for the full report.</p>`
-      : ""
+      ? `<p class="meta-line">Showing first ${EXCEL_PREVIEW_MAX_ROWS.toLocaleString('en-IN')} of ${totalRows.toLocaleString('en-IN')} ledger rows. Download the Excel file for the full report.</p>`
+      : '';
 
   const stockSummaryHtml = preview.stockSummary
     ? `<section class="summary-block">
         <h3>Stock Summary</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr>${preview.stockSummary.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+            <thead><tr>${preview.stockSummary.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
             <tbody>
               ${preview.stockSummary.rows
                 .map(
                   (row) =>
-                    `<tr>${row.map((cell) => `<td>${escapeHtml(formatCellValue(cell))}</td>`).join("")}</tr>`,
+                    `<tr>${row.map((cell) => `<td>${escapeHtml(formatCellValue(cell))}</td>`).join('')}</tr>`,
                 )
-                .join("")}
+                .join('')}
               <tr class="total-row">${preview.stockSummary.footer
                 .map((cell) => `<td>${escapeHtml(formatCellValue(cell))}</td>`)
-                .join("")}</tr>
+                .join('')}</tr>
             </tbody>
           </table>
         </div>
       </section>`
-    : ""
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -350,7 +330,7 @@ function buildPreviewHtml(
     <h1>${escapeHtml(preview.title)}</h1>
     <h2>${escapeHtml(preview.subtitle)}</h2>
     <p class="meta">Generated on: ${escapeHtml(preview.dateLabel)}</p>
-    ${metaLines.map((line) => `<p class="meta-line">${escapeHtml(line)}</p>`).join("")}
+    ${metaLines.map((line) => `<p class="meta-line">${escapeHtml(line)}</p>`).join('')}
     <p class="powered">Powered by Coldop</p>
     ${previewTruncationNotice}
     ${stockSummaryHtml}
@@ -360,62 +340,62 @@ function buildPreviewHtml(
     const downloadLink = document.getElementById("download-excel");
   </script>
 </body>
-</html>`
+</html>`;
 }
 
 export function revokeExcelPreviewUrls(urls: ExcelPreviewUrls | null) {
-  if (!urls?.blobUrl) return
-  URL.revokeObjectURL(urls.blobUrl)
+  if (!urls?.blobUrl) return;
+  URL.revokeObjectURL(urls.blobUrl);
 }
 
 export async function openExcelPreviewInNewTab(
   urlsRef: { current: ExcelPreviewUrls | null },
   buildExport: () => Promise<{
-    buffer: ArrayBuffer
-    fileName: string
-    preview: ExcelPreviewData
+    buffer: ArrayBuffer;
+    fileName: string;
+    preview: ExcelPreviewData;
   }>,
 ): Promise<void> {
-  const previewWindow = window.open("", "_blank")
+  const previewWindow = window.open('', '_blank');
   if (!previewWindow) {
-    window.alert("Pop-up blocked. Allow pop-ups to preview the Excel report.")
-    return
+    window.alert('Pop-up blocked. Allow pop-ups to preview the Excel report.');
+    return;
   }
 
-  previewWindow.document.open()
-  previewWindow.document.write(PREVIEW_LOADING_HTML)
-  previewWindow.document.close()
+  previewWindow.document.open();
+  previewWindow.document.write(PREVIEW_LOADING_HTML);
+  previewWindow.document.close();
 
   try {
-    const { buffer, fileName, preview } = await buildExport()
+    const { buffer, fileName, preview } = await buildExport();
 
-    revokeExcelPreviewUrls(urlsRef.current)
+    revokeExcelPreviewUrls(urlsRef.current);
 
     const blob = new Blob([buffer], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    })
-    const blobUrl = URL.createObjectURL(blob)
-    urlsRef.current = { blobUrl }
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const blobUrl = URL.createObjectURL(blob);
+    urlsRef.current = { blobUrl };
 
-    const html = buildPreviewHtml(preview, fileName)
-    previewWindow.document.open()
-    previewWindow.document.write(html)
-    previewWindow.document.close()
+    const html = buildPreviewHtml(preview, fileName);
+    previewWindow.document.open();
+    previewWindow.document.write(html);
+    previewWindow.document.close();
 
     const link = previewWindow.document.getElementById(
-      "download-excel",
-    ) as HTMLAnchorElement | null
+      'download-excel',
+    ) as HTMLAnchorElement | null;
     if (link) {
-      link.href = blobUrl
+      link.href = blobUrl;
     }
   } catch (error) {
-    console.error("Failed to open Excel preview:", error)
+    console.error('Failed to open Excel preview:', error);
     const message =
       error instanceof Error
         ? error.message
-        : "Failed to generate Excel preview. Please try again."
+        : 'Failed to generate Excel preview. Please try again.';
 
-    previewWindow.document.open()
+    previewWindow.document.open();
     previewWindow.document.write(`<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8" /><title>Excel preview failed</title></head>
@@ -423,10 +403,10 @@ export async function openExcelPreviewInNewTab(
   <h1 style="font-size: 18px; margin: 0 0 8px;">Could not generate Excel preview</h1>
   <p style="margin: 0; color: #6b7280;">${escapeHtml(message)}</p>
 </body>
-</html>`)
-    previewWindow.document.close()
+</html>`);
+    previewWindow.document.close();
 
-    window.alert(message)
-    throw error
+    window.alert(message);
+    throw error;
   }
 }

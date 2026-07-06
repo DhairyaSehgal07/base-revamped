@@ -50,6 +50,22 @@ function getRowDateSortValue(row: FarmerReportTableRow): number | null {
   return Number.isFinite(timestamp) ? timestamp : null
 }
 
+function getRowManualParchiSortValue(
+  row: FarmerReportTableRow,
+): number | null {
+  if (!row.entry) return null
+
+  const value = row.entry.manualParchiNumber
+  if (value == null || value === "") return null
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null
+  }
+
+  const parsed = Number(String(value).replaceAll(",", "").trim())
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function getRowSizeSortValue(
   row: FarmerReportTableRow,
   size: string,
@@ -272,15 +288,11 @@ function buildFarmerReportColumnsForSizes(
     },
     {
       id: "manualParchiNumber",
-      accessorFn: (row) => {
-        if (!row.entry) return null
-        const manualParchi = formatManualParchi(row.entry.manualParchiNumber)
-        return manualParchi === "—" ? null : manualParchi
-      },
+      accessorFn: (row) => getRowManualParchiSortValue(row),
       header: "Manual Parchi No",
-      meta: { mono: true, compact: true, filterLabel: "Manual parchi number" },
-      sortingFn: "text",
-      sortUndefined: "last",
+      meta: { mono: true, compact: true, numeric: true, filterLabel: "Manual parchi number" },
+      sortingFn: farmerReportNumericSortingFn,
+      sortUndefined: "first",
       aggregationFn: noGroupAggregation,
       aggregatedCell: emptyGroupedAggregatedCell,
       cell: ({ row }) => {

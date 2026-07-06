@@ -154,7 +154,7 @@ export function FarmerStockSummaryCellBreakdownDialog({
                             "font-mono tabular-nums",
                           )}
                         >
-                          {line.gatePassNo}
+                          {line.reference ?? "—"}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -162,7 +162,7 @@ export function FarmerStockSummaryCellBreakdownDialog({
                             "font-mono tabular-nums",
                           )}
                         >
-                          {line.reference ?? "—"}
+                          {line.gatePassNo}
                         </TableCell>
                         <TableCell
                           className={cn(
