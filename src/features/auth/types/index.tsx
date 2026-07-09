@@ -36,6 +36,18 @@ export interface Chamber {
   capacity: number
 }
 
+export interface StorageLayoutFloor {
+  _id?: string
+  name: string
+  capacity: number
+}
+
+export interface StorageLayoutChamber {
+  _id?: string
+  name: string
+  floors: StorageLayoutFloor[]
+}
+
 export interface ColdStorage {
   _id: string
   preferencesId: string
@@ -44,6 +56,7 @@ export interface ColdStorage {
   mobileNumber: string
   capacity: number
   chambers?: Chamber[]
+  storageLayout?: StorageLayoutChamber[]
   imageUrl: string
   isPaid: boolean
   isActive: boolean

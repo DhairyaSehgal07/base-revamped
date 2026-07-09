@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { formatUtilizationPercent } from "@/features/auth/utils/storage-layout"
 import { formatQuantity } from "@/features/daybook/utils/format"
 import { cn } from "@/lib/utils"
 
@@ -28,16 +29,13 @@ function formatShare(value: number): string {
   })}%`
 }
 
-function formatUtilization(current: number, initial: number): number {
-  if (initial <= 0) return 0
-  return Math.min((current / initial) * 100, 100)
-}
-
 type ChamberFloorTableProps = {
   floors: LocationAnalyticsFloor[]
   tab: LocationAnalyticsQuantityTab
   chamberInitialTotal: number
   chamberCurrentTotal: number
+  /** Floor name → storageLayout capacity when available */
+  floorCapacities?: Record<string, number | undefined>
   selectedFloor: string | null
   onFloorSelect: (floor: string) => void
 }
@@ -47,6 +45,7 @@ export function ChamberFloorTable({
   tab,
   chamberInitialTotal,
   chamberCurrentTotal,
+  floorCapacities,
   selectedFloor,
   onFloorSelect,
 }: ChamberFloorTableProps) {
@@ -54,11 +53,22 @@ export function ChamberFloorTable({
     tab === "current" ? chamberCurrentTotal : chamberInitialTotal
 
   const rows = [...floors]
-    .map((floor) => ({
-      floor,
-      quantity: getFloorQuantity(floor, tab),
-      utilization: formatUtilization(floor.currentTotal, floor.initialTotal),
-    }))
+    .map((floor) => {
+      const layoutCapacity = floorCapacities?.[floor.floor]
+      const utilizationBase =
+        layoutCapacity != null && layoutCapacity > 0
+          ? layoutCapacity
+          : floor.initialTotal
+
+      return {
+        floor,
+        quantity: getFloorQuantity(floor, tab),
+        utilization: Math.min(
+          formatUtilizationPercent(floor.currentTotal, utilizationBase),
+          100,
+        ),
+      }
+    })
     .filter((row) => row.quantity > 0)
     .sort((a, b) => {
       const aSentinel = isSentinelLabel(a.floor.floor)

@@ -8,10 +8,24 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   BagSizeSelectField,
   FixedBagSizeLabel,
 } from "@/components/bag-quantity-size-field"
 import { Button } from "@/components/ui/button"
+import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
+import {
+  getStorageLayoutChambers,
+  getStorageLayoutFloors,
+  hasStorageLayout,
+  withLegacyOption,
+} from "@/features/auth/utils/storage-layout"
 import type { IncomingFormApi } from "@/features/incoming/forms/use-incoming-form"
 import { useCompleteLocationOrder } from "@/features/incoming/forms/use-complete-location-order"
 import {
@@ -24,6 +38,7 @@ import {
 import type { FarmerStorageLink } from "@/features/people/types"
 import { formatInr } from "@/features/finances/shared/format-currency"
 import { numericInputProps, normalizeUppercase, parseOptionalNumber } from "@/lib/form-utils"
+import { cn } from "@/lib/utils"
 import { Copy, Plus, Trash2 } from "lucide-react"
 import * as z from "zod"
 
@@ -35,6 +50,9 @@ const compactInputClass =
   "h-8 px-1.5 text-xs placeholder:text-xs sm:h-9 sm:px-3 sm:text-sm sm:placeholder:text-sm"
 
 const locationInputClass = `${compactInputClass} text-center uppercase`
+
+const locationSelectTriggerClass =
+  "h-8 w-full px-1.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
 
 type IncomingQuantitiesSectionProps = {
   form: IncomingFormApi
@@ -129,6 +147,12 @@ export function IncomingQuantitiesSection({
   bagSizes,
   farmerStorageLinks,
 }: IncomingQuantitiesSectionProps) {
+  const storageLayout = useColdStorageStore(
+    (state) => state.coldStorage?.storageLayout,
+  )
+  const useLayoutSelects = hasStorageLayout(storageLayout)
+  const chamberOptions = getStorageLayoutChambers(storageLayout)
+
   const allowedSizeSchema = z
     .string()
     .refine((value) => value !== "", "Select a bag size.")
@@ -260,6 +284,11 @@ export function IncomingQuantitiesSection({
                         {(subField) => {
                           const isInvalid = isFieldInvalid(subField.state.meta)
                           const sizeLabel = row.size || `row ${index + 1}`
+                          const options = withLegacyOption(
+                            chamberOptions,
+                            subField.state.value,
+                          )
+
                           return (
                             <Field data-invalid={isInvalid}>
                               <FieldLabel
@@ -268,21 +297,64 @@ export function IncomingQuantitiesSection({
                               >
                                 Chamber ({sizeLabel})
                               </FieldLabel>
-                              <Input
-                                id={subField.name}
-                                name={subField.name}
-                                value={subField.state.value}
-                                onBlur={subField.handleBlur}
-                                onChange={(e) =>
-                                  subField.handleChange(
-                                    normalizeUppercase(e.target.value)
-                                  )
-                                }
-                                aria-invalid={isInvalid}
-                                placeholder="Ch"
-                                autoComplete="off"
-                                className={locationInputClass}
-                              />
+                              {useLayoutSelects ? (
+                                <Select
+                                  value={subField.state.value || undefined}
+                                  onValueChange={(next) => {
+                                    subField.handleChange(next)
+                                    const floors = getStorageLayoutFloors(
+                                      storageLayout,
+                                      next,
+                                    )
+                                    const currentFloor =
+                                      form.getFieldValue(
+                                        `quantities[${index}].floor`,
+                                      ) ?? ""
+                                    if (
+                                      currentFloor &&
+                                      !floors.includes(currentFloor)
+                                    ) {
+                                      form.setFieldValue(
+                                        `quantities[${index}].floor`,
+                                        "",
+                                      )
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    id={subField.name}
+                                    name={subField.name}
+                                    className={cn(locationSelectTriggerClass)}
+                                    onBlur={subField.handleBlur}
+                                    aria-invalid={isInvalid}
+                                  >
+                                    <SelectValue placeholder="Ch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {options.map((option) => (
+                                      <SelectItem key={option} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input
+                                  id={subField.name}
+                                  name={subField.name}
+                                  value={subField.state.value}
+                                  onBlur={subField.handleBlur}
+                                  onChange={(e) =>
+                                    subField.handleChange(
+                                      normalizeUppercase(e.target.value)
+                                    )
+                                  }
+                                  aria-invalid={isInvalid}
+                                  placeholder="Ch"
+                                  autoComplete="off"
+                                  className={locationInputClass}
+                                />
+                              )}
                               {isInvalid && (
                                 <FieldError errors={subField.state.meta.errors} />
                               )}
@@ -293,45 +365,91 @@ export function IncomingQuantitiesSection({
                     </div>
 
                     <div className="col-span-2">
-                      <form.Field
-                        name={`quantities[${index}].floor`}
-                        validators={{
-                          onChange: incomingQuantityRowSchema.shape.floor,
-                        }}
+                      <form.Subscribe
+                        selector={(state) =>
+                          state.values.quantities[index]?.chamber ?? ""
+                        }
                       >
-                        {(subField) => {
-                          const isInvalid = isFieldInvalid(subField.state.meta)
-                          const sizeLabel = row.size || `row ${index + 1}`
-                          return (
-                            <Field data-invalid={isInvalid}>
-                              <FieldLabel
-                                htmlFor={subField.name}
-                                className="sr-only"
-                              >
-                                Floor ({sizeLabel})
-                              </FieldLabel>
-                              <Input
-                                id={subField.name}
-                                name={subField.name}
-                                value={subField.state.value}
-                                onBlur={subField.handleBlur}
-                                onChange={(e) =>
-                                  subField.handleChange(
-                                    normalizeUppercase(e.target.value)
-                                  )
-                                }
-                                aria-invalid={isInvalid}
-                                placeholder="Fl"
-                                autoComplete="off"
-                                className={locationInputClass}
-                              />
-                              {isInvalid && (
-                                <FieldError errors={subField.state.meta.errors} />
-                              )}
-                            </Field>
-                          )
-                        }}
-                      </form.Field>
+                        {(selectedChamber) => (
+                          <form.Field
+                            name={`quantities[${index}].floor`}
+                            validators={{
+                              onChange: incomingQuantityRowSchema.shape.floor,
+                            }}
+                          >
+                            {(subField) => {
+                              const isInvalid = isFieldInvalid(subField.state.meta)
+                              const sizeLabel = row.size || `row ${index + 1}`
+                              const floorOptions = withLegacyOption(
+                                getStorageLayoutFloors(
+                                  storageLayout,
+                                  selectedChamber,
+                                ),
+                                subField.state.value,
+                              )
+
+                              return (
+                                <Field data-invalid={isInvalid}>
+                                  <FieldLabel
+                                    htmlFor={subField.name}
+                                    className="sr-only"
+                                  >
+                                    Floor ({sizeLabel})
+                                  </FieldLabel>
+                                  {useLayoutSelects ? (
+                                    <Select
+                                      value={subField.state.value || undefined}
+                                      onValueChange={subField.handleChange}
+                                      disabled={!selectedChamber}
+                                    >
+                                      <SelectTrigger
+                                        id={subField.name}
+                                        name={subField.name}
+                                        className={cn(locationSelectTriggerClass)}
+                                        onBlur={subField.handleBlur}
+                                        aria-invalid={isInvalid}
+                                      >
+                                        <SelectValue placeholder="Fl" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {floorOptions.map((option) => (
+                                          <SelectItem
+                                            key={option}
+                                            value={option}
+                                          >
+                                            {option}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Input
+                                      id={subField.name}
+                                      name={subField.name}
+                                      value={subField.state.value}
+                                      onBlur={subField.handleBlur}
+                                      onChange={(e) =>
+                                        subField.handleChange(
+                                          normalizeUppercase(e.target.value)
+                                        )
+                                      }
+                                      aria-invalid={isInvalid}
+                                      placeholder="Fl"
+                                      autoComplete="off"
+                                      className={locationInputClass}
+                                    />
+                                  )}
+                                  {isInvalid && (
+                                    <FieldError
+                                      errors={subField.state.meta.errors}
+                                    />
+                                  )}
+                                </Field>
+                              )
+                            }}
+                          </form.Field>
+                        )}
+                      </form.Subscribe>
                     </div>
 
                     <div className="col-span-2">

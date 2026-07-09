@@ -26,9 +26,9 @@ export default defineConfig({
      tailwindcss(),
     babel({ presets: [reactCompilerPreset()] }),
   ],
-  server: {
-    port:3000
-  },
+  // server: {
+  //   port:3000
+  // },
   build: {
     // @react-pdf/renderer and exceljs are large and lazy-loaded on export only.
     chunkSizeWarningLimit: 1000,

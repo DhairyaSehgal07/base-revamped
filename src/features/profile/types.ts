@@ -1,7 +1,7 @@
 import type {
-  Chamber,
   ColdStorage,
   ColdStoragePopulated,
+  StorageLayoutChamber,
   StoreAdmin,
 } from "@/features/auth/types"
 
@@ -27,7 +27,12 @@ export interface UpdateProfilePayload {
   coldStorage?: Partial<
     Pick<ColdStorage, "name" | "address" | "mobileNumber" | "capacity">
   > & {
-    chambers?: Chamber[]
+    storageLayout?: Array<Pick<StorageLayoutChamber, "name"> & {
+      floors: Array<{
+        name: string
+        capacity: number
+      }>
+    }>
   }
 }
 

@@ -6,11 +6,18 @@ const mobileNumberSchema = z
   .string()
   .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number")
 
-const chamberFormSchema = z.object({
-  name: z.string().trim().min(1, "Chamber name is required"),
+const storageFloorFormSchema = z.object({
+  name: z.string().trim().min(1, "Floor name is required"),
   capacity: z
-    .number({ message: "Capacity is required" })
-    .positive("Chamber capacity must be greater than zero"),
+    .number({ message: "Floor capacity is required" })
+    .positive("Floor capacity must be greater than zero"),
+})
+
+const storageLayoutChamberFormSchema = z.object({
+  name: z.string().trim().min(1, "Chamber name is required"),
+  floors: z
+    .array(storageFloorFormSchema)
+    .min(1, "Each chamber must have at least one floor"),
 })
 
 const coldStorageFormSchema = z.object({
@@ -20,13 +27,23 @@ const coldStorageFormSchema = z.object({
   capacity: z
     .number({ message: "Capacity is required" })
     .positive("Capacity must be greater than 0"),
-  chambers: z.array(chamberFormSchema),
+  storageLayout: z.array(storageLayoutChamberFormSchema),
 })
 
-export type ChamberFormValues = z.infer<typeof chamberFormSchema>
+export type StorageFloorFormValues = z.infer<typeof storageFloorFormSchema>
+export type StorageLayoutChamberFormValues = z.infer<
+  typeof storageLayoutChamberFormSchema
+>
 
-export function emptyChamber(): ChamberFormValues {
+export function emptyStorageFloor(): StorageFloorFormValues {
   return { name: "", capacity: 0 }
+}
+
+export function emptyStorageLayoutChamber(): StorageLayoutChamberFormValues {
+  return {
+    name: "",
+    floors: [emptyStorageFloor()],
+  }
 }
 
 export const profileFormSchema = z
@@ -76,17 +93,20 @@ export function profileToFormValues(profile: ProfileData): ProfileFormValues {
       address: coldStorage.address,
       mobileNumber: coldStorage.mobileNumber,
       capacity: coldStorage.capacity,
-      chambers: (coldStorage.chambers ?? []).map((chamber) => ({
+      storageLayout: (coldStorage.storageLayout ?? []).map((chamber) => ({
         name: chamber.name,
-        capacity: chamber.capacity,
+        floors: chamber.floors.map((floor) => ({
+          name: floor.name,
+          capacity: floor.capacity,
+        })),
       })),
     },
   }
 }
 
-function chambersEqual(
-  left: ProfileFormValues["coldStorage"]["chambers"],
-  right: ProfileFormValues["coldStorage"]["chambers"],
+function storageLayoutEqual(
+  left: ProfileFormValues["coldStorage"]["storageLayout"],
+  right: ProfileFormValues["coldStorage"]["storageLayout"],
 ): boolean {
   if (left.length !== right.length) {
     return false
@@ -95,7 +115,12 @@ function chambersEqual(
   return left.every(
     (chamber, index) =>
       chamber.name === right[index]?.name &&
-      chamber.capacity === right[index]?.capacity,
+      chamber.floors.length === right[index]?.floors.length &&
+      chamber.floors.every(
+        (floor, floorIndex) =>
+          floor.name === right[index]?.floors[floorIndex]?.name &&
+          floor.capacity === right[index]?.floors[floorIndex]?.capacity,
+      ),
   )
 }
 
@@ -118,13 +143,22 @@ function hasColdStorageChanges(
     changes.capacity = values.capacity
   }
 
-  const originalChambers = (original.chambers ?? []).map((chamber) => ({
+  const originalStorageLayout = (original.storageLayout ?? []).map((chamber) => ({
     name: chamber.name,
-    capacity: chamber.capacity,
+    floors: chamber.floors.map((floor) => ({
+      name: floor.name,
+      capacity: floor.capacity,
+    })),
   }))
 
-  if (!chambersEqual(values.chambers, originalChambers)) {
-    changes.chambers = values.chambers
+  if (!storageLayoutEqual(values.storageLayout, originalStorageLayout)) {
+    changes.storageLayout = values.storageLayout.map((chamber) => ({
+      name: chamber.name,
+      floors: chamber.floors.map((floor) => ({
+        name: floor.name,
+        capacity: floor.capacity,
+      })),
+    }))
   }
 
   return Object.keys(changes).length > 0 ? changes : undefined

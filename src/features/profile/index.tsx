@@ -51,7 +51,7 @@ const ProfileSettingsPage = () => {
 
   return (
     <ProfileForm
-      key={profile.storeAdmin.updatedAt}
+      key={`${profile.storeAdmin.updatedAt}-${profile.coldStorage.updatedAt}`}
       profile={profile}
       onRefresh={() => void refetch()}
       isRefreshing={isFetching}

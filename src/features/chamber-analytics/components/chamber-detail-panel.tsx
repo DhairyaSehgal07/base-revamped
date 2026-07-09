@@ -6,6 +6,12 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty"
 import { Separator } from "@/components/ui/separator"
+import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
+import {
+  formatUtilizationPercent,
+  getStorageLayoutChamberCapacity,
+  getStorageLayoutFloorCapacity,
+} from "@/features/auth/utils/storage-layout"
 import { formatQuantity } from "@/features/daybook/utils/format"
 import {
   QuantityModeTabLabel,
@@ -44,16 +50,30 @@ export function ChamberDetailPanel({
   floor,
   onFloorChange,
 }: ChamberDetailPanelProps) {
+  const storageLayout = useColdStorageStore(
+    (state) => state.coldStorage?.storageLayout,
+  )
+  const layoutChamberCapacity = getStorageLayoutChamberCapacity(
+    storageLayout,
+    chamber.chamber,
+  )
+  const utilizationCapacity =
+    layoutChamberCapacity != null && layoutChamberCapacity > 0
+      ? layoutChamberCapacity
+      : chamber.initialTotal
+
   const { tabs: floorTabs, activeFloor } = resolveFloorTabs(chamber, floor)
   const filteredOrders = activeFloor
     ? filterChamberOrders(chamber.orders, activeFloor, tab)
     : []
 
-  const utilizationPercent =
-    chamber.initialTotal > 0
-      ? (chamber.currentTotal / chamber.initialTotal) * 100
-      : 0
+  const utilizationPercent = formatUtilizationPercent(
+    chamber.currentTotal,
+    utilizationCapacity,
+  )
   const displayUtilization = Math.min(utilizationPercent, 100)
+  const usesLayoutCapacity =
+    layoutChamberCapacity != null && layoutChamberCapacity > 0
 
   const quantityTotal =
     tab === "current" ? chamber.currentTotal : chamber.initialTotal
@@ -62,6 +82,17 @@ export function ChamberDetailPanel({
     activeFloor ??
     floorTabs.find((item) => item.value === activeFloor)?.label ??
     ""
+
+  const floorCapacities = Object.fromEntries(
+    chamber.floors.map((item) => [
+      item.floor,
+      getStorageLayoutFloorCapacity(
+        storageLayout,
+        chamber.chamber,
+        item.floor,
+      ) ?? undefined,
+    ]),
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,10 +122,12 @@ export function ChamberDetailPanel({
           <div className="mt-4 space-y-2">
             <p className="text-sm font-medium tabular-nums text-foreground">
               {formatQuantity(chamber.currentTotal)} /{" "}
-              {formatQuantity(chamber.initialTotal)} bags
+              {formatQuantity(utilizationCapacity)} bags
               <span className="text-muted-foreground">
                 {" "}
-                ({formatPercent(utilizationPercent)} retained)
+                (
+                {formatPercent(utilizationPercent)}{" "}
+                {usesLayoutCapacity ? "utilized" : "retained"})
               </span>
             </p>
             <div className="h-2.5 overflow-hidden rounded-full bg-muted">
@@ -112,6 +145,7 @@ export function ChamberDetailPanel({
         tab={tab}
         chamberInitialTotal={chamber.initialTotal}
         chamberCurrentTotal={chamber.currentTotal}
+        floorCapacities={floorCapacities}
         selectedFloor={activeFloor}
         onFloorSelect={onFloorChange}
       />
