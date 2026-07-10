@@ -135,6 +135,15 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
     : "—"
   const accountLabel = `#${farmerLink.accountNumber.toLocaleString("en-IN")}`
   const isTransfer = isIncomingTransferType(entry.type)
+  const hasQuantityChanged = bagSizes.some(
+    (bag) => bag.initialQuantity !== bag.currentQuantity,
+  )
+  const canEdit = entry.status === "OPEN" && !hasQuantityChanged
+  const editDisabledTitle = hasQuantityChanged
+    ? "Cannot edit when initial and current quantities differ"
+    : entry.status !== "OPEN"
+      ? "Only open gate passes can be edited"
+      : undefined
 
   const handlePrint = useCallback(async () => {
     if (!coldStorageName) {
@@ -388,12 +397,8 @@ export function IncomingGatePassCard({ entry }: IncomingGatePassCardProps) {
             variant="outline"
             size="sm"
             className="h-8 bg-background"
-            disabled={entry.status !== "OPEN"}
-            title={
-              entry.status !== "OPEN"
-                ? "Only open gate passes can be edited"
-                : undefined
-            }
+            disabled={!canEdit}
+            title={editDisabledTitle}
             onClick={() =>
               navigate({
                 to: "/incoming/$id",

@@ -27,6 +27,20 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
   right: { style: 'thin', color: { argb: COLORS.border } },
 };
 
+const HEADER_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: 'thin', color: { argb: COLORS.border } },
+  left: { style: 'thin', color: { argb: COLORS.border } },
+  bottom: { style: 'medium', color: { argb: COLORS.border } },
+  right: { style: 'thin', color: { argb: COLORS.border } },
+};
+
+const TOTAL_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: 'medium', color: { argb: COLORS.border } },
+  left: { style: 'thin', color: { argb: COLORS.border } },
+  bottom: { style: 'thin', color: { argb: COLORS.border } },
+  right: { style: 'thin', color: { argb: COLORS.border } },
+};
+
 const FILLS = {
   zebra: {
     type: 'pattern',
@@ -55,15 +69,22 @@ const FILLS = {
   } satisfies ExcelJS.Fill,
 };
 
-const ALIGN_LEFT = {
-  horizontal: 'left',
-  vertical: 'top',
+const ALIGN_CENTER = {
+  horizontal: 'center',
+  vertical: 'middle',
   wrapText: true,
 } satisfies Partial<ExcelJS.Alignment>;
 
-const ALIGN_RIGHT = {
-  horizontal: 'right',
+const ALIGN_HEADER_LEFT = {
+  horizontal: 'left',
   vertical: 'middle',
+  wrapText: true,
+} satisfies Partial<ExcelJS.Alignment>;
+
+const ALIGN_FILTER_LEFT = {
+  horizontal: 'left',
+  vertical: 'top',
+  wrapText: true,
 } satisfies Partial<ExcelJS.Alignment>;
 
 function bodyFont(bold = false, colorArgb: string = COLORS.foreground): Partial<ExcelJS.Font> {
@@ -477,9 +498,9 @@ export function ledgerItemsToBodyRows(
 function styleHeaderCells(row: ExcelJS.Row) {
   row.eachCell((cell) => {
     cell.fill = FILLS.header;
-    cell.border = THIN_BORDER;
+    cell.border = HEADER_BORDER;
     cell.font = headerFont() as ExcelJS.Font;
-    cell.alignment = ALIGN_LEFT;
+    cell.alignment = ALIGN_CENTER;
   });
 }
 
@@ -525,11 +546,9 @@ function styleBodyRow(
     ) as ExcelJS.Font;
 
     const cellValue = dataRow.values[columnNumber - 1];
+    cell.alignment = ALIGN_CENTER;
     if (typeof cellValue === 'number') {
-      cell.alignment = ALIGN_RIGHT;
       cell.numFmt = EXPORT_INTEGER_NUM_FMT;
-    } else {
-      cell.alignment = ALIGN_LEFT;
     }
   }
 }
@@ -588,11 +607,10 @@ function addTotalsRow(
     const rawVal = values[colNumber - 1];
     const cell = exRow.getCell(colNumber);
     cell.fill = FILLS.total;
-    cell.border = THIN_BORDER;
+    cell.border = TOTAL_BORDER;
     cell.font = bodyFont(true, COLORS.primary) as ExcelJS.Font;
-    const isNumeric = typeof rawVal === 'number';
-    cell.alignment = isNumeric ? ALIGN_RIGHT : ALIGN_LEFT;
-    if (isNumeric) {
+    cell.alignment = ALIGN_CENTER;
+    if (typeof rawVal === 'number') {
       cell.numFmt = EXPORT_INTEGER_NUM_FMT;
     }
   }
@@ -682,6 +700,8 @@ export type FarmerStockLedgerPreviewData = {
   fileName: string;
   headers: string[];
   rows: ExcelPreviewRow[];
+  farmerName: string;
+  farmerAddress?: string;
   metaLines: string[];
   filterSummaryLines: string[];
   stockSummary?: ExcelPreviewStockSummary;
@@ -747,13 +767,13 @@ export function buildFarmerStockLedgerPreviewData({
   const dateLabel = getExportDateLabel(generatedAt);
   const fileName = `farmer-stock-ledger_${format(generatedAt, 'yyyy-MM-dd')}.xlsx`;
 
+  const farmerName = reportData.farmer.name;
+  const farmerAddress = coldStorageAddress?.trim() || undefined;
   const metaLines = [
-    `Farmer: ${reportData.farmer.name}`,
     typeof reportData.farmer.accountNumber === 'number'
       ? `Account: ${reportData.farmer.accountNumber.toLocaleString('en-IN')}`
       : null,
     `Mobile: ${reportData.farmer.mobileNumber}`,
-    coldStorageAddress?.trim() ? coldStorageAddress.trim() : null,
   ].filter((line): line is string => Boolean(line));
 
   const stockSummary: ExcelPreviewStockSummary = {
@@ -790,6 +810,8 @@ export function buildFarmerStockLedgerPreviewData({
     fileName,
     headers: layout.headers,
     rows: previewRows,
+    farmerName,
+    farmerAddress,
     metaLines,
     filterSummaryLines,
     stockSummary,
@@ -818,6 +840,64 @@ function applyBrandingToCell(cell: ExcelJS.Cell) {
       },
     ],
   };
+}
+
+function applyFarmerDetailsToCell(
+  cell: ExcelJS.Cell,
+  farmerName: string,
+  farmerAddress?: string,
+) {
+  const richText: ExcelJS.RichText[] = [
+    {
+      font: {
+        name: 'Calibri',
+        size: 10,
+        color: { argb: COLORS.mutedForeground },
+      },
+      text: 'Farmer: ',
+    },
+    {
+      font: {
+        name: 'Calibri',
+        size: 11,
+        bold: true,
+        color: { argb: COLORS.foreground },
+      },
+      text: farmerName,
+    },
+  ];
+
+  if (farmerAddress) {
+    richText.push(
+      {
+        font: {
+          name: 'Calibri',
+          size: 10,
+          color: { argb: COLORS.mutedForeground },
+        },
+        text: '  |  ',
+      },
+      {
+        font: {
+          name: 'Calibri',
+          size: 10,
+          color: { argb: COLORS.mutedForeground },
+        },
+        text: 'Address: ',
+      },
+      {
+        font: {
+          name: 'Calibri',
+          size: 11,
+          bold: true,
+          color: { argb: COLORS.foreground },
+        },
+        text: farmerAddress,
+      },
+    );
+  }
+
+  cell.value = { richText };
 }
 
 export async function buildFarmerStockLedgerExcelPackage({
@@ -876,12 +956,14 @@ export async function buildFarmerStockLedgerExcelPackage({
   titleRow.height = 28;
   titleRow.getCell(1).value = preview.title;
   titleRow.getCell(1).font = titleFont(16) as ExcelJS.Font;
+  titleRow.getCell(1).alignment = ALIGN_HEADER_LEFT;
 
   worksheet.mergeCells(`A2:${lastColumnLetter}2`);
   const reportRow = worksheet.getRow(2);
   reportRow.height = 22;
   reportRow.getCell(1).value = preview.subtitle;
   reportRow.getCell(1).font = titleFont(13) as ExcelJS.Font;
+  reportRow.getCell(1).alignment = ALIGN_HEADER_LEFT;
 
   const metadataText = [
     `Generated: ${format(generatedAt, 'do MMM yyyy, h:mm a')}`,
@@ -892,34 +974,33 @@ export async function buildFarmerStockLedgerExcelPackage({
   ].join('  |  ');
 
   worksheet.mergeCells(`A3:${lastColumnLetter}3`);
-  const metadataRow = worksheet.getRow(3);
+  const farmerRow = worksheet.getRow(3);
+  farmerRow.height = 20;
+  applyFarmerDetailsToCell(farmerRow.getCell(1), preview.farmerName, preview.farmerAddress);
+  farmerRow.getCell(1).alignment = ALIGN_HEADER_LEFT;
+
+  worksheet.mergeCells(`A4:${lastColumnLetter}4`);
+  const metadataRow = worksheet.getRow(4);
   metadataRow.height = 18;
   metadataRow.getCell(1).value = metadataText;
   metadataRow.getCell(1).font = metadataFont() as ExcelJS.Font;
-  metadataRow.getCell(1).alignment = {
-    vertical: 'middle',
-    horizontal: 'left',
-    wrapText: true,
-  };
+  metadataRow.getCell(1).alignment = ALIGN_HEADER_LEFT;
 
-  worksheet.mergeCells(`A4:${lastColumnLetter}4`);
-  const filterRow = worksheet.getRow(4);
+  worksheet.mergeCells(`A5:${lastColumnLetter}5`);
+  const filterRow = worksheet.getRow(5);
   filterRow.height = filterSummaryLines.length > 0 ? 36 : 14;
   filterRow.getCell(1).value =
     filterSummaryLines.length > 0 ? filterSummaryLines.join('\n') : 'Filters: none applied';
   filterRow.getCell(1).font = metadataFont() as ExcelJS.Font;
-  filterRow.getCell(1).alignment = {
-    vertical: 'top',
-    horizontal: 'left',
-    wrapText: true,
-  };
+  filterRow.getCell(1).alignment = ALIGN_FILTER_LEFT;
 
-  worksheet.mergeCells(`A5:${lastColumnLetter}5`);
-  const brandingRow = worksheet.getRow(5);
+  worksheet.mergeCells(`A6:${lastColumnLetter}6`);
+  const brandingRow = worksheet.getRow(6);
   brandingRow.height = 16;
   applyBrandingToCell(brandingRow.getCell(1));
+  brandingRow.getCell(1).alignment = ALIGN_HEADER_LEFT;
 
-  worksheet.getRow(6).height = 8;
+  worksheet.getRow(7).height = 8;
 
   const previewRows: ExcelPreviewRow[] = [];
 
@@ -955,6 +1036,14 @@ export async function buildFarmerStockLedgerExcelPackage({
     key: header,
     width: columnWidths[index],
   }));
+
+  worksheet.views = [
+    {
+      state: 'frozen',
+      ySplit: 7,
+      showGridLines: false,
+    },
+  ];
 
   worksheet.pageSetup = {
     paperSize: 9,

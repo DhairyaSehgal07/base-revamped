@@ -82,6 +82,20 @@ function buildPreviewStyles(): string {
       color: var(--muted);
       font-size: 0.875rem;
     }
+    .farmer-details {
+      margin: 0.5rem 0 0.25rem;
+      font-size: 0.9375rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .farmer-details .farmer-name {
+      font-weight: 600;
+      color: var(--foreground);
+    }
+    .farmer-details .farmer-address {
+      font-weight: 600;
+      color: var(--foreground);
+    }
     .branding { margin-top: 0.5rem; }
     .branding strong { color: var(--primary); font-weight: 600; }
     .toolbar {
@@ -140,21 +154,22 @@ function buildPreviewStyles(): string {
       top: 0;
       z-index: 1;
       padding: 0.625rem 0.75rem;
-      text-align: left;
+      text-align: center;
+      vertical-align: middle;
       font-weight: 600;
       color: var(--primary);
       background: var(--muted-fill);
       border-bottom: 2px solid var(--border);
       white-space: nowrap;
     }
-    thead th.numeric { text-align: right; }
     tbody td {
       padding: 0.5rem 0.75rem;
       border-bottom: 1px solid var(--border);
-      vertical-align: top;
+      text-align: center;
+      vertical-align: middle;
       white-space: pre-line;
     }
-    tbody td.numeric { text-align: right; font-weight: 500; }
+    tbody td.numeric { font-weight: 500; }
     tbody td.empty { color: var(--muted); }
     tbody tr:nth-child(even):not(.group-row):not(.section-row):not(.total-row) {
       background: var(--zebra);
@@ -168,12 +183,14 @@ function buildPreviewStyles(): string {
       font-size: 0.75rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      text-align: center;
     }
     tbody tr.total-row td {
       font-weight: 600;
       color: var(--primary);
       background: var(--primary-soft);
       border-top: 2px solid var(--border);
+      text-align: center;
     }
     @media print {
       body { padding: 0.5rem; }
@@ -252,6 +269,7 @@ export function buildFarmerStockLedgerPreviewHtml({
     `${preview.exportedRowCount.toLocaleString("en-IN")} ${
       preview.exportedRowCount === 1 ? "ledger row" : "ledger rows"
     }`,
+    ...(preview.metaLines ?? []),
   ].join("  |  ")
 
   const filterText =
@@ -322,9 +340,11 @@ export function buildFarmerStockLedgerPreviewHtml({
       ? `<p class="meta-line">Showing first ${EXCEL_PREVIEW_MAX_ROWS.toLocaleString("en-IN")} of ${totalRows.toLocaleString("en-IN")} ledger rows. Download the Excel file for the full report.</p>`
       : ""
 
-  const metaLinesHtml = (preview.metaLines ?? [])
-    .map((line) => `<p class="meta-line">${escapeHtml(line)}</p>`)
-    .join("")
+  const farmerDetailsHtml = `<p class="farmer-details"><span class="label">Farmer: </span><span class="farmer-name">${escapeHtml(preview.farmerName)}</span>${
+    preview.farmerAddress
+      ? `  |  <span class="label">Address: </span><span class="farmer-address">${escapeHtml(preview.farmerAddress)}</span>`
+      : ""
+  }</p>`
 
   const pageTitle = escapeHtml(`${reportTitle} — ${coldStorageName}`)
 
@@ -340,8 +360,8 @@ export function buildFarmerStockLedgerPreviewHtml({
     <header class="report-header">
       <h1>${escapeHtml(coldStorageName)}</h1>
       <h2>${escapeHtml(reportTitle)}</h2>
+      ${farmerDetailsHtml}
       <p class="meta">${escapeHtml(metadataText)}</p>
-      ${metaLinesHtml}
       <p class="filters">${escapeHtml(filterText).replace(/\n/g, "<br />")}</p>
       <p class="branding">${escapeHtml(COLDOP_BRANDING.label)}<strong>${escapeHtml(COLDOP_BRANDING.name)}</strong></p>
     </header>
