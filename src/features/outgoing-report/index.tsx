@@ -11,6 +11,8 @@ import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useColdStorageStore } from "@/features/auth/store/use-cold-storage-store"
 import { usePreferencesStore } from "@/features/auth/store/use-preferences-store"
@@ -47,6 +49,7 @@ const OutgoingReportPage = () => {
   const [isReportTableReady, setIsReportTableReady] = useState(false)
   const [quantityMode, setQuantityMode] =
     useState<OutgoingQuantityMode>("issued")
+  const [showLocation, setShowLocation] = useState(true)
   const [appliedParams, setAppliedParams] =
     useState<OutgoingGatePassReportParams>(DEFAULT_REPORT_PARAMS)
   const [isExporting, setIsExporting] = useState(false)
@@ -80,8 +83,14 @@ const OutgoingReportPage = () => {
     [deferredSearchQuery, searchIndex],
   )
   const tableColumns = useMemo(
-    () => getOutgoingReportColumns(reportRows, quantityMode, showStockFilter),
-    [quantityMode, reportRows, showStockFilter],
+    () =>
+      getOutgoingReportColumns(
+        reportRows,
+        quantityMode,
+        showStockFilter,
+        showLocation,
+      ),
+    [quantityMode, reportRows, showStockFilter, showLocation],
   )
 
   const handleTableReady = useCallback(
@@ -132,6 +141,7 @@ const OutgoingReportPage = () => {
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
+        showLocation,
         reportTitle: "Outgoing Report",
         dateFrom,
         dateTo,
@@ -156,6 +166,7 @@ const OutgoingReportPage = () => {
     dateTo,
     notifyPreviewDownloadComplete,
     quantityMode,
+    showLocation,
   ])
 
   useEffect(() => {
@@ -170,7 +181,7 @@ const OutgoingReportPage = () => {
     return () => window.removeEventListener("message", onMessage)
   }, [handleExportExcel])
 
-  const handlePreview = useCallback(() => {
+  const handlePreview = useCallback(async () => {
     const reportTable = reportTableRef.current
     if (!reportTable) return
 
@@ -184,10 +195,22 @@ const OutgoingReportPage = () => {
     }
 
     try {
-      previewWindowRef.current = openOutgoingReportPreview({
+      const { buildOutgoingReportPreviewData } = await import(
+        "./utils/export-outgoing-report-excel"
+      )
+      const preview = buildOutgoingReportPreviewData({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
+        showLocation,
+        reportTitle: "Outgoing Report",
+        dateFrom,
+        dateTo,
+      })
+
+      previewWindowRef.current = openOutgoingReportPreview({
+        preview,
+        coldStorageName: coldStorageName ?? "Cold Storage",
         reportTitle: "Outgoing Report",
         dateFrom,
         dateTo,
@@ -200,7 +223,7 @@ const OutgoingReportPage = () => {
         { position: "bottom-right" },
       )
     }
-  }, [coldStorageName, dateFrom, dateTo, quantityMode])
+  }, [coldStorageName, dateFrom, dateTo, quantityMode, showLocation])
 
   const handleApply = useCallback(() => {
     const next: OutgoingGatePassReportParams = {}
@@ -234,11 +257,12 @@ const OutgoingReportPage = () => {
     return buildOutgoingReportPdfData({
       table: reportTable,
       quantityMode,
+      showLocation,
       reportTitle: "Outgoing Report",
       dateFrom,
       dateTo,
     })
-  }, [dateFrom, dateTo, quantityMode])
+  }, [dateFrom, dateTo, quantityMode, showLocation])
 
   const reportTable = isReportTableReady ? reportTableRef.current : null
   const isSearchPending = searchQuery !== deferredSearchQuery
@@ -324,6 +348,22 @@ const OutgoingReportPage = () => {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="outgoing-show-location"
+                size="sm"
+                checked={showLocation}
+                onCheckedChange={setShowLocation}
+                aria-label="Show location"
+              />
+              <Label
+                htmlFor="outgoing-show-location"
+                className="cursor-pointer text-sm font-medium"
+              >
+                Show Location
+              </Label>
+            </div>
+
             <Tabs value={quantityMode} onValueChange={handleQuantityModeChange}>
               <TabsList aria-label="Quantity view">
                 <TabsTrigger value="issued">Issued Qty</TabsTrigger>

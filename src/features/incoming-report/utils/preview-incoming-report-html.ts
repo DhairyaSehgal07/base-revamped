@@ -1,20 +1,9 @@
 import { format } from "date-fns"
-import type { Table } from "@tanstack/react-table"
 
-import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
-import type { IncomingQuantityMode } from "@/features/incoming-report/components/columns"
-import {
-  buildFilterSummaryLines,
-  collectExportRows,
-  exportCellValueToDisplay,
-  formatDateRangeLabel,
-  getColumnExportLabel,
-  getExportCellForRow,
-  getFilteredLeafRowCount,
-  getFooterExportValue,
-  isSummableExportColumn,
-} from "@/features/incoming-report/utils/export-cell-value"
+import type { IncomingReportPreviewData } from "@/features/incoming-report/utils/export-incoming-report-excel"
 import { COLDOP_BRANDING, EXPORT_THEME_CSS } from "@/lib/export-report-theme"
+import type { ExcelPreviewRow } from "@/lib/excel-preview-tab"
+import { EXCEL_PREVIEW_MAX_ROWS } from "@/lib/excel-preview-tab"
 
 export const INCOMING_REPORT_DOWNLOAD_EXCEL_MESSAGE =
   "kf-incoming-report-download-excel" as const
@@ -23,10 +12,8 @@ export const INCOMING_REPORT_DOWNLOAD_EXCEL_DONE_MESSAGE =
   "kf-incoming-report-download-excel-done" as const
 
 export type PreviewIncomingReportOptions = {
-  table: Table<IncomingGatePassReportRecord>
+  preview: IncomingReportPreviewData
   coldStorageName: string
-  quantityMode: IncomingQuantityMode
-  showLocation?: boolean
   reportTitle?: string
   dateFrom?: string
   dateTo?: string
@@ -39,6 +26,14 @@ function escapeHtml(value: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+}
+
+function formatCellValue(value: string | number | undefined): string {
+  if (value == null || value === "") return ""
+  if (typeof value === "number") {
+    return value.toLocaleString("en-IN")
+  }
+  return String(value)
 }
 
 function buildPreviewStyles(): string {
@@ -82,7 +77,7 @@ function buildPreviewStyles(): string {
       font-weight: 600;
       color: var(--primary);
     }
-    .meta, .filters, .branding {
+    .meta, .filters, .branding, .meta-line {
       margin: 0.25rem 0;
       color: var(--muted);
       font-size: 0.875rem;
@@ -117,6 +112,8 @@ function buildPreviewStyles(): string {
       opacity: 0.7;
       cursor: not-allowed;
     }
+    .ledger-block { margin-bottom: 1.5rem; }
+    .ledger-block:last-child { margin-bottom: 0; }
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--border);
@@ -133,33 +130,44 @@ function buildPreviewStyles(): string {
       top: 0;
       z-index: 1;
       padding: 0.625rem 0.75rem;
-      text-align: left;
+      text-align: center;
+      vertical-align: middle;
       font-weight: 600;
       color: var(--primary);
       background: var(--muted-fill);
       border-bottom: 2px solid var(--border);
       white-space: nowrap;
     }
-    thead th.numeric { text-align: right; }
     tbody td {
       padding: 0.5rem 0.75rem;
       border-bottom: 1px solid var(--border);
-      vertical-align: top;
+      text-align: center;
+      vertical-align: middle;
       white-space: pre-line;
     }
-    tbody td.numeric { text-align: right; font-weight: 500; }
+    tbody td.numeric { font-weight: 500; }
     tbody td.empty { color: var(--muted); }
-    tbody tr:nth-child(even):not(.group-row) { background: var(--zebra); }
+    tbody tr:nth-child(even):not(.group-row):not(.section-row):not(.total-row) {
+      background: var(--zebra);
+    }
     tbody tr.group-row { background: var(--primary-muted); font-weight: 600; }
     tbody tr.group-row td { color: var(--primary); }
-    tfoot td, tfoot th {
-      padding: 0.625rem 0.75rem;
+    tbody tr.section-row td {
+      background: var(--primary-soft);
+      font-weight: 600;
+      color: var(--primary);
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    tbody tr.total-row td {
       font-weight: 600;
       color: var(--primary);
       background: var(--primary-soft);
       border-top: 2px solid var(--border);
+      text-align: center;
     }
-    tfoot .numeric { text-align: right; }
     @media print {
       body { padding: 0.5rem; }
       .toolbar { display: none; }
@@ -168,102 +176,95 @@ function buildPreviewStyles(): string {
   `
 }
 
-export function buildIncomingReportPreviewHtml({
-  table,
-  coldStorageName,
-  quantityMode,
-  showLocation = true,
-  reportTitle = "Incoming Report",
-  dateFrom,
-  dateTo,
-  generatedAt = new Date(),
-}: PreviewIncomingReportOptions): string {
-  const visibleColumns = table.getVisibleLeafColumns()
-  const exportRows = collectExportRows(table)
-  const filteredLeafCount = getFilteredLeafRowCount(table)
-  const filterSummaryLines = buildFilterSummaryLines(
-    table,
-    quantityMode,
-    showLocation,
-  )
-  const filteredRows = table.getFilteredRowModel().rows
-
-  const metadataText = [
-    `Generated: ${format(generatedAt, "do MMM yyyy, h:mm a")}`,
-    `Period: ${formatDateRangeLabel(dateFrom, dateTo)}`,
-    `${filteredLeafCount.toLocaleString("en-IN")} ${
-      filteredLeafCount === 1 ? "entry" : "entries"
-    }`,
-  ].join("  |  ")
-
-  const filterText =
-    filterSummaryLines.length > 0
-      ? filterSummaryLines.join("\n")
-      : "Filters: none applied"
-
-  const headerCells = visibleColumns
-    .map((column) => {
-      const isNumeric = column.columnDef.meta?.align === "right"
-      const label = escapeHtml(getColumnExportLabel(column))
-      return `<th class="${isNumeric ? "numeric" : ""}">${label}</th>`
-    })
-    .join("")
-
-  const bodyRows = exportRows
+function renderLedgerTableBodyRows(
+  rows: ExcelPreviewRow[],
+  columnCount: number,
+): string {
+  return rows
     .map((row) => {
-      const isGroupRow = row.getIsGrouped()
-      const rowClass = isGroupRow ? "group-row" : ""
+      if (row.isSectionTitle) {
+        return `<tr class="section-row"><td colspan="${columnCount}">${escapeHtml(String(row.values[0] ?? ""))}</td></tr>`
+      }
 
-      const cells = visibleColumns
-        .map((column) => {
-          const isNumeric = column.columnDef.meta?.align === "right"
-          const exportCell = getExportCellForRow(
-            row,
-            column,
-            quantityMode,
-            undefined,
-            showLocation,
-          )
-          const display = exportCellValueToDisplay(exportCell)
+      const rowClass = row.isTotalsRow
+        ? "total-row"
+        : row.isGroupedOrAggregatedRow
+          ? "group-row"
+          : ""
+
+      const cells = row.values
+        .map((value) => {
+          const isNumeric = typeof value === "number"
+          const formatted = formatCellValue(value)
+          const cellHtml =
+            typeof value === "string" && value.includes("\n")
+              ? escapeHtml(formatted).replace(/\n/g, "<br />")
+              : escapeHtml(formatted)
           const classNames = [
             isNumeric ? "numeric" : "",
-            exportCell.kind === "empty" ? "empty" : "",
+            value === "" || value === "—" ? "empty" : "",
           ]
             .filter(Boolean)
             .join(" ")
 
-          return `<td class="${classNames}">${escapeHtml(display)}</td>`
+          return `<td class="${classNames}">${cellHtml}</td>`
         })
         .join("")
 
       return `<tr class="${rowClass}">${cells}</tr>`
     })
     .join("")
+}
 
-  const footerCells = visibleColumns
-    .map((column, columnIndex) => {
-      const columnId = column.id
-      const isNumeric = column.columnDef.meta?.align === "right"
-      const className = isNumeric ? "numeric" : ""
+function buildLedgerTableHtml(
+  rows: ExcelPreviewRow[],
+  headers: string[],
+): string {
+  if (rows.length === 0) return ""
 
-      if (columnIndex === 0) {
-        return `<th scope="row">Total</th>`
-      }
-
-      if (isSummableExportColumn(columnId)) {
-        const exportCell = getFooterExportValue(
-          columnId,
-          filteredRows,
-          quantityMode,
-        )
-        const display = exportCellValueToDisplay(exportCell)
-        return `<td class="${className}">${escapeHtml(display)}</td>`
-      }
-
-      return `<td class="${className}"></td>`
-    })
+  const headerCells = headers
+    .map((header) => `<th>${escapeHtml(header)}</th>`)
     .join("")
 
+  return `<div class="table-wrap">
+    <table>
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${renderLedgerTableBodyRows(rows, headers.length)}</tbody>
+    </table>
+  </div>`
+}
+
+export function buildIncomingReportPreviewHtml({
+  preview,
+  coldStorageName,
+  reportTitle = "Incoming Report",
+  generatedAt = new Date(),
+}: PreviewIncomingReportOptions): string {
+  const metadataText = [
+    `Generated: ${format(generatedAt, "do MMM yyyy, h:mm a")}`,
+    `${preview.exportedRowCount.toLocaleString("en-IN")} ${
+      preview.exportedRowCount === 1 ? "entry" : "entries"
+    }`,
+    ...(preview.metaLines ?? []),
+  ].join("  |  ")
+
+  const filterText =
+    preview.filterSummaryLines.length > 0
+      ? preview.filterSummaryLines.join("\n")
+      : "Filters: none applied"
+
+  const totalRows = preview.rows.length
+  const rowsForPreview =
+    totalRows > EXCEL_PREVIEW_MAX_ROWS
+      ? preview.rows.slice(0, EXCEL_PREVIEW_MAX_ROWS)
+      : preview.rows
+
+  const previewTruncationNotice =
+    totalRows > EXCEL_PREVIEW_MAX_ROWS
+      ? `<p class="meta-line">Showing first ${EXCEL_PREVIEW_MAX_ROWS.toLocaleString("en-IN")} of ${totalRows.toLocaleString("en-IN")} rows. Download the Excel file for the full report.</p>`
+      : ""
+
+  const tableHtml = buildLedgerTableHtml(rowsForPreview, preview.headers)
   const pageTitle = escapeHtml(`${reportTitle} — ${coldStorageName}`)
 
   return `<!DOCTYPE html>
@@ -323,19 +324,8 @@ export function buildIncomingReportPreviewHtml({
         });
       })();
     </script>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>${headerCells}</tr>
-        </thead>
-        <tbody>
-          ${bodyRows}
-        </tbody>
-        <tfoot>
-          <tr>${footerCells}</tr>
-        </tfoot>
-      </table>
-    </div>
+    ${previewTruncationNotice}
+    <section class="ledger-block">${tableHtml}</section>
   </body>
 </html>`
 }

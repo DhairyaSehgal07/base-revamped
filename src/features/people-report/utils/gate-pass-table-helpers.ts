@@ -145,6 +145,30 @@ export function getOutgoingSizeQuantityDetailLines(
   )
 }
 
+export function getOutgoingSizeQuantityForVariety(
+  entry: OutgoingDaybookEntry,
+  size: string,
+  variety: string,
+): number | null {
+  const line = getOutgoingSizeQuantityLinesByVariety(entry, size).find(
+    (item) => item.variety === variety,
+  )
+
+  return line ? line.quantity : null
+}
+
+export function getOutgoingSizeQuantityLinesForVariety(
+  entry: OutgoingDaybookEntry,
+  size: string,
+  variety: string,
+): GatePassSizeQuantityLine[] {
+  const line = getOutgoingSizeQuantityLinesByVariety(entry, size).find(
+    (item) => item.variety === variety,
+  )
+
+  return line?.locationLines ?? []
+}
+
 export function formatOutgoingVarietyBreakdownForExport(
   entry: OutgoingDaybookEntry,
 ): string {

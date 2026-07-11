@@ -2,7 +2,11 @@ import type {
   DaybookLocation,
   IncomingGatePassSnapshot,
 } from "@/features/daybook/types"
-import { formatCompactLocation, locationKey } from "@/features/daybook/utils/format"
+import {
+  formatCompactLocation,
+  formatQuantity,
+  locationKey,
+} from "@/features/daybook/utils/format"
 import type {
   OutgoingGatePassReportRecord,
   OutgoingReportOrderDetail,
@@ -76,6 +80,7 @@ export function getOutgoingReportType(
 export function getOutgoingReportVariety(
   row: OutgoingGatePassReportRecord,
 ): string {
+  if (row.varietySlice?.trim()) return row.varietySlice.trim()
   if (row.variety?.trim()) return row.variety.trim()
 
   const snapshots = row.incomingGatePassSnapshots ?? []
@@ -91,6 +96,68 @@ export function getOutgoingReportVariety(
   if (varieties.length > 1) return varieties.join(", ")
 
   return ""
+}
+
+export function getOutgoingReportRowId(row: OutgoingGatePassReportRecord): string {
+  if (row.varietySlice) return `${row._id}\u001f${row.varietySlice}`
+  return row._id
+}
+
+export function getOutgoingReportOrderDetailsForVariety(
+  row: OutgoingGatePassReportRecord,
+  variety: string,
+): OutgoingReportOrderDetail[] {
+  return row.orderDetails.filter(
+    (detail) => getOutgoingReportOrderLineVariety(row, detail) === variety,
+  )
+}
+
+/**
+ * When grouping by variety, expand multi-variety gate passes into one row
+ * per variety (scoped orderDetails + totalBags), matching people-report.
+ */
+export function expandOutgoingReportRowsByVariety(
+  rows: readonly OutgoingGatePassReportRecord[],
+  quantityMode: OutgoingQuantityMode = "issued",
+  splitByVariety = false,
+): OutgoingGatePassReportRecord[] {
+  if (!splitByVariety) return [...rows]
+
+  const expanded: OutgoingGatePassReportRecord[] = []
+
+  for (const row of rows) {
+    const breakdown = getOutgoingReportVarietyBreakdown(row, quantityMode)
+
+    if (breakdown.length > 1) {
+      for (const line of breakdown) {
+        expanded.push({
+          ...row,
+          variety: line.variety,
+          varietySlice: line.variety,
+          orderDetails: getOutgoingReportOrderDetailsForVariety(
+            row,
+            line.variety,
+          ),
+          totalBags: line.quantity,
+        })
+      }
+      continue
+    }
+
+    if (breakdown.length === 1) {
+      const variety = breakdown[0]!.variety
+      expanded.push({
+        ...row,
+        variety,
+        varietySlice: variety,
+      })
+      continue
+    }
+
+    expanded.push(row)
+  }
+
+  return expanded
 }
 
 export function getOutgoingReportVarietyBreakdown(
@@ -192,16 +259,48 @@ export function formatOutgoingReportVarietyBreakdownForExport(
     .join("\n")
 }
 
-export function formatOutgoingReportSizeDetailLineForExport(
+/** Parenthetical sub-line for a single multi-variety size detail. */
+export function formatOutgoingReportSizeDetailSubForExport(
   line: OutgoingReportSizeDetailLine,
 ): string {
-  const parts = [line.quantity.toLocaleString("en-IN")]
-
   if (line.locationLabel) {
-    parts.push(`(${line.locationLabel})`)
+    return `(${line.locationLabel}, ${line.variety})`
   }
 
-  parts.push(`(${line.variety})`)
+  return `(${line.variety})`
+}
 
-  return parts.join(" ")
+/** Segment inside a multi-location/variety parenthetical breakdown. */
+export function formatOutgoingReportSizeDetailSegmentForExport(
+  line: OutgoingReportSizeDetailLine,
+): string {
+  const quantity = formatQuantity(line.quantity)
+
+  if (line.locationLabel) {
+    return `${quantity} (${line.locationLabel}, ${line.variety})`
+  }
+
+  return `${quantity} (${line.variety})`
+}
+
+/**
+ * Stacked Excel/preview cell for multi-variety size details:
+ * one line → `qty\\n(loc, variety)`; many → `TOTAL\\n(qty (loc, variety), …)`.
+ */
+export function formatOutgoingReportSizeDetailLinesForExport(
+  lines: readonly OutgoingReportSizeDetailLine[],
+): string | null {
+  if (lines.length === 0) return null
+
+  if (lines.length === 1) {
+    const line = lines[0]!
+    return `${formatQuantity(line.quantity)}\n${formatOutgoingReportSizeDetailSubForExport(line)}`
+  }
+
+  const total = lines.reduce((sum, line) => sum + line.quantity, 0)
+  const breakdown = lines
+    .map((line) => formatOutgoingReportSizeDetailSegmentForExport(line))
+    .join(", ")
+
+  return `${formatQuantity(total)}\n(${breakdown})`
 }

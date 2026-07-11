@@ -1,13 +1,19 @@
 import { format, isValid, parse, parseISO } from "date-fns"
 import type { Column, Row, Table } from "@tanstack/react-table"
 
+import type { DaybookLocation } from "@/features/daybook/types"
+import {
+  formatCompactLocation,
+  formatQuantity,
+  locationKey,
+} from "@/features/daybook/utils/format"
 import type {
   OutgoingGatePassReportRecord,
   OutgoingReportOrderDetail,
 } from "@/features/outgoing-report/api/types"
 import type { OutgoingQuantityMode } from "@/features/outgoing-report/components/columns"
 import {
-  formatOutgoingReportSizeDetailLineForExport,
+  formatOutgoingReportSizeDetailLinesForExport,
   formatOutgoingReportVarietyBreakdownForExport,
   getOrderLineQuantity,
   getOutgoingReportSizeQuantityDetailLines,
@@ -17,6 +23,7 @@ import type {
   AdvancedFilterCondition,
   AdvancedReportGlobalFilter,
 } from "@/features/outgoing-report/utils/report-filter-fns"
+import { EXPORT_INTEGER_NUM_FMT } from "@/lib/export-report-theme"
 
 const INTEGER_COLUMNS = new Set<string>([
   "accountNumber",
@@ -70,21 +77,87 @@ function getOrderDetailQuantity(
   return getOrderLineQuantity(detail, quantityMode)
 }
 
-function formatOrderDetailText(
-  detail: OutgoingReportOrderDetail,
+function hasLocation(location?: DaybookLocation): boolean {
+  if (!location) return false
+  return Boolean(location.chamber || location.floor || location.row)
+}
+
+type SizeLocationLine = {
+  quantity: number
+  locationLabel: string | null
+}
+
+function buildMergedSizeLocationLines(
+  details: OutgoingReportOrderDetail[],
   quantityMode: OutgoingQuantityMode,
-): string {
-  const location = detail.location
-    ? [detail.location.chamber, detail.location.floor, detail.location.row]
-        .filter(Boolean)
-        .join("-")
-    : null
-  const quantity = getOrderDetailQuantity(detail, quantityMode)
-  const parts = [`${quantity.toLocaleString("en-IN")} - ${detail.size}`]
+): SizeLocationLine[] {
+  const merged = new Map<string, SizeLocationLine>()
 
-  if (location) parts.push(`(${location})`)
+  for (const detail of details) {
+    const qty = getOrderDetailQuantity(detail, quantityMode)
+    if (qty <= 0) continue
 
-  return parts.join(" ")
+    const key = detail.location
+      ? locationKey(detail.location)
+      : "__no_location__"
+    const locationLabel = hasLocation(detail.location)
+      ? formatCompactLocation(detail.location!)
+      : null
+
+    const existing = merged.get(key)
+
+    if (existing) {
+      existing.quantity += qty
+      continue
+    }
+
+    merged.set(key, { quantity: qty, locationLabel })
+  }
+
+  return Array.from(merged.values())
+}
+
+function formatSingleVarietySizeValue(
+  details: OutgoingReportOrderDetail[],
+  quantityMode: OutgoingQuantityMode,
+  showLocation = true,
+): ExportCellValue {
+  const lines = buildMergedSizeLocationLines(details, quantityMode)
+
+  if (!lines.length) return { kind: "empty" }
+
+  const total = lines.reduce((sum, line) => sum + line.quantity, 0)
+
+  if (!showLocation) {
+    return { kind: "number", value: total, format: "integer" }
+  }
+
+  const hasAnyLocation = lines.some((line) => line.locationLabel != null)
+
+  if (!hasAnyLocation) {
+    return { kind: "number", value: total, format: "integer" }
+  }
+
+  if (lines.length === 1) {
+    const line = lines[0]!
+    return {
+      kind: "text",
+      value: `${formatQuantity(line.quantity)}\n(${line.locationLabel})`,
+    }
+  }
+
+  const breakdown = lines
+    .map((line) =>
+      line.locationLabel
+        ? `${formatQuantity(line.quantity)} (${line.locationLabel})`
+        : formatQuantity(line.quantity),
+    )
+    .join(", ")
+
+  return {
+    kind: "text",
+    value: `${formatQuantity(total)}\n(${breakdown})`,
+  }
 }
 
 function sumOrderSizeQuantity(
@@ -140,10 +213,14 @@ function formatSizeColumnValue(
   row: OutgoingGatePassReportRecord,
   columnId: string,
   quantityMode: OutgoingQuantityMode,
+  showLocation = true,
 ): ExportCellValue {
   const size = columnId.replace(/^size-/, "")
 
-  if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
+  if (
+    !row.varietySlice &&
+    hasMultipleOutgoingReportVarieties(row, quantityMode)
+  ) {
     const detailLines = getOutgoingReportSizeQuantityDetailLines(
       row,
       size,
@@ -152,39 +229,23 @@ function formatSizeColumnValue(
 
     if (!detailLines.length) return { kind: "empty" }
 
-    if (detailLines.length === 1) {
-      return {
-        kind: "text",
-        value: formatOutgoingReportSizeDetailLineForExport(detailLines[0]!),
-      }
+    if (!showLocation) {
+      const total = detailLines.reduce((sum, line) => sum + line.quantity, 0)
+      return { kind: "number", value: total, format: "integer" }
     }
 
-    return {
-      kind: "text",
-      value: detailLines
-        .map((line) => formatOutgoingReportSizeDetailLineForExport(line))
-        .join("\n"),
-    }
+    const formatted = formatOutgoingReportSizeDetailLinesForExport(detailLines)
+
+    if (!formatted) return { kind: "empty" }
+
+    return { kind: "text", value: formatted }
   }
 
   const details = row.orderDetails.filter((detail) => detail.size === size)
 
   if (!details.length) return { kind: "empty" }
 
-  if (details.length === 1) {
-    return {
-      kind: "number",
-      value: getOrderDetailQuantity(details[0], quantityMode),
-      format: "integer",
-    }
-  }
-
-  return {
-    kind: "text",
-    value: details
-      .map((detail) => formatOrderDetailText(detail, quantityMode))
-      .join("\n"),
-  }
+  return formatSingleVarietySizeValue(details, quantityMode, showLocation)
 }
 
 export function formatExportCellValue(
@@ -192,14 +253,19 @@ export function formatExportCellValue(
   rawValue: unknown,
   row?: OutgoingGatePassReportRecord,
   quantityMode: OutgoingQuantityMode = "issued",
+  showLocation = true,
 ): ExportCellValue {
   if (columnId.startsWith("size-")) {
     return row
-      ? formatSizeColumnValue(row, columnId, quantityMode)
+      ? formatSizeColumnValue(row, columnId, quantityMode, showLocation)
       : { kind: "empty" }
   }
 
   if (columnId === "variety" && row) {
+    if (row.varietySlice) {
+      return { kind: "text", value: row.varietySlice }
+    }
+
     if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
       return {
         kind: "text",
@@ -231,6 +297,7 @@ export function getExportCellForRow(
   row: Row<OutgoingGatePassReportRecord>,
   column: Column<OutgoingGatePassReportRecord, unknown>,
   quantityMode: OutgoingQuantityMode,
+  showLocation = true,
 ): ExportCellValue {
   const cell = row
     .getVisibleCells()
@@ -258,6 +325,7 @@ export function getExportCellForRow(
       cell.getValue(),
       row.original,
       quantityMode,
+      showLocation,
     )
   }
 
@@ -274,6 +342,7 @@ export function getExportCellForRow(
     cell.getValue(),
     row.original,
     quantityMode,
+    showLocation,
   )
 }
 
@@ -411,11 +480,13 @@ function formatSortingSummary(
 export function buildFilterSummaryLines(
   table: Table<OutgoingGatePassReportRecord>,
   quantityMode: OutgoingQuantityMode,
+  showLocation = true,
 ): string[] {
   const globalFilter = table.getState().globalFilter
 
   const lines = [
     `Quantity view: ${quantityMode === "issued" ? "Issued Qty" : "Available Qty"}`,
+    `Show location: ${showLocation ? "Yes" : "No"}`,
     ...formatColumnFilterSummary(table),
     ...(typeof globalFilter === "object" &&
     globalFilter != null &&
@@ -456,6 +527,41 @@ export function isSummableExportColumn(columnId: string): boolean {
   return SUMMABLE_INTEGER_COLUMNS.has(columnId) || columnId.startsWith("size-")
 }
 
+export function computeOutgoingReportFooterTotals(
+  rows: readonly Row<OutgoingGatePassReportRecord>[],
+  quantityMode: OutgoingQuantityMode,
+): Map<string, ExportCellValue> {
+  let totalBags = 0
+  const sizeTotals = new Map<string, number>()
+
+  for (const row of rows) {
+    totalBags +=
+      typeof row.original.totalBags === "number" ? row.original.totalBags : 0
+
+    for (const detail of row.original.orderDetails) {
+      const columnId = `size-${detail.size}`
+      sizeTotals.set(
+        columnId,
+        (sizeTotals.get(columnId) ?? 0) +
+          getOrderDetailQuantity(detail, quantityMode),
+      )
+    }
+  }
+
+  const totals = new Map<string, ExportCellValue>()
+  totals.set("totalBags", {
+    kind: "number",
+    value: totalBags,
+    format: "integer",
+  })
+
+  for (const [columnId, value] of sizeTotals) {
+    totals.set(columnId, { kind: "number", value, format: "integer" })
+  }
+
+  return totals
+}
+
 export function getFooterExportValue(
   columnId: string,
   rows: readonly Row<OutgoingGatePassReportRecord>[],
@@ -486,7 +592,7 @@ export function getFooterExportValue(
 }
 
 export function getExcelNumFmt(): string {
-  return "#,##,##0"
+  return EXPORT_INTEGER_NUM_FMT
 }
 
 export function formatDateRangeLabel(

@@ -10,6 +10,7 @@ import {
   applyRunningTotalsInDisplayOrder,
   buildFarmerReportRows,
   buildFarmerReportSections,
+  getFarmerReportRowKey,
   splitFarmerReportEntries,
 } from "./build-farmer-report-sections"
 
@@ -257,7 +258,116 @@ describe("buildFarmerReportSections", () => {
     expect(sections.outgoing[0]?.kind).toBe("gate-pass")
     expect(sections.outgoing[0]?.runningTotal).toBe(-30)
   })
+
+  it("keeps multi-variety outgoing as a single row when not splitting", () => {
+    const rows: DaybookEntry[] = [
+      createIncomingPass(),
+      createMultiVarietyOutgoingPass(),
+    ]
+
+    const sections = buildFarmerReportSections(rows)
+    const gatePassRows = sections.outgoing.filter(
+      (row) => row.kind === "gate-pass",
+    )
+
+    expect(gatePassRows).toHaveLength(1)
+    expect(gatePassRows[0]?.varietySlice).toBeUndefined()
+    expect(gatePassRows[0]?.rowBags).toBe(45)
+  })
+
+  it("splits multi-variety outgoing into one row per variety when enabled", () => {
+    const rows: DaybookEntry[] = [
+      createIncomingPass(),
+      createMultiVarietyOutgoingPass(),
+    ]
+
+    const sections = buildFarmerReportSections(rows, {
+      splitOutgoingByVariety: true,
+    })
+    const gatePassRows = sections.outgoing.filter(
+      (row) => row.kind === "gate-pass",
+    )
+
+    expect(gatePassRows).toHaveLength(2)
+    expect(gatePassRows.map((row) => row.varietySlice)).toEqual([
+      "Atlantic",
+      "Chipsona",
+    ])
+    expect(gatePassRows.map((row) => row.rowBags)).toEqual([20, 25])
+    expect(gatePassRows.map((row) => row.entry?.gatePassNo)).toEqual([202, 202])
+    expect(gatePassRows.map((row) => getFarmerReportRowKey(row))).toEqual([
+      "outgoing-1:Atlantic",
+      "outgoing-1:Chipsona",
+    ])
+    expect(gatePassRows[1]?.runningTotal).toBe(55)
+  })
 })
+
+function createMultiVarietyOutgoingPass(): OutgoingDaybookEntry {
+  return createOutgoingPass({
+    variety: "Atlantic",
+    orderDetails: [
+      {
+        size: "Ration",
+        quantityAvailable: 80,
+        quantityIssued: 20,
+        location: { chamber: "1", floor: "1", row: "A" },
+      },
+      {
+        size: "Ration",
+        quantityAvailable: 50,
+        quantityIssued: 15,
+        location: { chamber: "2", floor: "1", row: "B" },
+      },
+      {
+        size: "Goli",
+        quantityAvailable: 10,
+        quantityIssued: 10,
+        location: { chamber: "2", floor: "1", row: "C" },
+      },
+    ],
+    incomingGatePassSnapshots: [
+      {
+        _id: "incoming-1",
+        gatePassNo: 101,
+        variety: "Atlantic",
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 100,
+            currentQuantity: 80,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "1", floor: "1", row: "A" },
+          },
+        ],
+      },
+      {
+        _id: "incoming-2",
+        gatePassNo: 102,
+        variety: "Chipsona",
+        bagSizes: [
+          {
+            name: "Ration",
+            initialQuantity: 50,
+            currentQuantity: 50,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "2", floor: "1", row: "B" },
+          },
+          {
+            name: "Goli",
+            initialQuantity: 10,
+            currentQuantity: 10,
+            type: "RECEIPT",
+            quantityIssued: 0,
+            location: { chamber: "2", floor: "1", row: "C" },
+          },
+        ],
+      },
+    ],
+  })
+}
 
 describe("applyRunningTotalsInDisplayOrder", () => {
   it("recomputes outgoing totals for grouped display order", () => {

@@ -51,9 +51,9 @@ describe("formatExportCellValue size columns", () => {
 
     expect(cell).toEqual({
       kind: "text",
-      value: "500\n(C1-F2-R3)",
+      value: "500\n(C1/F2/R3)",
     })
-    expect(exportCellValueToDisplay(cell)).toBe("500\n(C1-F2-R3)")
+    expect(exportCellValueToDisplay(cell)).toBe("500\n(C1/F2/R3)")
   })
 
   it("keeps plain numbers when no location is present", () => {
@@ -77,7 +77,7 @@ describe("formatExportCellValue size columns", () => {
     })
   })
 
-  it("stacks multiple bags with location below each quantity", () => {
+  it("stacks multiple bags as total with parenthetical location breakdown", () => {
     const row = createRow({
       bagSizes: [
         {
@@ -99,7 +99,7 @@ describe("formatExportCellValue size columns", () => {
 
     expect(cell).toEqual({
       kind: "text",
-      value: "400\n(C1-F1-R1)\n\n200\n(C2-F2-R2)",
+      value: "600\n(400 (C1/F1/R1), 200 (C2/F2/R2))",
     })
   })
 
@@ -130,7 +130,7 @@ describe("formatExportCellValue size columns", () => {
     })
   })
 
-  it("hides location when showLocation is false for multiple bags", () => {
+  it("sums quantities when showLocation is false for multiple bags", () => {
     const row = createRow({
       bagSizes: [
         {
@@ -157,8 +157,9 @@ describe("formatExportCellValue size columns", () => {
     )
 
     expect(cell).toEqual({
-      kind: "text",
-      value: "400\n\n200",
+      kind: "number",
+      value: 600,
+      format: "integer",
     })
   })
 })

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
 
 import {
+  expandOutgoingReportRowsByVariety,
   formatOutgoingReportVarietyBreakdownForExport,
+  getOutgoingReportRowId,
   getOutgoingReportSizeQuantityDetailLines,
   getOutgoingReportVarietyBreakdown,
   hasMultipleOutgoingReportVarieties,
@@ -123,5 +125,48 @@ describe("outgoing report variety breakdown helpers", () => {
     expect(formatOutgoingReportVarietyBreakdownForExport(multiVarietyPass)).toBe(
       "Atlantic (20)\nChipsona (25)",
     )
+  })
+})
+
+describe("expandOutgoingReportRowsByVariety", () => {
+  const multiVarietyPass = createMultiVarietyPass()
+
+  it("keeps multi-variety outgoing as a single row when not splitting", () => {
+    const rows = expandOutgoingReportRowsByVariety(
+      [multiVarietyPass],
+      "issued",
+      false,
+    )
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.varietySlice).toBeUndefined()
+    expect(rows[0]?.totalBags).toBe(45)
+  })
+
+  it("splits multi-variety outgoing into one row per variety when enabled", () => {
+    const rows = expandOutgoingReportRowsByVariety(
+      [multiVarietyPass],
+      "issued",
+      true,
+    )
+
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row) => row.varietySlice)).toEqual([
+      "Atlantic",
+      "Chipsona",
+    ])
+    expect(rows.map((row) => row.totalBags)).toEqual([20, 25])
+    expect(rows.map((row) => row.gatePassNo)).toEqual([202, 202])
+    expect(rows.map((row) => getOutgoingReportRowId(row))).toEqual([
+      "outgoing-1\u001fAtlantic",
+      "outgoing-1\u001fChipsona",
+    ])
+    expect(rows[0]?.orderDetails.map((detail) => detail.size)).toEqual([
+      "Ration",
+    ])
+    expect(rows[1]?.orderDetails.map((detail) => detail.size)).toEqual([
+      "Ration",
+      "Goli",
+    ])
   })
 })

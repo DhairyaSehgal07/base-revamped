@@ -2,6 +2,11 @@ import { format, isValid, parse, parseISO } from "date-fns"
 import type { Cell, Column, Row, Table } from "@tanstack/react-table"
 
 import type { IncomingBagSize } from "@/features/daybook/types"
+import {
+  formatCompactLocation,
+  formatQuantity,
+  locationKey,
+} from "@/features/daybook/utils/format"
 import type { IncomingGatePassReportRecord } from "@/features/incoming-report/api/types"
 import {
   getIncomingReportTotalBags,
@@ -63,35 +68,82 @@ function getBagQuantity(
   return quantityMode === "current" ? bag.currentQuantity : bag.initialQuantity
 }
 
-function formatBagLocation(
+function hasLocation(
   location: IncomingBagSize["location"] | IncomingBagSize["paltaiLocation"],
-): string | null {
-  if (!location) return null
-
-  const formatted = [location.chamber, location.floor, location.row]
-    .filter(Boolean)
-    .join("-")
-
-  return formatted.length > 0 ? formatted : null
+): boolean {
+  if (!location) return false
+  return Boolean(location.chamber || location.floor || location.row)
 }
 
-function formatBagSizeExportText(
-  bag: IncomingBagSize,
+type SizeLocationLine = {
+  quantity: number
+  locationLabel: string | null
+  paltaiLabel: string | null
+}
+
+function buildMergedSizeLocationLines(
+  bags: IncomingBagSize[],
   quantityMode: IncomingQuantityMode,
-  showLocation = true,
-): string {
-  const quantity = getBagQuantity(bag, quantityMode)
-  const lines = [indianIntegerFormatter.format(quantity)]
+): SizeLocationLine[] {
+  const merged = new Map<string, SizeLocationLine>()
 
-  if (showLocation) {
-    const location = formatBagLocation(bag.location)
-    const paltaiLocation = formatBagLocation(bag.paltaiLocation)
+  for (const bag of bags) {
+    const qty = getBagQuantity(bag, quantityMode)
+    const key = locationKey(bag.location)
+    const locationLabel = hasLocation(bag.location)
+      ? formatCompactLocation(bag.location)
+      : null
+    const paltaiLabel =
+      bag.paltaiLocation && hasLocation(bag.paltaiLocation)
+        ? formatCompactLocation(bag.paltaiLocation)
+        : null
 
-    if (location) lines.push(`(${location})`)
-    if (paltaiLocation) lines.push(`Paltai: (${paltaiLocation})`)
+    const existing = merged.get(key)
+
+    if (existing) {
+      existing.quantity += qty
+      if (paltaiLabel && !existing.paltaiLabel) {
+        existing.paltaiLabel = paltaiLabel
+      }
+      continue
+    }
+
+    merged.set(key, {
+      quantity: qty,
+      locationLabel,
+      paltaiLabel,
+    })
   }
 
-  return lines.join("\n")
+  return Array.from(merged.values())
+}
+
+function formatSizeLocationSub(line: SizeLocationLine): string | undefined {
+  const parts: string[] = []
+
+  if (line.locationLabel) {
+    parts.push(`(${line.locationLabel})`)
+  }
+
+  if (line.paltaiLabel) {
+    parts.push(`Paltai: (${line.paltaiLabel})`)
+  }
+
+  return parts.length > 0 ? parts.join("\n") : undefined
+}
+
+function formatMultiLocationSegment(line: SizeLocationLine): string {
+  const quantity = formatQuantity(line.quantity)
+
+  if (!line.locationLabel) {
+    return quantity
+  }
+
+  if (line.paltaiLabel) {
+    return `${quantity} (${line.locationLabel}, Paltai: ${line.paltaiLabel})`
+  }
+
+  return `${quantity} (${line.locationLabel})`
 }
 
 const bagsBySizeIndex = new WeakMap<
@@ -182,49 +234,55 @@ function formatSizeColumnValue(
   if (!bags.length) return { kind: "empty" }
 
   if (!showLocation) {
-    if (bags.length === 1) {
+    const total = bags.reduce(
+      (sum, bag) => sum + getBagQuantity(bag, quantityMode),
+      0,
+    )
+
+    return {
+      kind: "number",
+      value: total,
+      format: "integer",
+    }
+  }
+
+  const lines = buildMergedSizeLocationLines(bags, quantityMode)
+  const total = lines.reduce((sum, line) => sum + line.quantity, 0)
+  const hasAnyLocation = lines.some(
+    (line) => line.locationLabel != null || line.paltaiLabel != null,
+  )
+
+  if (!hasAnyLocation) {
+    return {
+      kind: "number",
+      value: total,
+      format: "integer",
+    }
+  }
+
+  if (lines.length === 1) {
+    const line = lines[0]!
+    const sub = formatSizeLocationSub(line)
+
+    if (!sub) {
       return {
         kind: "number",
-        value: getBagQuantity(bags[0], quantityMode),
+        value: line.quantity,
         format: "integer",
       }
     }
 
     return {
       kind: "text",
-      value: bags
-        .map((bag) =>
-          indianIntegerFormatter.format(getBagQuantity(bag, quantityMode)),
-        )
-        .join("\n\n"),
+      value: `${formatQuantity(line.quantity)}\n${sub}`,
     }
   }
 
-  if (bags.length === 1) {
-    const bag = bags[0]
-    const hasLocation =
-      formatBagLocation(bag.location) != null ||
-      formatBagLocation(bag.paltaiLocation) != null
-
-    if (hasLocation) {
-      return {
-        kind: "text",
-        value: formatBagSizeExportText(bag, quantityMode, showLocation),
-      }
-    }
-
-    return {
-      kind: "number",
-      value: getBagQuantity(bag, quantityMode),
-      format: "integer",
-    }
-  }
+  const sub = `(${lines.map((line) => formatMultiLocationSegment(line)).join(", ")})`
 
   return {
     kind: "text",
-    value: bags
-      .map((bag) => formatBagSizeExportText(bag, quantityMode, showLocation))
-      .join("\n\n"),
+    value: `${formatQuantity(total)}\n${sub}`,
   }
 }
 

@@ -19,6 +19,8 @@ import {
   getGatePassStockFilter,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
+  getOutgoingSizeQuantityForVariety,
+  getOutgoingSizeQuantityLinesForVariety,
   getOutgoingVarietyBreakdown,
   hasMultipleOutgoingVarieties,
   orderBagSizes,
@@ -77,6 +79,14 @@ function getRowSizeSortValue(
 
   if (!row.entry) return null
 
+  if (row.varietySlice && isOutgoingDaybookEntry(row.entry)) {
+    return getOutgoingSizeQuantityForVariety(
+      row.entry,
+      size,
+      row.varietySlice,
+    )
+  }
+
   return getGatePassSizeQuantity(row.entry, size)
 }
 
@@ -115,6 +125,34 @@ function SizeQuantityCell({
 
   if (!row.entry) {
     return <span className="text-muted-foreground">—</span>
+  }
+
+  if (row.varietySlice && isOutgoingDaybookEntry(row.entry)) {
+    const lines = getOutgoingSizeQuantityLinesForVariety(
+      row.entry,
+      size,
+      row.varietySlice,
+    )
+
+    if (lines.length === 0) {
+      return <span className="text-muted-foreground">—</span>
+    }
+
+    return (
+      <div className="flex flex-col items-end gap-1">
+        {lines.map((line, index) => (
+          <div
+            key={`${line.locationLabel}-${index}`}
+            className="flex flex-col items-end gap-0.5"
+          >
+            <span className="tabular-nums">{formatQuantity(line.quantity)}</span>
+            <span className="text-xs text-muted-foreground">
+              ({line.locationLabel})
+            </span>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   if (
@@ -168,6 +206,14 @@ function VarietyCell({ row }: { row: FarmerReportTableRow }) {
     return <span className="text-muted-foreground">—</span>
   }
 
+  if (row.varietySlice) {
+    return (
+      <span className="block min-w-0 break-words" title={row.varietySlice}>
+        {row.varietySlice}
+      </span>
+    )
+  }
+
   if (
     isOutgoingDaybookEntry(row.entry) &&
     hasMultipleOutgoingVarieties(row.entry)
@@ -209,6 +255,7 @@ function isOpeningBalanceRow(row: FarmerReportTableRow): boolean {
 
 function getRowVarietyGroupingValue(row: FarmerReportTableRow): string {
   if (row.kind === "opening-balance") return "Opening Balance"
+  if (row.varietySlice) return row.varietySlice
   if (!row.entry) return "—"
   return getGatePassVariety(row.entry)
 }
@@ -317,8 +364,10 @@ function buildFarmerReportColumnsForSizes(
     },
     {
       id: "variety",
-      accessorFn: (row) =>
-        row.entry ? getGatePassVariety(row.entry) : "—",
+      accessorFn: (row) => {
+        if (row.varietySlice) return row.varietySlice
+        return row.entry ? getGatePassVariety(row.entry) : "—"
+      },
       header: "Variety",
       meta: { groupable: true, wrap: true, filterLabel: "Variety" },
       enableGrouping: true,

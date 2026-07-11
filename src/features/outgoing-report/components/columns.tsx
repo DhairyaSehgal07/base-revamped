@@ -135,8 +135,9 @@ const getOrderSizeQuantity = (
 const renderOrderDetailValue = (
   detail: OutgoingReportOrderDetail,
   quantityMode: OutgoingQuantityMode,
+  showLocation: boolean,
 ) => {
-  const location = formatLocation(detail.location)
+  const location = showLocation ? formatLocation(detail.location) : null
   const quantity = getOrderLineQuantity(detail, quantityMode)
 
   return (
@@ -144,7 +145,9 @@ const renderOrderDetailValue = (
       <div className="font-semibold text-foreground">
         {formatQuantity(quantity)}
       </div>
-      <div className="text-muted-foreground">{detail.size}</div>
+      {showLocation ? (
+        <div className="text-muted-foreground">{detail.size}</div>
+      ) : null}
       {location ? (
         <div className="text-muted-foreground">({location})</div>
       ) : null}
@@ -154,13 +157,14 @@ const renderOrderDetailValue = (
 
 function renderMultiVarietySizeDetailLine(
   line: ReturnType<typeof getOutgoingReportSizeQuantityDetailLines>[number],
+  showLocation: boolean,
 ) {
   return (
     <div className="flex flex-col items-end gap-0.5 tabular-nums">
       <span className="font-semibold text-foreground">
         {formatQuantity(line.quantity)}
       </span>
-      {line.locationLabel ? (
+      {showLocation && line.locationLabel ? (
         <span className="text-xs text-muted-foreground">
           ({line.locationLabel})
         </span>
@@ -174,6 +178,10 @@ function renderVarietyCell(
   row: OutgoingGatePassReportRecord,
   quantityMode: OutgoingQuantityMode,
 ) {
+  if (row.varietySlice) {
+    return row.varietySlice
+  }
+
   if (hasMultipleOutgoingReportVarieties(row, quantityMode)) {
     const breakdown = getOutgoingReportVarietyBreakdown(row, quantityMode)
 
@@ -400,14 +408,16 @@ function getOutgoingReportColumnCacheKey(
   sizes: string[],
   quantityMode: OutgoingQuantityMode,
   showStockFilter: boolean,
+  showLocation: boolean,
 ) {
-  return `${sizes.join("\0")}|${quantityMode}|sf:${showStockFilter}`
+  return `${sizes.join("\0")}|${quantityMode}|sf:${showStockFilter}|sl:${showLocation}`
 }
 
 function buildOutgoingReportColumns(
   sizes: string[],
   quantityMode: OutgoingQuantityMode,
   showStockFilter: boolean,
+  showLocation: boolean,
 ): ColumnDef<OutgoingGatePassReportRecord>[] {
   const sizeColumns: ColumnDef<OutgoingGatePassReportRecord>[] = sizes.map(
     (sizeName) => ({
@@ -437,7 +447,10 @@ function buildOutgoingReportColumns(
 
         if (!details.length) return "-"
 
-        if (hasMultipleOutgoingReportVarieties(row.original, quantityMode)) {
+        if (
+          !row.original.varietySlice &&
+          hasMultipleOutgoingReportVarieties(row.original, quantityMode)
+        ) {
           const detailLines = getOutgoingReportSizeQuantityDetailLines(
             row.original,
             sizeName,
@@ -450,7 +463,7 @@ function buildOutgoingReportColumns(
             <div className="space-y-3">
               {detailLines.map((line, index) => (
                 <div key={`${line.variety}-${line.locationLabel ?? "none"}-${index}`}>
-                  {renderMultiVarietySizeDetailLine(line)}
+                  {renderMultiVarietySizeDetailLine(line, showLocation)}
                 </div>
               ))}
             </div>
@@ -463,7 +476,7 @@ function buildOutgoingReportColumns(
               <div
                 key={`${detail.size}-${detail.location?.chamber ?? ""}-${detail.location?.floor ?? ""}-${detail.location?.row ?? ""}-${index}`}
               >
-                {renderOrderDetailValue(detail, quantityMode)}
+                {renderOrderDetailValue(detail, quantityMode, showLocation)}
               </div>
             ))}
           </div>
@@ -486,14 +499,25 @@ export function getOutgoingReportColumns(
   rows: OutgoingGatePassReportRecord[],
   quantityMode: OutgoingQuantityMode = "issued",
   showStockFilter = false,
+  showLocation = true,
 ): ColumnDef<OutgoingGatePassReportRecord>[] {
   const sizes = collectOutgoingReportOrderSizeNames(rows)
-  const cacheKey = getOutgoingReportColumnCacheKey(sizes, quantityMode, showStockFilter)
+  const cacheKey = getOutgoingReportColumnCacheKey(
+    sizes,
+    quantityMode,
+    showStockFilter,
+    showLocation,
+  )
   const cached = columnCache.get(cacheKey)
 
   if (cached) return cached
 
-  const columns = buildOutgoingReportColumns(sizes, quantityMode, showStockFilter)
+  const columns = buildOutgoingReportColumns(
+    sizes,
+    quantityMode,
+    showStockFilter,
+    showLocation,
+  )
   columnCache.set(cacheKey, columns)
 
   return columns

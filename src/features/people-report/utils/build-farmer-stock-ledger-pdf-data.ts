@@ -13,6 +13,7 @@ import {
 } from "@/features/people/utils/build-farmer-stock-summary"
 import {
   getFarmerReportRowBagTotal,
+  sumFarmerReportRowSizeColumn,
   type FarmerReportSections,
   type FarmerReportTableRow,
 } from "@/features/people-report/utils/build-farmer-report-sections"
@@ -27,10 +28,10 @@ import {
   getGatePassStockFilter,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
+  getOutgoingSizeQuantityLinesForVariety,
   getOutgoingVarietyBreakdown,
   hasMultipleOutgoingVarieties,
   orderBagSizes,
-  sumSizeColumn,
 } from "@/features/people-report/utils/gate-pass-table-helpers"
 
 export type PdfLedgerSizeValue =
@@ -122,10 +123,7 @@ function computeIncomingFooterSizes(
   return Object.fromEntries(
     sizeColumns.map((size) => [
       size,
-      sumSizeColumn(
-        gatePassRows.map((row) => row.entry!),
-        size,
-      ),
+      sumFarmerReportRowSizeColumn(gatePassRows, size),
     ]),
   )
 }
@@ -140,10 +138,7 @@ function computeOutgoingFooterSizes(
   return Object.fromEntries(
     sizeColumns.map((size) => {
       const openingTotal = openingRow?.sizeTotals?.[size] ?? 0
-      const outgoingTotal = sumSizeColumn(
-        gatePassRows.map((row) => row.entry!),
-        size,
-      )
+      const outgoingTotal = sumFarmerReportRowSizeColumn(gatePassRows, size)
 
       return [size, openingTotal - outgoingTotal]
     }),
@@ -180,7 +175,41 @@ function formatGeneratedAt(date: Date): string {
 function mapOutgoingSizeValueForEntry(
   entry: OutgoingDaybookEntry,
   size: string,
+  varietySlice?: string,
 ): PdfLedgerSizeValue | null {
+  if (varietySlice) {
+    const lines = getOutgoingSizeQuantityLinesForVariety(
+      entry,
+      size,
+      varietySlice,
+    )
+    if (lines.length === 0) return null
+
+    if (lines.length === 1) {
+      const line = lines[0]!
+      if (line.locationLabel) {
+        return {
+          type: "stacked",
+          main: formatQuantity(line.quantity),
+          sub: `(${line.locationLabel})`,
+        }
+      }
+
+      return { type: "plain", value: formatQuantity(line.quantity) }
+    }
+
+    const total = lines.reduce((sum, line) => sum + line.quantity, 0)
+    const locations = lines
+      .map((line) => `${formatQuantity(line.quantity)} (${line.locationLabel})`)
+      .join(", ")
+
+    return {
+      type: "stacked",
+      main: formatQuantity(total),
+      sub: `(${locations})`,
+    }
+  }
+
   if (!hasMultipleOutgoingVarieties(entry)) {
     return null
   }
@@ -217,6 +246,10 @@ function mapVarietyForEntry(row: FarmerReportTableRow): PdfLedgerVarietyValue {
     return { type: "plain", value: "—" }
   }
 
+  if (row.varietySlice) {
+    return { type: "plain", value: row.varietySlice }
+  }
+
   if (
     isOutgoingDaybookEntry(row.entry) &&
     hasMultipleOutgoingVarieties(row.entry)
@@ -245,11 +278,15 @@ function mapSizeValueForEntry(
 
   if (!row.entry) return null
 
-  const outgoingSizeValue =
-    isOutgoingDaybookEntry(row.entry)
-      ? mapOutgoingSizeValueForEntry(row.entry, size)
-      : null
-  if (outgoingSizeValue) return outgoingSizeValue
+  if (isOutgoingDaybookEntry(row.entry)) {
+    const outgoingSizeValue = mapOutgoingSizeValueForEntry(
+      row.entry,
+      size,
+      row.varietySlice,
+    )
+    if (outgoingSizeValue) return outgoingSizeValue
+    if (row.varietySlice) return null
+  }
 
   const lines = getGatePassSizeQuantityLines(row.entry, size)
   if (lines.length === 0) return null

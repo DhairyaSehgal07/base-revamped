@@ -6,7 +6,10 @@ import {
 
 import {
   collectUniqueBagSizes,
+  getGatePassSizeQuantity,
   getGatePassTotalBags,
+  getOutgoingSizeQuantityForVariety,
+  getOutgoingVarietyBreakdown,
   sumSizeColumn,
 } from "./gate-pass-table-helpers"
 
@@ -18,6 +21,12 @@ export type FarmerReportTableRow = {
   rowBags: number
   kind: FarmerReportRowKind
   sizeTotals?: Record<string, number>
+  /** Set when an outgoing gate pass is split into one row per variety. */
+  varietySlice?: string
+}
+
+export type BuildFarmerReportSectionsOptions = {
+  splitOutgoingByVariety?: boolean
 }
 
 export function getFarmerReportRowBagTotal(row: FarmerReportTableRow): number {
@@ -30,10 +39,47 @@ export function getFarmerReportRowBagTotal(row: FarmerReportTableRow): number {
   return row.rowBags
 }
 
+/** Size quantity for a report row, scoped to varietySlice when present. */
+export function getFarmerReportRowSizeQuantity(
+  row: FarmerReportTableRow,
+  size: string,
+): number {
+  if (row.kind === "opening-balance") {
+    return row.sizeTotals?.[size] ?? 0
+  }
+
+  if (!row.entry) return 0
+
+  if (row.varietySlice && isOutgoingDaybookEntry(row.entry)) {
+    return (
+      getOutgoingSizeQuantityForVariety(row.entry, size, row.varietySlice) ?? 0
+    )
+  }
+
+  return getGatePassSizeQuantity(row.entry, size) ?? 0
+}
+
+export function sumFarmerReportRowSizeColumn(
+  rows: FarmerReportTableRow[],
+  size: string,
+): number {
+  return rows.reduce(
+    (sum, row) => sum + getFarmerReportRowSizeQuantity(row, size),
+    0,
+  )
+}
+
 export function getFarmerReportRowKey(row: FarmerReportTableRow): string {
   if (row.kind === "opening-balance") return "opening-balance"
 
-  return row.entry?._id ?? `gate-pass-${row.entry?.gatePassNo ?? "unknown"}`
+  const baseKey =
+    row.entry?._id ?? `gate-pass-${row.entry?.gatePassNo ?? "unknown"}`
+
+  if (row.varietySlice) {
+    return `${baseKey}:${row.varietySlice}`
+  }
+
+  return baseKey
 }
 
 export function getFarmerReportSectionStartingBalance(
@@ -120,10 +166,47 @@ export function buildFarmerReportRows(
   entries: DaybookEntry[],
   mode: FarmerReportSectionMode,
   startingBalance = 0,
+  options: BuildFarmerReportSectionsOptions = {},
 ): FarmerReportTableRow[] {
   let runningTotal = startingBalance
+  const rows: FarmerReportTableRow[] = []
 
-  return entries.map((entry) => {
+  for (const entry of entries) {
+    if (
+      mode === "outgoing" &&
+      options.splitOutgoingByVariety &&
+      isOutgoingDaybookEntry(entry)
+    ) {
+      const breakdown = getOutgoingVarietyBreakdown(entry)
+
+      if (breakdown.length > 1) {
+        for (const line of breakdown) {
+          runningTotal -= line.quantity
+          rows.push({
+            entry,
+            runningTotal,
+            rowBags: line.quantity,
+            kind: "gate-pass",
+            varietySlice: line.variety,
+          })
+        }
+        continue
+      }
+
+      const varietySlice =
+        breakdown.length === 1 ? breakdown[0]!.variety : undefined
+      const rowBags = getGatePassTotalBags(entry)
+      runningTotal -= rowBags
+      rows.push({
+        entry,
+        runningTotal,
+        rowBags,
+        kind: "gate-pass",
+        ...(varietySlice ? { varietySlice } : {}),
+      })
+      continue
+    }
+
     const rowBags = getGatePassTotalBags(entry)
 
     if (mode === "incoming") {
@@ -132,13 +215,15 @@ export function buildFarmerReportRows(
       runningTotal -= rowBags
     }
 
-    return {
+    rows.push({
       entry,
       runningTotal,
       rowBags,
       kind: "gate-pass",
-    }
-  })
+    })
+  }
+
+  return rows
 }
 
 function buildOpeningBalanceRow(
@@ -166,6 +251,7 @@ function buildOpeningBalanceRow(
 
 export function buildFarmerReportSections(
   entries: DaybookEntry[],
+  options: BuildFarmerReportSectionsOptions = {},
 ): FarmerReportSections {
   const { incoming, outgoing } = splitFarmerReportEntries(entries)
   const incomingRows = buildFarmerReportRows(incoming, "incoming")
@@ -177,6 +263,7 @@ export function buildFarmerReportSections(
     outgoing,
     "outgoing",
     incomingClosingBalance,
+    options,
   )
   const openingBalanceRow =
     incomingRows.length > 0 && outgoingGatePassRows.length > 0

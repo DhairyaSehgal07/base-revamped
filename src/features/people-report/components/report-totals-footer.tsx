@@ -7,7 +7,7 @@ import type {
   FarmerReportSectionMode,
   FarmerReportTableRow,
 } from "@/features/people-report/utils/build-farmer-report-sections"
-import { sumSizeColumn } from "@/features/people-report/utils/gate-pass-table-helpers"
+import { sumFarmerReportRowSizeColumn } from "@/features/people-report/utils/build-farmer-report-sections"
 import { cn } from "@/lib/utils"
 
 import {
@@ -40,10 +40,7 @@ function getClosingBalanceForSize(
   const openingRow = getOpeningBalanceRow(rows)
   const gatePassRows = getGatePassRows(rows)
   const openingTotal = openingRow?.sizeTotals?.[size] ?? 0
-  const outgoingTotal = sumSizeColumn(
-    gatePassRows.map((row) => row.entry!),
-    size,
-  )
+  const outgoingTotal = sumFarmerReportRowSizeColumn(gatePassRows, size)
 
   return openingTotal - outgoingTotal
 }
@@ -96,10 +93,7 @@ function buildFooterCellContent(
       )
     }
 
-    const total = sumSizeColumn(
-      gatePassRows.map((row) => row.entry!),
-      size,
-    )
+    const total = sumFarmerReportRowSizeColumn(gatePassRows, size)
     return (
       <span className="tabular-nums font-semibold text-foreground">
         {total > 0 ? formatQuantity(total) : "—"}

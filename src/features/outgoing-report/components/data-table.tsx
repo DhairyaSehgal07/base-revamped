@@ -73,6 +73,10 @@ import {
   filterOutgoingReportSearchIndex,
 } from "@/features/outgoing-report/utils/report-search"
 import {
+  expandOutgoingReportRowsByVariety,
+  getOutgoingReportRowId,
+} from "@/features/outgoing-report/utils/report-row-values"
+import {
   getOutgoingReportColumnWidth,
   getOutgoingReportTableMinWidth,
 } from "@/features/outgoing-report/utils/report-column-layout"
@@ -341,9 +345,19 @@ export const DataTable = memo(function DataTable({
   const [isFooterElevated, setIsFooterElevated] = useState(false)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
+  const tableData = useMemo(
+    () =>
+      expandOutgoingReportRowsByVariety(
+        filteredData,
+        quantityMode,
+        grouping.includes("variety"),
+      ),
+    [filteredData, grouping, quantityMode],
+  )
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<OutgoingGatePassReportRecord>({
-    data: filteredData,
+    data: tableData,
     columns,
     defaultColumn: defaultTableColumn,
     filterFns: tableFilterFns,
@@ -356,6 +370,7 @@ export const DataTable = memo(function DataTable({
     getExpandedRowModel: expandedRowModel,
     getSortedRowModel: sortedRowModel,
     getPaginationRowModel: paginationRowModel,
+    getRowId: getOutgoingReportRowId,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,

@@ -15,7 +15,9 @@ import {
   getGatePassTotalBags,
   getGatePassVariety,
   getOutgoingSizeQuantityDetailLines,
+  getOutgoingSizeQuantityForVariety,
   getOutgoingSizeQuantityLinesByVariety,
+  getOutgoingSizeQuantityLinesForVariety,
   getOutgoingVarietyBreakdown,
   hasMultipleOutgoingVarieties,
   orderBagSizes,
@@ -451,6 +453,35 @@ describe("outgoing variety breakdown helpers", () => {
         locationLabel: "2/1/B",
       },
     ])
+  })
+
+  it("returns size quantity for a single variety slice", () => {
+    expect(
+      getOutgoingSizeQuantityForVariety(multiVarietyPass, "Ration", "Atlantic"),
+    ).toBe(20)
+    expect(
+      getOutgoingSizeQuantityForVariety(multiVarietyPass, "Ration", "Chipsona"),
+    ).toBe(15)
+    expect(
+      getOutgoingSizeQuantityForVariety(multiVarietyPass, "Goli", "Atlantic"),
+    ).toBeNull()
+  })
+
+  it("returns location lines for a single variety slice", () => {
+    expect(
+      getOutgoingSizeQuantityLinesForVariety(
+        multiVarietyPass,
+        "Ration",
+        "Atlantic",
+      ),
+    ).toEqual([{ quantity: 20, locationLabel: "1/1/A" }])
+    expect(
+      getOutgoingSizeQuantityLinesForVariety(
+        multiVarietyPass,
+        "Goli",
+        "Chipsona",
+      ),
+    ).toEqual([{ quantity: 10, locationLabel: "2/1/C" }])
   })
 
   it("formats multi-variety breakdown for export", () => {

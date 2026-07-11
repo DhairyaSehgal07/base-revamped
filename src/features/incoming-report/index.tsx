@@ -189,7 +189,7 @@ const IncomingReportPage = () => {
     return () => window.removeEventListener("message", onMessage)
   }, [handleExportExcel])
 
-  const handlePreview = useCallback(() => {
+  const handlePreview = useCallback(async () => {
     const reportTable = reportTableRef.current
     if (!reportTable) return
 
@@ -203,11 +203,22 @@ const IncomingReportPage = () => {
     }
 
     try {
-      previewWindowRef.current = openIncomingReportPreview({
+      const { buildIncomingReportPreviewData } = await import(
+        "./utils/export-incoming-report-excel"
+      )
+      const preview = buildIncomingReportPreviewData({
         table: reportTable,
         coldStorageName: coldStorageName ?? "Cold Storage",
         quantityMode,
         showLocation,
+        reportTitle: "Incoming Report",
+        dateFrom,
+        dateTo,
+      })
+
+      previewWindowRef.current = openIncomingReportPreview({
+        preview,
+        coldStorageName: coldStorageName ?? "Cold Storage",
         reportTitle: "Incoming Report",
         dateFrom,
         dateTo,

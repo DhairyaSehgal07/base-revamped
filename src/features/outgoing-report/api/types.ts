@@ -24,6 +24,11 @@ export type OutgoingGatePassReportRecord = {
   date: string
   type?: string
   variety?: string
+  /**
+   * Client-only: set when the table expands a multi-variety gate pass into
+   * one row per variety (people-report-style variety grouping).
+   */
+  varietySlice?: string
   from?: string
   to?: string
   truckNumber?: string

@@ -356,8 +356,13 @@ export function FarmerReportGatePassesSection({
   )
 
   const sections = useMemo(
-    () => buildFarmerReportSections(filteredEntries),
-    [filteredEntries],
+    () =>
+      buildFarmerReportSections(filteredEntries, {
+        splitOutgoingByVariety: activeGrouping.includes(
+          FARMER_REPORT_GROUP_COLUMN_IDS.variety,
+        ),
+      }),
+    [activeGrouping, filteredEntries],
   )
 
   const bagSizeSignature = useMemo(
@@ -475,7 +480,11 @@ export function FarmerReportGatePassesSection({
     const exportEntries = getExportEntries()
     if (exportEntries.length === 0) return null
 
-    const exportSections = buildFarmerReportSections(exportEntries)
+    const exportSections = buildFarmerReportSections(exportEntries, {
+      splitOutgoingByVariety: activeGrouping.includes(
+        FARMER_REPORT_GROUP_COLUMN_IDS.variety,
+      ),
+    })
 
     return {
       entries: exportEntries,
