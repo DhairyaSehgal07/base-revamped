@@ -37,8 +37,8 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       clearSession();
 
-      if (window.location.pathname !== '/') {
-        void router.navigate({ to: '/', replace: true });
+      if (window.location.pathname !== '/login') {
+        void router.navigate({ to: '/login', replace: true });
       }
     }
 
