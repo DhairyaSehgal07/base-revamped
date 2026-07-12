@@ -42,11 +42,6 @@ const TOTAL_BORDER: Partial<ExcelJS.Borders> = {
 };
 
 const FILLS = {
-  zebra: {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: COLORS.zebraFill },
-  } satisfies ExcelJS.Fill,
   group: {
     type: 'pattern',
     pattern: 'solid',
@@ -508,7 +503,6 @@ function styleBodyRow(
   excelRow: ExcelJS.Row,
   dataRow: ExcelBodyRow,
   columnCount: number,
-  dataRowCounter: number,
   columnWidths: number[],
 ) {
   excelRow.height = calculateBodyRowHeight(dataRow.values, columnWidths);
@@ -517,9 +511,7 @@ function styleBodyRow(
     ? FILLS.section
     : dataRow.isGroupedOrAggregatedRow
       ? FILLS.group
-      : dataRowCounter % 2 === 1
-        ? FILLS.zebra
-        : undefined;
+      : undefined;
 
   for (let columnNumber = 1; columnNumber <= columnCount; columnNumber++) {
     const cell = excelRow.getCell(columnNumber);
@@ -562,19 +554,12 @@ function addStyledBodyRows(
 ) {
   if (dataRows.length === 0) return;
 
-  let dataRowCounter = 0;
   const excelRows = worksheet.addRows(dataRows.map((row) => row.values));
 
   for (let index = 0; index < dataRows.length; index++) {
     const dataRow = dataRows[index];
-    styleBodyRow(excelRows[index], dataRow, columnCount, dataRowCounter, columnWidths);
+    styleBodyRow(excelRows[index], dataRow, columnCount, columnWidths);
     previewRows.push(dataRow);
-
-    if (!dataRow.isGroupedOrAggregatedRow || dataRow.isTotalsRow) {
-      if (!dataRow.isSectionTitle && !dataRow.isTotalsRow) {
-        dataRowCounter += 1;
-      }
-    }
   }
 }
 
@@ -585,7 +570,7 @@ function addBodyRow(
   columnWidths: number[],
 ) {
   const excelRow = worksheet.addRow(dataRow.values);
-  styleBodyRow(excelRow, dataRow, columnCount, 0, columnWidths);
+  styleBodyRow(excelRow, dataRow, columnCount, columnWidths);
 }
 
 function addColumnHeaderRow(worksheet: ExcelJS.Worksheet, headers: string[]) {
@@ -1039,8 +1024,6 @@ export async function buildFarmerStockLedgerExcelPackage({
 
   worksheet.views = [
     {
-      state: 'frozen',
-      ySplit: 7,
       showGridLines: false,
     },
   ];

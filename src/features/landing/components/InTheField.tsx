@@ -41,12 +41,6 @@ export function InTheField() {
                 <InstagramReel />
               </div>
             </div>
-            <div className="mx-auto max-w-[340px] space-y-1 px-2">
-              <h3 className="text-base font-semibold">Real-time WhatsApp Alert</h3>
-              <p className="text-muted-foreground text-sm text-pretty">
-                Instant SMS/WhatsApp alerts received by farmers on their mobile phones.
-              </p>
-            </div>
           </div>
         </div>
       </div>

@@ -320,13 +320,10 @@ export function getExportCellForRow(
 
   if (cell.getIsAggregated()) {
     if (meta?.numeric !== true) return { kind: "empty" }
-    return formatExportCellValue(
-      columnId,
-      cell.getValue(),
-      row.original,
-      quantityMode,
-      showLocation,
-    )
+    const parsed = parseReportNumber(cell.getValue())
+    return parsed == null
+      ? { kind: "empty" }
+      : { kind: "number", value: parsed, format: "integer" }
   }
 
   if (cell.getIsPlaceholder()) {
@@ -370,7 +367,8 @@ export function collectExportRows(
     return result
   }
 
-  return flattenGroupedRows(table.getGroupedRowModel().rows)
+  // Sorting runs after grouping in TanStack Table — use the sorted model.
+  return flattenGroupedRows(table.getSortedRowModel().rows)
 }
 
 export function getFilteredLeafRowCount(

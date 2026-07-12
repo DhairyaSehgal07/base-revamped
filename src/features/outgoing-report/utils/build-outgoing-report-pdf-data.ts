@@ -16,7 +16,6 @@ import {
 } from "@/features/outgoing-report/utils/export-cell-value"
 import { mapOutgoingSizeCellForPdf } from "@/features/outgoing-report/utils/map-outgoing-pdf-size-cell"
 import { buildTableReportPdfData } from "@/lib/gate-pass-report-pdf/build-table-report-pdf-data"
-import { GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE } from "@/lib/gate-pass-report-pdf/chunk-report-rows"
 import type { GatePassReportPdfData } from "@/lib/gate-pass-report-pdf/types"
 
 export type BuildOutgoingReportPdfDataInput = {
@@ -44,43 +43,46 @@ export function buildOutgoingReportPdfData({
     quantityMode,
   )
 
-  return buildTableReportPdfData({
-    table,
-    reportTitle,
-    dateFrom,
-    dateTo,
-    generatedAt,
-    tableVariant: "ledger",
-    rowsPerPage: GATE_PASS_REPORT_LEDGER_ROWS_PER_PAGE,
-    formatDateRangeLabel,
-    getFilteredLeafRowCount,
-    buildFilterSummaryLines: (reportTable) =>
-      buildFilterSummaryLines(reportTable, quantityMode, showLocation),
-    collectExportRows,
-    getColumnExportLabel,
-    footerValuesByColumnId,
-    getExportCellForRow: (row, column) =>
-      getExportCellForRow(row, column, quantityMode, showLocation),
-    getFooterExportValue: (columnId, rows) =>
-      getFooterExportValue(columnId, rows, quantityMode),
-    isSummableExportColumn,
-    exportCellValueToDisplay,
-    mapExportCellToPdfCell: (row, exportCell, column, align) => {
-      if (column.id.startsWith("size-") && !row.getIsGrouped()) {
-        return mapOutgoingSizeCellForPdf(
-          row.original,
-          column.id,
-          quantityMode,
-          showLocation,
-          align,
-        )
-      }
+  return {
+    ...buildTableReportPdfData({
+      table,
+      reportTitle,
+      dateFrom,
+      dateTo,
+      generatedAt,
+      tableVariant: "ledger",
+      formatDateRangeLabel,
+      getFilteredLeafRowCount,
+      buildFilterSummaryLines: (reportTable) =>
+        buildFilterSummaryLines(reportTable, quantityMode, showLocation),
+      collectExportRows,
+      getColumnExportLabel,
+      footerValuesByColumnId,
+      getExportCellForRow: (row, column) =>
+        getExportCellForRow(row, column, quantityMode, showLocation),
+      getFooterExportValue: (columnId, rows) =>
+        getFooterExportValue(columnId, rows, quantityMode),
+      isSummableExportColumn,
+      exportCellValueToDisplay,
+      mapExportCellToPdfCell: (row, exportCell, column, align) => {
+        if (column.id.startsWith("size-") && !row.getIsGrouped()) {
+          return mapOutgoingSizeCellForPdf(
+            row.original,
+            column.id,
+            quantityMode,
+            showLocation,
+            align,
+          )
+        }
 
-      return {
-        text: exportCellValueToDisplay(exportCell),
-        align,
-        isEmpty: exportCell.kind === "empty",
-      }
-    },
-  })
+        return {
+          text: exportCellValueToDisplay(exportCell),
+          align,
+          isEmpty: exportCell.kind === "empty",
+        }
+      },
+    }),
+    keepRowsTogether: true,
+    continuousPages: true,
+  }
 }

@@ -103,6 +103,7 @@ type ReportTableSectionProps = {
   data: FarmerReportTableRow[]
   viewState: FarmerReportViewState
   activeGrouping: GroupingState
+  expanded: ExpandedState
   sorting: SortingState
   onSortingChange: Dispatch<SetStateAction<SortingState>>
   onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
@@ -131,6 +132,7 @@ const ReportTableSection = memo(function ReportTableSection({
   data,
   viewState,
   activeGrouping,
+  expanded,
   sorting,
   onSortingChange,
   onColumnFiltersChange,
@@ -142,6 +144,11 @@ const ReportTableSection = memo(function ReportTableSection({
   onTableReady,
   sectionMode = "incoming",
 }: ReportTableSectionProps) {
+  const sectionViewState = useMemo(
+    () => ({ ...viewState, grouping: activeGrouping }),
+    [viewState, activeGrouping],
+  )
+
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm">
       <div className="flex flex-col gap-2 border-b border-border/60 bg-muted/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -164,7 +171,8 @@ const ReportTableSection = memo(function ReportTableSection({
           data={data}
           sorting={sorting}
           onSortingChange={onSortingChange}
-          viewState={{ ...viewState, grouping: activeGrouping }}
+          viewState={sectionViewState}
+          expanded={expanded}
           onColumnFiltersChange={onColumnFiltersChange}
           onColumnVisibilityChange={onColumnVisibilityChange}
           onColumnOrderChange={onColumnOrderChange}
@@ -239,6 +247,8 @@ export function FarmerReportGatePassesSection({
   const [outgoingSorting, setOutgoingSorting] = useState<SortingState>(
     FARMER_REPORT_DEFAULT_SORTING,
   )
+  const [incomingExpanded, setIncomingExpanded] = useState<ExpandedState>({})
+  const [outgoingExpanded, setOutgoingExpanded] = useState<ExpandedState>({})
   const [isExporting, setIsExporting] = useState(false)
   const [incomingFilteredCount, setIncomingFilteredCount] = useState(0)
   const [outgoingFilteredCount, setOutgoingFilteredCount] = useState(0)
@@ -297,14 +307,21 @@ export function FarmerReportGatePassesSection({
     setViewState((current) => {
       const nextGrouping =
         typeof updater === "function" ? updater(current.grouping) : updater
-
       return {
         ...current,
         grouping: nextGrouping,
-        expanded: nextGrouping.length > 0 ? true : {},
       }
     })
   }, [])
+
+  const groupingSignature = viewState.grouping.join("\0")
+
+  useEffect(() => {
+    const expandedReset: ExpandedState =
+      groupingSignature.length > 0 ? true : {}
+    setIncomingExpanded(expandedReset)
+    setOutgoingExpanded(expandedReset)
+  }, [groupingSignature])
 
   const onGlobalFilterChange = useCallback<
     OnChangeFn<AdvancedReportGlobalFilter>
@@ -316,13 +333,23 @@ export function FarmerReportGatePassesSection({
     }))
   }, [])
 
-  const onExpandedChange = useCallback<OnChangeFn<ExpandedState>>((updater) => {
-    setViewState((current) => ({
-      ...current,
-      expanded:
-        typeof updater === "function" ? updater(current.expanded) : updater,
-    }))
-  }, [])
+  const onIncomingExpandedChange = useCallback<OnChangeFn<ExpandedState>>(
+    (updater) => {
+      setIncomingExpanded((current) =>
+        typeof updater === "function" ? updater(current) : updater,
+      )
+    },
+    [],
+  )
+
+  const onOutgoingExpandedChange = useCallback<OnChangeFn<ExpandedState>>(
+    (updater) => {
+      setOutgoingExpanded((current) =>
+        typeof updater === "function" ? updater(current) : updater,
+      )
+    },
+    [],
+  )
 
   const handleToggleGrouping = useCallback(
     (columnId: FarmerReportGroupColumnId) => {
@@ -411,14 +438,12 @@ export function FarmerReportGatePassesSection({
       columnOrder: viewState.columnOrder,
       grouping: activeGrouping,
       globalFilter: viewState.globalFilter,
-      expanded: viewState.expanded,
     },
     onColumnFiltersChange,
     onColumnVisibilityChange,
     onColumnOrderChange,
     onGroupingChange,
     onGlobalFilterChange,
-    onExpandedChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -769,6 +794,7 @@ export function FarmerReportGatePassesSection({
               data={sections.incoming}
               viewState={viewState}
               activeGrouping={activeGrouping}
+              expanded={incomingExpanded}
               sorting={incomingSorting}
               onSortingChange={setIncomingSorting}
               onColumnFiltersChange={onColumnFiltersChange}
@@ -776,7 +802,7 @@ export function FarmerReportGatePassesSection({
               onColumnOrderChange={onColumnOrderChange}
               onGroupingChange={onGroupingChange}
               onGlobalFilterChange={onGlobalFilterChange}
-              onExpandedChange={onExpandedChange}
+              onExpandedChange={onIncomingExpandedChange}
               onTableReady={handleIncomingTableReady}
               sectionMode="incoming"
             />
@@ -791,6 +817,7 @@ export function FarmerReportGatePassesSection({
               data={sections.outgoing}
               viewState={viewState}
               activeGrouping={activeGrouping}
+              expanded={outgoingExpanded}
               sorting={outgoingSorting}
               onSortingChange={setOutgoingSorting}
               onColumnFiltersChange={onColumnFiltersChange}
@@ -798,7 +825,7 @@ export function FarmerReportGatePassesSection({
               onColumnOrderChange={onColumnOrderChange}
               onGroupingChange={onGroupingChange}
               onGlobalFilterChange={onGlobalFilterChange}
-              onExpandedChange={onExpandedChange}
+              onExpandedChange={onOutgoingExpandedChange}
               onTableReady={handleOutgoingTableReady}
               sectionMode="outgoing"
             />

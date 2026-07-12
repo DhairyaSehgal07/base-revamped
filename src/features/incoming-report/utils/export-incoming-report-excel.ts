@@ -48,11 +48,6 @@ const TOTAL_BORDER: Partial<ExcelJS.Borders> = {
 }
 
 const FILLS = {
-  zebra: {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: COLORS.zebraFill },
-  } satisfies ExcelJS.Fill,
   group: {
     type: "pattern",
     pattern: "solid",
@@ -237,7 +232,6 @@ function styleBodyRow(
   excelRow: ExcelJS.Row,
   dataRow: ExcelPreviewRow,
   columnCount: number,
-  dataRowCounter: number,
   columnWidths: number[],
 ) {
   excelRow.height = calculateBodyRowHeight(dataRow.values, columnWidths)
@@ -248,9 +242,7 @@ function styleBodyRow(
       ? FILLS.total
       : dataRow.isGroupedOrAggregatedRow
         ? FILLS.group
-        : dataRowCounter % 2 === 1
-          ? FILLS.zebra
-          : undefined
+        : undefined
 
   for (let columnNumber = 1; columnNumber <= columnCount; columnNumber++) {
     const cell = excelRow.getCell(columnNumber)
@@ -299,7 +291,7 @@ function addBodyRow(
   columnWidths: number[],
 ) {
   const excelRow = worksheet.addRow(dataRow.values)
-  styleBodyRow(excelRow, dataRow, columnCount, 0, columnWidths)
+  styleBodyRow(excelRow, dataRow, columnCount, columnWidths)
 }
 
 function addStyledBodyRows(
@@ -310,24 +302,11 @@ function addStyledBodyRows(
 ) {
   if (dataRows.length === 0) return
 
-  let dataRowCounter = 0
   const excelRows = worksheet.addRows(dataRows.map((row) => row.values))
 
   for (let index = 0; index < dataRows.length; index++) {
     const dataRow = dataRows[index]!
-    styleBodyRow(
-      excelRows[index]!,
-      dataRow,
-      columnCount,
-      dataRowCounter,
-      columnWidths,
-    )
-
-    if (!dataRow.isSectionTitle && !dataRow.isTotalsRow) {
-      if (!dataRow.isGroupedOrAggregatedRow) {
-        dataRowCounter += 1
-      }
-    }
+    styleBodyRow(excelRows[index]!, dataRow, columnCount, columnWidths)
   }
 }
 
@@ -552,8 +531,6 @@ export async function buildIncomingReportExcelPackage(
 
   worksheet.views = [
     {
-      state: "frozen",
-      ySplit: 6,
       showGridLines: false,
     },
   ]

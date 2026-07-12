@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
+import { Layers, RefreshCw, Search, User } from "lucide-react"
 
+import { ListPaginationFooter } from "@/components/list-pagination-footer"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -15,6 +17,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -25,21 +28,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  formatCompactLocation,
-  formatDaybookDate,
-  formatQuantity,
-} from "@/features/daybook/utils/format"
+import { formatQuantity } from "@/features/daybook/utils/format"
 import { cn } from "@/lib/utils"
-import { RefreshCw, User } from "lucide-react"
 
 import { useLocationAnalytics } from "../api/use-location-analytics"
-import type { LocationAnalyticsFarmer, LocationAnalyticsQuantityTab } from "../types"
+import type {
+  LocationAnalyticsFarmer,
+  LocationAnalyticsQuantityTab,
+} from "../types"
+import {
+  buildFarmerLocationChambers,
+  farmerHasStockForTab,
+  filterFarmerRowsByName,
+  withFilteredShares,
+} from "../utils/build-farmer-location-chambers"
 import {
   buildFarmerRows,
   findFarmerById,
 } from "../utils/build-farmer-rows"
-import { getBagQuantity, sumBagQuantitiesForTab } from "../utils/get-location-quantity"
+import { filterChamberOrders } from "../utils/filter-chamber-orders"
+import {
+  findChamberByName,
+  resolveChamberTabs,
+} from "../utils/resolve-chamber-tabs"
+import { ChamberFloorUtilizationMap } from "./chamber-floor-utilization-map"
+import { ChamberOrdersTable } from "./chamber-orders-table"
+
+const FARMER_PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
 
 function formatShare(value: number): string {
   return `${value.toLocaleString("en-IN", {
@@ -62,109 +77,104 @@ function FarmerTabSkeleton() {
   )
 }
 
-function FarmerOrderDetail({
+function FarmerLocationDetail({
   farmer,
   tab,
 }: {
   farmer: LocationAnalyticsFarmer
   tab: LocationAnalyticsQuantityTab
 }) {
-  const orders = [...farmer.orders].sort((a, b) => {
-    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime()
-    if (dateDiff !== 0) return dateDiff
-    return b.gatePassNo - a.gatePassNo
-  })
+  const chambers = useMemo(
+    () => buildFarmerLocationChambers(farmer),
+    [farmer],
+  )
+
+  const [chamber, setChamber] = useState<string | undefined>(undefined)
+  const [floor, setFloor] = useState("")
+
+  useEffect(() => {
+    setChamber(undefined)
+    setFloor("")
+  }, [farmer.farmerId])
+
+  const { activeChamber } = resolveChamberTabs(chambers, chamber)
+  const selectedChamber = findChamberByName(chambers, activeChamber)
+  const activeFloor = floor && floor !== "all" ? floor : null
+  const filteredOrders =
+    selectedChamber && activeFloor
+      ? filterChamberOrders(selectedChamber.orders, activeFloor, tab)
+      : []
+
+  const hasStock = farmerHasStockForTab(chambers, tab)
 
   return (
-    <Card className="min-w-0">
-      <CardHeader>
-        <CardTitle className="font-heading text-base font-semibold">
-          {farmer.farmerName}
-        </CardTitle>
-        <CardDescription>
-          Account #{farmer.accountNumber} · {farmer.orderCount}{" "}
-          {farmer.orderCount === 1 ? "pass" : "passes"}
-        </CardDescription>
-      </CardHeader>
+    <div className="flex flex-col gap-6">
+      <Card className="min-w-0">
+        <CardHeader>
+          <CardTitle className="font-heading text-base font-semibold text-foreground">
+            {farmer.farmerName}
+          </CardTitle>
+          <CardDescription>
+            Account #{farmer.accountNumber} · {farmer.orderCount}{" "}
+            {farmer.orderCount === 1 ? "pass" : "passes"} · stock by chamber and
+            floor
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
-      <CardContent className="flex flex-col gap-4">
-        {orders.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No gate passes for this farmer.
-          </p>
-        ) : (
-          orders.map((order) => {
-            const orderTotal = sumBagQuantitiesForTab(order.bagSizes, tab)
+      {!hasStock || chambers.length === 0 ? (
+        <Empty className="rounded-xl border border-dashed border-border bg-card">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Layers />
+            </EmptyMedia>
+            <EmptyTitle>No location stock</EmptyTitle>
+            <EmptyDescription>
+              This farmer has no bags assigned to chambers or floors for the
+              selected quantity mode.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <>
+          {activeChamber ? (
+            <ChamberFloorUtilizationMap
+              chambers={chambers}
+              activeChamber={activeChamber}
+              floor={floor}
+              tab={tab}
+              showInspectors={false}
+              onChamberChange={(value) => {
+                setChamber(value)
+                setFloor("")
+              }}
+              onFloorChange={setFloor}
+            />
+          ) : null}
 
-            if (orderTotal <= 0) return null
-
-            return (
-              <div
-                key={order._id}
-                className="overflow-hidden rounded-lg border border-border"
-              >
-                <div className="border-b border-border/60 bg-muted/20 px-3 py-3 sm:px-4">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                      GP #{order.gatePassNo}
-                    </span>
-                    <span className="text-sm tabular-nums text-muted-foreground">
-                      {formatDaybookDate(order.date)}
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {order.variety}
-                    </span>
-                    <span className="ml-auto text-sm font-medium tabular-nums text-primary">
-                      {formatQuantity(orderTotal)} bags
-                    </span>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
-                        <TableHead className="h-10 px-3 font-medium text-muted-foreground">
-                          Size
-                        </TableHead>
-                        <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
-                          Bags
-                        </TableHead>
-                        <TableHead className="h-10 px-3 font-medium text-muted-foreground">
-                          Location
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {order.bagSizes.map((bag) => {
-                        const qty = getBagQuantity(bag, tab)
-                        if (qty <= 0) return null
-
-                        return (
-                          <TableRow
-                            key={`${bag.name}-${formatCompactLocation(bag.location)}`}
-                          >
-                            <TableCell className="px-3 py-2.5 font-medium text-foreground">
-                              {bag.name}
-                            </TableCell>
-                            <TableCell className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                              {formatQuantity(qty)}
-                            </TableCell>
-                            <TableCell className="px-3 py-2.5 font-mono text-sm text-muted-foreground">
-                              {formatCompactLocation(bag.location)}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )
-          })
-        )}
-      </CardContent>
-    </Card>
+          {activeFloor && activeChamber ? (
+            <ChamberOrdersTable
+              orders={filteredOrders}
+              chamberLabel={activeChamber}
+              floorLabel={activeFloor}
+            />
+          ) : (
+            <Empty className="rounded-xl border border-dashed border-border bg-card">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Layers />
+                </EmptyMedia>
+                <EmptyTitle>Select a floor</EmptyTitle>
+                <EmptyDescription>
+                  Click a floor card above to view this farmer&apos;s gate
+                  passes.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
@@ -175,29 +185,65 @@ export function ChamberAnalyticsFarmerTab({
   const analytics = useLocationAnalytics({ enabled })
   const farmers = analytics.response?.data?.byFarmer ?? []
 
-  const rows = useMemo(
+  const allRows = useMemo(
     () => buildFarmerRows(farmers, tab),
     [farmers, tab],
   )
 
+  const [searchQuery, setSearchQuery] = useState("")
+  const [pageIndex, setPageIndex] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
   const [selectedFarmerId, setSelectedFarmerId] = useState<string | null>(null)
 
+  const filteredRows = useMemo(
+    () => withFilteredShares(filterFarmerRowsByName(allRows, searchQuery)),
+    [allRows, searchQuery],
+  )
+
+  const totalPages = Math.max(Math.ceil(filteredRows.length / pageSize), 1)
+  const safePageIndex = Math.min(pageIndex, totalPages - 1)
+
+  const pageRows = useMemo(() => {
+    const start = safePageIndex * pageSize
+    return filteredRows.slice(start, start + pageSize)
+  }, [filteredRows, pageSize, safePageIndex])
+
   useEffect(() => {
-    if (rows.length === 0) {
+    setPageIndex(0)
+  }, [searchQuery, pageSize])
+
+  useEffect(() => {
+    if (filteredRows.length === 0) {
       setSelectedFarmerId(null)
       return
     }
 
     if (
       !selectedFarmerId ||
-      !rows.some((row) => row.farmerId === selectedFarmerId)
+      !filteredRows.some((row) => row.farmerId === selectedFarmerId)
     ) {
-      setSelectedFarmerId(rows[0]?.farmerId ?? null)
+      setSelectedFarmerId(filteredRows[0]?.farmerId ?? null)
     }
-  }, [rows, selectedFarmerId])
+  }, [filteredRows, selectedFarmerId])
 
   const selectedFarmer = findFarmerById(farmers, selectedFarmerId)
-  const tableTotal = rows.reduce((sum, row) => sum + row.totalBags, 0)
+  const filteredBagsTotal = filteredRows.reduce(
+    (sum, row) => sum + row.totalBags,
+    0,
+  )
+  const filteredPassesTotal = filteredRows.reduce(
+    (sum, row) => sum + row.orderCount,
+    0,
+  )
+
+  const rangeStart =
+    filteredRows.length === 0
+      ? 0
+      : Math.min(safePageIndex * pageSize + 1, filteredRows.length)
+  const rangeEnd =
+    filteredRows.length === 0
+      ? 0
+      : Math.min((safePageIndex + 1) * pageSize, filteredRows.length)
 
   if (analytics.isLoading) {
     return <FarmerTabSkeleton />
@@ -229,7 +275,7 @@ export function ChamberAnalyticsFarmerTab({
     )
   }
 
-  if (rows.length === 0) {
+  if (allRows.length === 0) {
     return (
       <Empty className="rounded-xl border border-border bg-card">
         <EmptyHeader>
@@ -258,93 +304,141 @@ export function ChamberAnalyticsFarmerTab({
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="sticky left-0 z-10 h-10 bg-muted/50 px-3 font-medium text-muted-foreground">
-                    Farmer
-                  </TableHead>
-                  <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
-                    Account #
-                  </TableHead>
-                  <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
-                    Passes
-                  </TableHead>
-                  <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
-                    Bags
-                  </TableHead>
-                  <TableHead className="h-10 bg-primary/5 px-3 text-right font-medium text-muted-foreground">
-                    Share
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="relative w-full">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search farmer name"
+              className="w-full pl-10"
+              inputMode="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              aria-label="Search farmer name"
+            />
+          </div>
 
-              <TableBody>
-                {rows.map((row) => {
-                  const isSelected = row.farmerId === selectedFarmerId
+          {filteredRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No farmers match &ldquo;{searchQuery.trim()}&rdquo;.
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead className="sticky left-0 z-10 h-10 bg-muted/50 px-3 font-medium text-muted-foreground">
+                        Farmer
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
+                        Account #
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
+                        Passes
+                      </TableHead>
+                      <TableHead className="h-10 px-3 text-right font-medium text-muted-foreground">
+                        Bags
+                      </TableHead>
+                      <TableHead className="h-10 bg-primary/5 px-3 text-right font-medium text-muted-foreground">
+                        Share
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
 
-                  return (
-                    <TableRow
-                      key={row.farmerId}
-                      data-state={isSelected ? "selected" : undefined}
-                      className={cn(
-                        "cursor-pointer",
-                        isSelected && "bg-primary/5 hover:bg-primary/10",
-                      )}
-                      onClick={() => setSelectedFarmerId(row.farmerId)}
-                    >
-                      <TableCell
-                        className={cn(
-                          "sticky left-0 z-10 bg-background px-3 py-2.5 font-medium",
-                          isSelected ? "text-primary" : "text-foreground",
-                        )}
-                        title={row.farmerName}
-                      >
-                        <span className="block truncate">{row.farmerName}</span>
+                  <TableBody>
+                    {pageRows.map((row) => {
+                      const isSelected = row.farmerId === selectedFarmerId
+
+                      return (
+                        <TableRow
+                          key={row.farmerId}
+                          data-state={isSelected ? "selected" : undefined}
+                          className={cn(
+                            "cursor-pointer",
+                            isSelected && "bg-primary/5 hover:bg-primary/10",
+                          )}
+                          onClick={() => setSelectedFarmerId(row.farmerId)}
+                        >
+                          <TableCell
+                            className={cn(
+                              "sticky left-0 z-10 bg-background px-3 py-2.5 font-medium",
+                              isSelected
+                                ? "text-primary"
+                                : "text-foreground",
+                            )}
+                            title={row.farmerName}
+                          >
+                            <span className="block truncate">
+                              {row.farmerName}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                            {row.accountNumber}
+                          </TableCell>
+                          <TableCell className="px-3 py-2.5 text-right tabular-nums text-foreground">
+                            {row.orderCount}
+                          </TableCell>
+                          <TableCell className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">
+                            {formatQuantity(row.totalBags)}
+                          </TableCell>
+                          <TableCell className="bg-primary/5 px-3 py-2.5 text-right font-medium tabular-nums text-primary">
+                            {formatShare(row.share)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+
+                  <TableFooter className="bg-muted/30">
+                    <TableRow>
+                      <TableCell className="sticky left-0 z-10 bg-muted/30 px-3 py-2.5 font-semibold text-foreground">
+                        Total
+                        {searchQuery.trim() ? " (filtered)" : ""}
                       </TableCell>
-                      <TableCell className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                        {row.accountNumber}
+                      <TableCell />
+                      <TableCell className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                        {filteredPassesTotal}
                       </TableCell>
-                      <TableCell className="px-3 py-2.5 text-right tabular-nums text-foreground">
-                        {row.orderCount}
+                      <TableCell className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
+                        {formatQuantity(filteredBagsTotal)}
                       </TableCell>
-                      <TableCell className="px-3 py-2.5 text-right font-medium tabular-nums text-foreground">
-                        {formatQuantity(row.totalBags)}
-                      </TableCell>
-                      <TableCell className="bg-primary/5 px-3 py-2.5 text-right font-medium tabular-nums text-primary">
-                        {formatShare(row.share)}
+                      <TableCell className="bg-primary/5 px-3 py-2.5 text-right font-semibold tabular-nums text-primary">
+                        {formatShare(100)}
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-              </TableBody>
+                  </TableFooter>
+                </Table>
+              </div>
 
-              <TableFooter className="bg-muted/30">
-                <TableRow>
-                  <TableCell className="sticky left-0 z-10 bg-muted/30 px-3 py-2.5 font-semibold text-foreground">
-                    Total
-                  </TableCell>
-                  <TableCell />
-                  <TableCell className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
-                    {rows.reduce((sum, row) => sum + row.orderCount, 0)}
-                  </TableCell>
-                  <TableCell className="px-3 py-2.5 text-right font-semibold tabular-nums text-foreground">
-                    {formatQuantity(tableTotal)}
-                  </TableCell>
-                  <TableCell className="bg-primary/5 px-3 py-2.5 text-right font-semibold tabular-nums text-primary">
-                    {formatShare(100)}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
+              <ListPaginationFooter
+                rangeStart={rangeStart}
+                rangeEnd={rangeEnd}
+                totalItems={filteredRows.length}
+                itemLabel="farmers"
+                currentPage={safePageIndex + 1}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                pageSizeOptions={FARMER_PAGE_SIZE_OPTIONS}
+                onPageSizeChange={(size) => {
+                  setPageSize(size)
+                  setPageIndex(0)
+                }}
+                onPreviousPage={() =>
+                  setPageIndex((prev) => Math.max(prev - 1, 0))
+                }
+                onNextPage={() =>
+                  setPageIndex((prev) => Math.min(prev + 1, totalPages - 1))
+                }
+                onGoToPage={(page) => setPageIndex(page - 1)}
+                attached
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
       {selectedFarmer ? (
-        <FarmerOrderDetail farmer={selectedFarmer} tab={tab} />
+        <FarmerLocationDetail farmer={selectedFarmer} tab={tab} />
       ) : (
         <Empty className="rounded-xl border border-dashed border-border bg-card">
           <EmptyHeader>
@@ -353,7 +447,7 @@ export function ChamberAnalyticsFarmerTab({
             </EmptyMedia>
             <EmptyTitle>Select a farmer</EmptyTitle>
             <EmptyDescription>
-              Tap a row in the table above to view gate pass details.
+              Tap a row in the table above to view chamber and floor stock.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

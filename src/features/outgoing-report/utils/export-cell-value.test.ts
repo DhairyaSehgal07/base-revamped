@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { Row } from "@tanstack/react-table"
+import type { Column, Row } from "@tanstack/react-table"
 
 import type { OutgoingGatePassReportRecord } from "@/features/outgoing-report/api/types"
 
@@ -8,6 +8,7 @@ import {
   computeOutgoingReportFooterTotals,
   exportCellValueToDisplay,
   formatExportCellValue,
+  getExportCellForRow,
 } from "./export-cell-value"
 
 const farmerLink = {
@@ -333,6 +334,78 @@ describe("computeOutgoingReportFooterTotals", () => {
       kind: "number",
       value: 200,
       format: "integer",
+    })
+  })
+})
+
+describe("getExportCellForRow aggregated size cells", () => {
+  it("exports aggregated size as a plain number without location", () => {
+    const original = createRow({
+      orderDetails: [
+        {
+          size: "Ration",
+          quantityAvailable: 100,
+          quantityIssued: 100,
+          location: { chamber: "C1", floor: "F1", row: "R1" },
+        },
+      ],
+    })
+
+    const column = {
+      id: "size-Ration",
+      columnDef: { meta: { numeric: true } },
+    } as Column<OutgoingGatePassReportRecord, unknown>
+
+    const cell = {
+      column,
+      getIsGrouped: () => false,
+      getIsAggregated: () => true,
+      getIsPlaceholder: () => false,
+      getValue: () => 750,
+    }
+
+    const row = {
+      original,
+      depth: 0,
+      subRows: [],
+      getIsGrouped: () => true,
+      getVisibleCells: () => [cell],
+    } as unknown as Row<OutgoingGatePassReportRecord>
+
+    const result = getExportCellForRow(row, column, "issued", true)
+
+    expect(result).toEqual({
+      kind: "number",
+      value: 750,
+      format: "integer",
+    })
+    expect(exportCellValueToDisplay(result)).toBe("750")
+  })
+
+  it("returns empty for non-numeric aggregated cells", () => {
+    const column = {
+      id: "variety",
+      columnDef: { meta: {} },
+    } as Column<OutgoingGatePassReportRecord, unknown>
+
+    const cell = {
+      column,
+      getIsGrouped: () => false,
+      getIsAggregated: () => true,
+      getIsPlaceholder: () => false,
+      getValue: () => "Atlantic",
+    }
+
+    const row = {
+      original: createRow(),
+      depth: 0,
+      subRows: [],
+      getIsGrouped: () => true,
+      getVisibleCells: () => [cell],
+    } as unknown as Row<OutgoingGatePassReportRecord>
+
+    expect(getExportCellForRow(row, column, "issued", true)).toEqual({
+      kind: "empty",
     })
   })
 })

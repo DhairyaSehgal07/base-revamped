@@ -181,7 +181,8 @@ export function collectExportRows(
     return result
   }
 
-  return flattenGroupedRows(table.getGroupedRowModel().rows)
+  // Sorting runs after grouping in TanStack Table — use the sorted model.
+  return flattenGroupedRows(table.getSortedRowModel().rows)
 }
 
 

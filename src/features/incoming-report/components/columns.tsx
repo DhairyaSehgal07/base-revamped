@@ -270,8 +270,8 @@ function createTotalBagsColumn(
     },
     ...sortNumeric,
     ...aggregateSum,
-    cell: ({ row }) => {
-      const value = getIncomingReportTotalBags(row.original, quantityMode)
+    cell: ({ getValue }) => {
+      const value = getValue<number | undefined>()
 
       return value == null ? (
         "-"

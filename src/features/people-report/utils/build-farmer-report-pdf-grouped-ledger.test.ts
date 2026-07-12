@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest"
+import {
+  createTable,
+  getCoreRowModel,
+  getExpandedRowModel,
+  getGroupedRowModel,
+  getSortedRowModel,
+} from "@tanstack/react-table"
 
 import type {
   IncomingDaybookEntry,
   OutgoingDaybookEntry,
 } from "@/features/daybook/types"
-import { getFarmerReportColumns } from "@/features/people-report/components/columns"
+import {
+  farmerReportSortingFns,
+  getFarmerReportColumns,
+} from "@/features/people-report/components/columns"
 import { buildFarmerReportSections } from "@/features/people-report/utils/build-farmer-report-sections"
-import { buildPdfGroupedLedgerItems } from "@/features/people-report/utils/build-farmer-report-pdf-grouped-ledger"
+import {
+  buildPdfGroupedLedgerItems,
+  buildPdfGroupedLedgerItemsFromTable,
+} from "@/features/people-report/utils/build-farmer-report-pdf-grouped-ledger"
 
 const farmerLink = {
   _id: "link-1",
@@ -291,6 +304,59 @@ describe("buildPdfGroupedLedgerItems", () => {
       sizeColumns,
       sectionMode: "incoming",
     })
+
+    const leafGatePasses = result.items
+      .filter((item) => item.kind === "leaf")
+      .map((item) => item.gatePass)
+
+    expect(leafGatePasses).toEqual(["#3", "#2", "#1"])
+  })
+
+  it("honors sorting via FromTable export path when grouping is active", () => {
+    const entries = [
+      createIncomingPass({ gatePassNo: 1, variety: "Atlantic" }),
+      createIncomingPass({
+        _id: "incoming-2",
+        gatePassNo: 3,
+        variety: "Atlantic",
+      }),
+      createIncomingPass({
+        _id: "incoming-3",
+        gatePassNo: 2,
+        variety: "Atlantic",
+      }),
+    ]
+    const sections = buildFarmerReportSections(entries)
+    const columns = getFarmerReportColumns(entries, [], false, true)
+    const grouping = ["variety"]
+    const sorting = [{ id: "gatePassNo", desc: true }]
+
+    const table = createTable({
+      data: sections.incoming,
+      columns,
+      state: {
+        sorting,
+        grouping,
+        expanded: true,
+      },
+      onStateChange: () => undefined,
+      getCoreRowModel: getCoreRowModel(),
+      getSortedRowModel: getSortedRowModel(),
+      getGroupedRowModel: getGroupedRowModel(),
+      getExpandedRowModel: getExpandedRowModel(),
+      sortingFns: farmerReportSortingFns,
+      enableSortingRemoval: true,
+      sortDescFirst: false,
+      groupedColumnMode: "reorder",
+      renderFallbackValue: null,
+    })
+
+    const result = buildPdfGroupedLedgerItemsFromTable(
+      table,
+      sizeColumns,
+      sections.incoming,
+      "incoming",
+    )
 
     const leafGatePasses = result.items
       .filter((item) => item.kind === "leaf")

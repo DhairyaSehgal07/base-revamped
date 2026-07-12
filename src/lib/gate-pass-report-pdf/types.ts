@@ -39,6 +39,14 @@ export type GatePassReportPdfData = {
   footerCells: GatePassReportPdfCell[]
   tableVariant?: GatePassReportPdfTableVariant
   rowsPerPage?: number
+  /** When true, table body/footer rows are unbreakable (no mid-row page splits). */
+  keepRowsTogether?: boolean
+  /**
+   * When true, render all rows in one wrapping Page and let react-pdf
+   * create continuation pages. Letterhead + table headers use `fixed`
+   * so they repeat on every generated page (no manual row chunking).
+   */
+  continuousPages?: boolean
 }
 
 export type GenerateGatePassReportPdfInput = GatePassReportPdfData & {

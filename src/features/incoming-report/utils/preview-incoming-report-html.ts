@@ -49,7 +49,6 @@ function buildPreviewStyles(): string {
       --muted-fill: ${theme.mutedFill};
       --primary-muted: ${theme.primaryMutedFill};
       --primary-soft: ${theme.primarySoftFill};
-      --zebra: ${theme.zebraFill};
     }
     * { box-sizing: border-box; }
     body {
@@ -147,9 +146,6 @@ function buildPreviewStyles(): string {
     }
     tbody td.numeric { font-weight: 500; }
     tbody td.empty { color: var(--muted); }
-    tbody tr:nth-child(even):not(.group-row):not(.section-row):not(.total-row) {
-      background: var(--zebra);
-    }
     tbody tr.group-row { background: var(--primary-muted); font-weight: 600; }
     tbody tr.group-row td { color: var(--primary); }
     tbody tr.section-row td {

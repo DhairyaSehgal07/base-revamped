@@ -346,13 +346,10 @@ export function getExportCellForRow(
 
   if (resolvedCell.getIsAggregated()) {
     if (meta?.numeric !== true) return { kind: "empty" }
-    return formatExportCellValue(
-      columnId,
-      resolvedCell.getValue(),
-      row.original,
-      quantityMode,
-      showLocation,
-    )
+    const parsed = parseReportNumber(resolvedCell.getValue())
+    return parsed == null
+      ? { kind: "empty" }
+      : { kind: "number", value: parsed, format: "integer" }
   }
 
   if (resolvedCell.getIsPlaceholder()) {
@@ -396,7 +393,8 @@ export function collectExportRows(
     return result
   }
 
-  return flattenGroupedRows(table.getGroupedRowModel().rows)
+  // Sorting runs after grouping in TanStack Table — use the sorted model.
+  return flattenGroupedRows(table.getSortedRowModel().rows)
 }
 
 export function getFilteredLeafRowCount(table: Table<IncomingGatePassReportRecord>): number {

@@ -78,7 +78,6 @@ export type FarmerReportViewState = {
   columnOrder: ColumnOrderState
   grouping: GroupingState
   globalFilter: AdvancedReportGlobalFilter
-  expanded: ExpandedState
 }
 
 export function createDefaultFarmerReportViewState(
@@ -92,7 +91,6 @@ export function createDefaultFarmerReportViewState(
     columnOrder: stored.columnOrder,
     grouping: [],
     globalFilter: { logic: "AND", conditions: [] },
-    expanded: {},
   }
 }
 
@@ -110,6 +108,7 @@ interface DataTableProps {
   sorting: SortingState
   onSortingChange: OnChangeFn<SortingState>
   viewState: FarmerReportViewState
+  expanded: ExpandedState
   onColumnFiltersChange: OnChangeFn<ColumnFiltersState>
   onColumnVisibilityChange: OnChangeFn<VisibilityState>
   onColumnOrderChange: OnChangeFn<ColumnOrderState>
@@ -272,6 +271,7 @@ export function DataTable({
   sorting,
   onSortingChange,
   viewState,
+  expanded,
   onColumnFiltersChange,
   onColumnVisibilityChange,
   onColumnOrderChange,
@@ -320,7 +320,7 @@ export function DataTable({
     state: {
       sorting,
       grouping: viewState.grouping,
-      expanded: viewState.expanded,
+      expanded,
       columnFilters: viewState.columnFilters,
       columnVisibility: viewState.columnVisibility,
       columnOrder: viewState.columnOrder,
