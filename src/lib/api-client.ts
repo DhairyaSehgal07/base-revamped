@@ -38,7 +38,12 @@ apiClient.interceptors.response.use(
       clearSession();
 
       if (window.location.pathname !== '/login') {
-        void router.navigate({ to: '/login', replace: true });
+        const redirect = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        void router.navigate({
+          to: '/login',
+          search: { redirect },
+          replace: true,
+        });
       }
     }
 

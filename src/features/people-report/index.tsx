@@ -11,7 +11,7 @@ export function PeopleReportPage() {
   const search = peopleReportRouteApi.useSearch()
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" asChild>
           <Link to=".." search={search}>
@@ -22,7 +22,7 @@ export function PeopleReportPage() {
       </div>
 
       <FarmerReportDocument linkId={linkId} search={search} />
-    </main>
+    </div>
   )
 }
 

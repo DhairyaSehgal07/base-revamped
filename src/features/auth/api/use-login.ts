@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import apiClient, { getApiErrorMessage } from "@/lib/api-client"
 import { DEFAULT_DAYBOOK_SEARCH } from "@/features/daybook/search"
+import { sanitizeRedirectPath } from "@/lib/seo/safe-redirect"
 import { setLoginSession } from "../store/set-login-session"
 import type { AuthResponse, LoginCredentials } from "../types"
 
@@ -37,7 +38,9 @@ export function useLogin() {
 
       setLoginSession(data)
 
-      const redirectTo = router.state.location.search.redirect
+      const redirectTo = sanitizeRedirectPath(
+        router.state.location.search.redirect,
+      )
       if (redirectTo) {
         router.history.push(redirectTo)
         return

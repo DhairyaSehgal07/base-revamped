@@ -87,7 +87,7 @@ export function ProfileForm({
   })
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <SettingsBackButton />
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -465,6 +465,6 @@ export function ProfileForm({
           </CardFooter>
         </Card>
       </form>
-    </main>
+    </div>
   )
 }

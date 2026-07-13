@@ -23,7 +23,7 @@ export function PreferencesError({
   isRetrying = false,
 }: PreferencesErrorProps) {
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <SettingsBackButton />
 
       <header>
@@ -58,6 +58,6 @@ export function PreferencesError({
           </Button>
         </EmptyContent>
       </Empty>
-    </main>
+    </div>
   )
 }

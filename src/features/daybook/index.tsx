@@ -209,14 +209,14 @@ const DaybookPage = () => {
 
   if (!isSearchActive && listQuery.isLoading) {
     return (
-      <main className="flex min-w-0 flex-1 flex-col gap-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
         <DaybookPageSkeleton />
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4">
+    <div className="flex min-w-0 flex-1 flex-col gap-4">
       <Item variant="outline" size="sm">
         <ItemMedia variant="icon">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -458,7 +458,7 @@ const DaybookPage = () => {
           isPageSizeDisabled={isFetching}
         />
       ) : null}
-    </main>
+    </div>
   )
 }
 

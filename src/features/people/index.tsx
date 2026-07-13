@@ -83,14 +83,14 @@ const PeoplePage = () => {
 
   if (isLoading) {
     return (
-      <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
         <PeoplePageSkeleton />
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <Item variant="outline" size="sm">
         <ItemMedia variant="icon">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -231,7 +231,7 @@ const PeoplePage = () => {
         onOpenChange={setAddFarmerOpen}
         links={farmerStorageLinks}
       />
-    </main>
+    </div>
   )
 }
 

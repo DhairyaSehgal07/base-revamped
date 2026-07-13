@@ -36,7 +36,6 @@ const routeTitles: Record<string, string> = {
   '/people': 'People',
   '/analytics': 'Analytics',
   '/analytics/advanced': 'Location Wise Analytics',
-  '/additional': 'Additional',
   '/finances': 'Finances',
   '/settings': 'Settings',
   '/settings/': 'Settings',

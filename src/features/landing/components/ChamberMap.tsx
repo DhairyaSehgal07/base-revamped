@@ -76,15 +76,14 @@ export function ChamberMap() {
               </span>
             </div>
 
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Chambers">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Chambers">
               {DEMO_CHAMBERS.map((item) => {
                 const active = item.id === chamber.id;
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    role="tab"
-                    aria-selected={active}
+                    aria-pressed={active}
                     onClick={() => selectChamber(item.id)}
                     className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
                       active

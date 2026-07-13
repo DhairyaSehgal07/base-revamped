@@ -19,7 +19,7 @@ function ProfileCardSkeleton() {
 
 export function ProfileSkeleton() {
   return (
-    <main className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
+    <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
       <SettingsBackButton />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -33,6 +33,6 @@ export function ProfileSkeleton() {
       <ProfileCardSkeleton />
       <ProfileCardSkeleton />
       <ProfileCardSkeleton />
-    </main>
+    </div>
   )
 }

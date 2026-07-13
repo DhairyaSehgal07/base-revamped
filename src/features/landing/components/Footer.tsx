@@ -17,7 +17,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold tracking-wider uppercase">Navigation</h4>
+            <p className="text-xs font-semibold tracking-wider uppercase">Navigation</p>
             <ul className="space-y-2 text-sm">
               {NAV_LINKS.map((link) => (
                 <li key={link.id}>
@@ -33,7 +33,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold tracking-wider uppercase">Media &amp; Links</h4>
+            <p className="text-xs font-semibold tracking-wider uppercase">Media &amp; Links</p>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
@@ -59,7 +59,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-xs font-semibold tracking-wider uppercase">Contact &amp; Support</h4>
+            <p className="text-xs font-semibold tracking-wider uppercase">Contact &amp; Support</p>
             <ul className="text-muted-foreground space-y-2 text-sm">
               <li className="flex items-center gap-2">
                 <Mail className="size-3.5" /> support@coldop.in
@@ -76,14 +76,9 @@ export function Footer() {
 
         <div className="text-muted-foreground mt-12 flex flex-wrap items-center justify-between gap-4 border-t pt-8 text-xs">
           <p>© {new Date().getFullYear()} ColdOp.in — All rights reserved. Estd. 2023.</p>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground transition-colors">
-              Privacy Policy
-            </a>
-            <a href="#" className="hover:text-foreground transition-colors">
-              Terms of Service
-            </a>
-          </div>
+          <p className="text-muted-foreground">
+            Privacy Policy and Terms of Service pages coming soon.
+          </p>
         </div>
       </div>
     </footer>

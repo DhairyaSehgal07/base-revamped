@@ -237,7 +237,7 @@ export function AppSidebar() {
             <SidebarMenuButton size="lg" asChild>
               <Link to="/daybook" search={DEFAULT_DAYBOOK_SEARCH}>
                 <img
-                  src="/favicon.svg"
+                  src="/icon-192x192.webp"
                   alt="Coldop"
                   className="size-8 shrink-0 rounded-md"
                 />
